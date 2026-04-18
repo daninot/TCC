@@ -1,0 +1,7 @@
+langchain
+langchain-google-genai 	#porque vou usar o gemini
+langgraph
+chromadb
+pysigma         #a biblioteca oficial do sigma cli
+pyyaml
+python-dotenv
