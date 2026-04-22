@@ -35,8 +35,8 @@ def main():
     train_files = set()         #cria um conjunto; vai memorizar os nomes dos arquivos
 
     for filename in os.listdir(TRAIN_DIR):      #os.listdir() lê a pasta e devolve uma lista com todos os arquivos lá dentro
-        if filename.endswith(".yml"):   
-            filepath = os.path.join(TRAIN_DIR, filename)    #filepath é uma lista de arrays 'caminho da pasta + nome do arquivo'
+        if filename.endswith(".yml"):           #filename recebe, em cada loop, o nome do arquivo da lista
+            filepath = os.path.join(TRAIN_DIR, filename)    #filepath recebe a concatenação 'caminho da pasta + nome do arquivo' para cada volta do loop
             train_files.add(filename)                       #guarda no conjunto só o nome para não copiar duplicado
             key = get_logsource_key(filepath)       #key recebe o retorno da função criada (lê o arquivo e retorna uma "assinatura" em string)
             
@@ -61,19 +61,22 @@ def main():
                         pool_rules[key] = []                #cria uma lista vazia pra ela
                     pool_rules[key].append(filepath)        #vai adicionando no final da lista o caminho do arquivo que tem esta assinatura
 
-    print("\n3. Sorteando as regras para a base de Teste...")
-    os.makedirs(TEST_DIR, exist_ok=True)
+    print("\n3. Sorteando as regras para a base de teste:")
+    os.makedirs(TEST_DIR, exist_ok=True)    #os.makedirs seria o mkdir()
     
     regras_copiadas = 0
-    for key, count in train_distribution.items():   #percorre a lista train_distribution, uma vez para cada assinatura; #key recebe o nome da assinatura e count recebe a qtd
-        if key in pool_rules and len(pool_rules[key]) >= count:
+    for key, count in train_distribution.items():   #na lista, o loop gira uma vez para cada assinatura; #key recebe o nome da assinatura e count recebe a qtd
+        if key in pool_rules and len(pool_rules[key]) >= count:    #checa se o repositório original tem a chave e se a lista de arquivos encontrados tem um tamanho maior ou igual ao que preciso
+            
             # Sorteia 'count' regras aleatórias que batem com esta categoria
-            selected_files = random.sample(pool_rules[key], count)
-            for src_path in selected_files:
-                dst_path = os.path.join(TEST_DIR, os.path.basename(src_path))
-                shutil.copy2(src_path, dst_path)
-                regras_copiadas += 1
-        else:
+            selected_files = random.sample(pool_rules[key], count)  #sorteia count arquivos; selected_files é a lista com os caminhos sorteados
+            
+            for src_path in selected_files:     #percorre a lista e atribui a src_path o valor a cada loop
+                dst_path = os.path.join(TEST_DIR, os.path.basename(src_path))  #junta a pasta de destino com o final do arquivo
+                shutil.copy2(src_path, dst_path)    #faz a cópia física do arquivo no HD
+                regras_copiadas += 1    
+        
+        else:   #se não tiver arquivos suficientes no repositório original...
             disponivel = len(pool_rules.get(key, []))
             print(f"Aviso: Não há regras suficientes no repositório para '{key}'. Precisava de {count}, encontrou {disponivel}.")
 
