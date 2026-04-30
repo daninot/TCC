@@ -18,7 +18,7 @@ def get_logsource_key(filepath):
                     category = logsource.get('category', 'any') #pega a palavra-chave de categoria
                     product = logsource.get('product', 'any')   #pega o product
                     service = logsource.get('service', 'any')   #pega o serviço
-                    return f"{category}_{product}_{service}"
+                    return f"{category}_{product}_{service}"    #retorna eles em uma string
     except Exception:
         pass
     return "unknown"
@@ -61,37 +61,31 @@ def main():
             if len(selected_files) == 50:   #se já atingiu as 50 regras faz a beatriz se revirar onde quer que ela esteja
                 break
             
-            # Se a assinatura ainda tem arquivos na lista dela...
-            if len(ficheiro_organizador_regras[assinatura]) > 0:    #
-                # Sorteia uma regra desta assinatura
-                regra_escolhida = random.choice(ficheiro_organizador_regras[assinatura])
-                
-                selected_files.append(regra_escolhida)
-                
-                # Tira a regra da lista para não sorteá-la de novo na próxima volta
-                ficheiro_organizador_regras[assinatura].remove(regra_escolhida)
+            if len(ficheiro_organizador_regras[assinatura]) > 0:                            #se ainda existir regra na lista desta assinatura (que não foi sorteada)
+                regra_escolhida = random.choice(ficheiro_organizador_regras[assinatura])    #sorteia uma aleatoriamente
+                selected_files.append(regra_escolhida)                                      #adiciona a regra no final da lista selected_files
+                ficheiro_organizador_regras[assinatura].remove(regra_escolhida)             #remove da "gaveta" do ficheiro o arquivo (regra) escolhido 
                 regras_nesta_rodada += 1
                 
-        # Proteção contra loop infinito (caso o repositório tivesse menos de 50 regras no total)
-        if regras_nesta_rodada == 0:
-            print("Aviso: O repositório acabou antes de chegarmos a 50 regras!")
+        if regras_nesta_rodada == 0:        #impede de ficar em loop infinito caso o repositório tivesse menos de 50 regras no total
+            print("Aviso: O repositório acabou antes.")
             break
 
-    # 3. Copia os arquivos selecionados para a pasta de treinamento
+    #copia os arquivos selecionados para a pasta de treinamento
     print("\n3. Copiando as regras selecionadas...")
     
-    # Limpa a pasta antiga de treinamento (se existir) e cria uma nova
+    #limpa a pasta antiga de treinamento (se existir) e cria uma nova
     if os.path.exists(NEW_TRAIN_DIR):
         shutil.rmtree(NEW_TRAIN_DIR)
     os.makedirs(NEW_TRAIN_DIR)
     
     for src_path in selected_files:
-        caminho_relativo = os.path.relpath(src_path, SIGMA_REPO_DIR)
-        novo_nome = caminho_relativo.replace(os.sep, '_')
-        dst_path = os.path.join(NEW_TRAIN_DIR, novo_nome)
-        shutil.copy2(src_path, dst_path)
+        caminho = os.path.relpath(src_path, SIGMA_REPO_DIR)         #pega o caminho do arquivo relativo à pasta raíz do sigma
+        caminho_vira_nome = caminho.replace(os.sep, '_')            #tira as / e coloca _, transformando em um nome de arquivo
+        dst_path = os.path.join(NEW_TRAIN_DIR, caminho_vira_nome)   
+        shutil.copy2(src_path, dst_path)                            #faz a cópia física de um lugar pro outro
         
-    print(f"\nConcluído! {len(selected_files)} regras altamente diversificadas foram salvas em:")
+    print(f"\nConcluído. {len(selected_files)} regras salvas em:")
     print(NEW_TRAIN_DIR)
 
 if __name__ == "__main__":
