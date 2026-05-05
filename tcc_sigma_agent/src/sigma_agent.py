@@ -1,5 +1,7 @@
 import re
 from typing import TypedDict
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
 
 # >>>>>>>> máquina de estados <<<<<<<<<<
 # nó 1 = 
@@ -22,11 +24,11 @@ class GraphState(TypedDict):
     tentativas: int          #qtas vezes a LLM tentou refazer a regra
 
 
-# >>>>>>>> NÓ 1 (classificador de entrada) <<<<<<<<<<
-def no_1_classificador(state: GraphState) -> GraphState: #recebe um state como argumento; -> G.. avisa o langgraph q a função vai devolver um dicionário GraphState
+# >>>>>>>> NÓ 1 (classificador determinístico de entrada) <<<<<<<<<<
+#vai analisar a entrada do usuário e definir qual será a estratégia de busca
+def no1_classificador(state: GraphState) -> GraphState: #recebe um state como argumento; -> G.. avisa o langgraph q a função vai devolver um dicionário GraphState
     
-    #"""Analisa o input do usuário e define qual será a estratégia de busca."""
-    print("[Nó 1] Classificando input...")
+    print("||Nó 1|| Classificando input...")
     texto = state["input_usuario"]              #acessa o dicionário state e pega o input do usuário
     
     padrao_cve = re.search(r"CVE-\d{4}-\d+", texto, re.IGNORECASE)      
@@ -49,4 +51,57 @@ def no_1_classificador(state: GraphState) -> GraphState: #recebe um state como a
     
     return {"tipo_input": tipo, "termo_busca": termo}           #retorna apenas o que for atualizar no "Caderno"
 
-# >>>>>>>> NÓ 2 () <<<<<<<<<<
+# >>>>>>>> NÓ 2 (procura contexto no RAG) <<<<<<<<<<
+# i)primeiro crio o banco (chromadb) para transformar as regras em vetores matemáticos (embeddings) e os salvar no chromadb;
+# ii) depois o agente lê o banco e busca no RAG as regras mais parecidas com a entrada;
+# agora no laptop vou usar o modelo all-MiniLM-L6-v2 de embeddings
+# então:    o nó 2 vai acessar o chromadb e buscar as regras Sigma que são mais parecidas com a entrada;
+#           essas regras servirão de molde pra LLM (few-shot prompting)
+
+def no2_rag(state: GraphState) -> GraphState:
+
+    print("\n||Nó 2|| Buscando contexto no RAG...\n")
+    
+    # Se o Nó 1 identificou um termo (ex: um CVE), usamos ele para buscar.
+    # Se for texto livre, usamos a frase inteira do usuário.
+    termo_pesquisa = state["termo_busca"] if state.get("termo_busca") else state["input_usuario"]
+    print(f" -> Pesquisando no banco vetorial por: {termo_pesquisa}")
+
+    # Carregamos o modelo leve de embeddings e o banco criado
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    vector_store = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
+
+    # Buscamos as 2 regras que mais se aproximam do contexto pedido
+    # Usamos k=2 para não sobrecarregar a memória do nosso pequeno Qwen 2.5
+    resultados = vector_store.similarity_search(termo_pesquisa, k=2)
+
+    # Pegamos o conteúdo dos arquivos YAML encontrados e juntamos em uma string só
+    contexto_formatado = "\n\n---\n\n".join([doc.page_content for doc in resultados])
+    
+    print(f" -> {len(resultados)} regras de exemplo recuperadas com sucesso.")
+    
+    # Atualizamos o "caderno de anotações" com os exemplos
+    return {"contexto_rag": contexto_formatado}
+
+# ==========================================
+# 5. TESTANDO O NÓ 2
+# ==========================================
+# Atualize o bloco final do arquivo para testarmos a passagem de bastão:
+if __name__ == "__main__":
+    # Teste de integração: Nó 1 passando para o Nó 2
+    estado_inicial = {"input_usuario": "Crie uma regra para detectar a execução do mimikatz na memória."}
+    
+    # Executa o Nó 1
+    estado_atualizado_1 = no_1_classificador(estado_inicial)
+    
+    # O LangGraph junta os estados nos bastidores, então vamos emular isso:
+    estado_inicial.update(estado_atualizado_1)
+    
+    # Executa o Nó 2
+    estado_atualizado_2 = no_2_rag(estado_inicial)
+    
+    print("\n[RESULTADO FINAL DO ESTADO]")
+    print(f"Tipo: {estado_atualizado_1['tipo_input']}")
+    print(f"Tamanho do Contexto RAG gerado: {len(estado_atualizado_2['contexto_rag'])} caracteres")
+
+
