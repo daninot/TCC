@@ -1,4 +1,5 @@
 import re
+import requests     #biblioteca pra conversar com a internet (pip3 install requests)
 from typing import TypedDict
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -57,7 +58,6 @@ def no1_classificador(state: GraphState) -> GraphState: #recebe um state como ar
 # agora no laptop vou usar o modelo all-MiniLM-L6-v2 de embeddings
 # então:    o nó 2 vai acessar o chromadb e buscar as regras Sigma que são mais parecidas com a entrada;
 #           essas regras servirão de molde pra LLM (few-shot prompting)
-
 def no2_rag(state: GraphState) -> GraphState:
 
     print("\n||Nó 2|| Buscando contexto no RAG...\n")
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     estado_atualizado_1 = no_1_classificador(estado_inicial)
     
     # O LangGraph junta os estados nos bastidores, então vamos emular isso:
-    estado_inicial.update(estado_atualizado_1)
+    estado_inicial.update(estado_atualizado_1) 
     
     # Executa o Nó 2
     estado_atualizado_2 = no_2_rag(estado_inicial)
@@ -105,3 +105,23 @@ if __name__ == "__main__":
     print(f"Tamanho do Contexto RAG gerado: {len(estado_atualizado_2['contexto_rag'])} caracteres")
 
 
+#>>>>>> NÓ 3 (API) <<<<<< 
+#Vai buscar informações técnicas na internet sobre a ameaça extraída.
+#Se a API falhar ou não tiver internet, o agente não dá erro, vai seguir em frente.
+def no_3_api(state: GraphState) -> GraphState:
+
+    print("||Nó 3|| Buscando dados em APIs externas...")
+    tipo = state["tipo_input"]
+    termo = state["termo_busca"]
+    contexto_api = "Nenhum dado externo coletado."      #inicialização da váriavel que vai pegar esse contexto
+
+    if tipo == "cve"    and termo:
+        print(f"Consultando MITRE para '{termo}'...")
+        url = f"https://cveawg.mitre.org/api/cve/{termo}"       #API pública e gratuita que não exige API key
+
+        try:
+            resposta = requests.get(url, timeout=10)        #timeout evita q o código trave se cair a internet
+            if resposta.status_code == 200:     # ?
+                dados = resposta.json()
+
+                descricoes = 
