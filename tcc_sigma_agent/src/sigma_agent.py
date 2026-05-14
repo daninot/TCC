@@ -4,7 +4,7 @@ from typing import TypedDict
 from langchain_huggingface import HuggingFaceEmbeddings
 # from langchain_community.vectorstores import Chroma       #deprecated
 from langchain_chroma import Chroma
-#from langchain_ollama import ChatOllama
+from langchain_ollama import ChatOllama
 
 # >>>>>>>> máquina de estados <<<<<<<<<<
 # nó 1 = 
@@ -89,7 +89,7 @@ def no2_rag(state: GraphState) -> GraphState:
     return {"contexto_rag": contexto_formatado}
 
 # ==========================================
-# 5. TESTANDO O NÓ 2
+# TESTANDO O NÓ 2
 # ==========================================
 # Atualize o bloco final do arquivo para testarmos a passagem de bastão:
 #if __name__ == "__main__":
@@ -159,15 +159,76 @@ def no_3_api(state: GraphState) -> GraphState:
     return {"contexto_api": contexto_api}   #atualiza o graphstate com a matéria-prima técnica
 
 # ==========================================
-# 5. TESTANDO O NÓ 3
+# TESTANDO O NÓ 3
 # ==========================================
 # Testar se o script consegue baixar dados reais da internet.
-__name__ == "__main__"
-estado_teste = {
-    "input_usuário": "Preciso de uma regra Sigma para o CVE-2021-44228",
-    "tipo_input": "cve",
-    "termo_busca": "CVE-2021-44228"     #log4shell
-}
-estado_atualizado = no_3_api(estado_teste)
-print("\n~*Resultado do contexto da API*~")
-print(estado_atualizado["contexto_api"])
+#__name__ == "__main__"
+#estado_teste = {
+#    "input_usuário": "Preciso de uma regra Sigma para o CVE-2021-44228",
+#    "tipo_input": "cve",
+#    "termo_busca": "CVE-2021-44228"     #log4shell
+#}
+#estado_atualizado = no_3_api(estado_teste)
+#print("\n~*Resultado do contexto da API*~")
+#print(estado_atualizado["contexto_api"])
+
+#>>>>>> NÓ 4 (GERAÇÃO DA REGRA - LLM) <<<<<< 
+def no_4_gerador(state: GraphState) -> GraphState:
+    print("\n||Nó 4|| Iniciando o motor de IA para gerar a regra...")
+
+    llm = ChatOllama(model="qwen2.5:1.5b", temperature=0.1)
+
+    prompt = f"""Você é um Engenheiro de Detecção de Ameaças (Threat Hunter) Sênior.
+Sua tarefa é criar uma regra Sigma válida baseada exclusivamente no pedido do usuário.
+
+PEDIDO DO USUÁRIO
+{state['input_usuario']}
+
+MOLDE DE FORMATAÇÃO (Baseie a estrutura do seu YAML rigorosamente nestes exemplos:)
+{state['contexto_rag']}
+
+CONTEXTO TÉCNICO ADICIONAL (Use estas informações para criar a lógica de detecção, se relevante):
+{state['contexto_api']}
+
+Instruções:
+1. Retorne APENAS o código YAML da regra Sigma.
+2. Não adicione explicações, saudações ou formatações markdown fora do bloco de código.
+3. Certifique-se de que os campos obrigatórios do Sigma (title, logsource, detection, condition) estejam presentes.
+"""
+
+print(" --> Enviando contexto para a GPU (Qwen 2.5). . .")
+
+resposta = llm.invoke(prompt)   #chama a LLM
+print(" --> Regra gerada.")
+return {"regra_gerada": resposta.content}
+
+# ==========================================
+# TESTANDO O NÓ 4
+# ==========================================
+if __name__ == '__main__':
+    estado_inicial = {
+        "input_usuario": "Crie uma regra para detectar a execução do mimikatz na memória.",
+        "tipo_input": "",
+        "termo_busca": "",
+        "contexto_rag": "",
+        "contexto_api": "",
+        "regra_gerada": "",
+        "erro_validacao": "",
+        "tentativas": 0
+    }
+
+    #simulação da passagem de bastão manual entre os nós:
+    estado_1 = no1_classificador(estado_inicial)
+    estado_inicial.update(estado_1)
+
+    estado_2 = no2_rag(estado_inicial)
+    estado_inicial.update(estado_2)
+
+    estado_3 = no_3_api(estado_inicial)
+    estado_inicial.update(estado_3)
+
+    estado_4 = no_4_gerador(estado_inicial)
+    estado_inicial.update(estado_4)
+
+    print("\n====== REGRA SIGMA GERADA ======")
+    print(estado_inicial["regra_gerada"])
