@@ -15,7 +15,7 @@ def criar_banco_chroma():
             shutil.rmtree(pasta_banco)      #deleta a pasta inteira e os diretórios, recursivamente
 
     print(f"i) Carregando as regras da pasta '{pasta_conhecimento}'.")       
-    if not os.path.exists(pasta_conhecimento)       #teste pra ver se a pasta existe mesmo.
+    if not os.path.exists(pasta_conhecimento):       #teste pra ver se a pasta existe mesmo.
         print("Erro: a pasta '{pasta_conhecimento}' não foi encontrada.")
         return
     

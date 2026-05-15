@@ -7,12 +7,11 @@ from langchain_chroma import Chroma
 from langchain_ollama import ChatOllama
 
 # >>>>>>>> máquina de estados <<<<<<<<<<
-# nó 1 = 
-# nó 2 = 
-# nó 3 = 
-# nó 4 = 
-# nó 5 = 
-
+# nó 1 = classificador determinístico de entrada
+# nó 2 = recupera contexto com RAG
+# nó 3 = procura informações nas APIs
+# nó 4 = cria as regras
+# nó 5 = valida com CLI
 
 
 # >>>>>>>> ESTADO <<<<<<<<<     (caderno de anotações)
@@ -115,7 +114,6 @@ def no2_rag(state: GraphState) -> GraphState:
 #Se a API falhar ou não tiver internet, o agente não dá erro, vai seguir em frente.
 def no_3_api(state: GraphState) -> GraphState:
 
-#
     print("||Nó 3|| Buscando dados em APIs externas...")
     
     #opção 1: CVE
@@ -179,29 +177,29 @@ def no_4_gerador(state: GraphState) -> GraphState:
     llm = ChatOllama(model="qwen2.5:1.5b", temperature=0.1)
 
     prompt = f"""Você é um Engenheiro de Detecção de Ameaças (Threat Hunter) Sênior.
-Sua tarefa é criar uma regra Sigma válida baseada exclusivamente no pedido do usuário.
+    Sua tarefa é criar uma regra Sigma válida baseada exclusivamente no pedido do usuário.
 
-PEDIDO DO USUÁRIO
-{state['input_usuario']}
+    PEDIDO DO USUÁRIO
+    {state['input_usuario']}
 
-MOLDE DE FORMATAÇÃO (Baseie a estrutura do seu YAML rigorosamente nestes exemplos:)
-{state['contexto_rag']}
+    MOLDE DE FORMATAÇÃO (Baseie a estrutura do seu YAML rigorosamente nestes exemplos:)
+    {state['contexto_rag']}
 
-CONTEXTO TÉCNICO ADICIONAL (Use estas informações para criar a lógica de detecção, se relevante):
-{state['contexto_api']}
+    CONTEXTO TÉCNICO ADICIONAL (Use estas informações para criar a lógica de detecção, se relevante):
+    {state['contexto_api']}
 
-Instruções:
-1. Retorne APENAS o código YAML da regra Sigma.
-2. Não adicione explicações, saudações ou formatações markdown fora do bloco de código.
-3. Certifique-se de que os campos obrigatórios do Sigma (title, logsource, detection, condition) estejam presentes.
-"""
+    Instruções:
+    1. Retorne APENAS o código YAML da regra Sigma.
+    2. Não adicione explicações, saudações ou formatações markdown fora do bloco de código.
+    3. Certifique-se de que os campos obrigatórios do Sigma (title, logsource, detection, condition) estejam presentes.
+    """
 
-print(" --> Enviando contexto para a GPU (Qwen 2.5). . .")
+    print(" --> Enviando contexto para a GPU (Qwen 2.5). . .")
 
-resposta = llm.invoke(prompt)   #chama a LLM
-print(" --> Regra gerada.")
-return {"regra_gerada": resposta.content}
-
+    resposta = llm.invoke(prompt)   #chama a LLM
+    print(" --> Regra gerada.")
+    return {"regra_gerada": resposta.content}
+            
 # ==========================================
 # TESTANDO O NÓ 4
 # ==========================================
@@ -232,3 +230,4 @@ if __name__ == '__main__':
 
     print("\n====== REGRA SIGMA GERADA ======")
     print(estado_inicial["regra_gerada"])
+
