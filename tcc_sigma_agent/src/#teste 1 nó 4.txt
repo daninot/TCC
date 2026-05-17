@@ -1,0 +1,143 @@
+# ==========================================
+# TESTANDO O NÓ 4
+# ==========================================
+
+# teste 1 -> texto normal:
+if __name__ == '__main__':
+    estado_inicial = {
+        "input_usuario": "Crie uma regra para detectar a execução do mimikatz na memória.",
+        "tipo_input": "",
+        "termo_busca": "",
+        "contexto_rag": "",
+        "contexto_api": "",
+        "regra_gerada": "",
+        "erro_validacao": "",
+        "tentativas": 0
+    }
+
+    #simulação da passagem de bastão manual entre os nós:
+    estado_1 = no1_classificador(estado_inicial)
+    estado_inicial.update(estado_1)
+
+    estado_2 = no2_rag(estado_inicial)
+    estado_inicial.update(estado_2)
+
+    estado_3 = no_3_api(estado_inicial)
+    estado_inicial.update(estado_3)
+
+    estado_4 = no_4_gerador(estado_inicial)
+    estado_inicial.update(estado_4)
+
+    print("\n======      REGRA SIGMA GERADA:     ======")
+    print(estado_inicial["regra_gerada"])
+
+
+#teste 2 -> texto com hash:
+estado_inicial = {
+    "input_usuario": "Gere uma regra para detectar a execução da hash 1d727dfdeab136e659b8a530eb7c8ebc",
+    "tipo_input": "",
+    "termo_busca": "",
+    "contexto_rag": "",
+    "contexto_api": "",
+    "regra_gerada": "",
+    "erro_validacao": "",
+    "tentativas": 0
+}
+
+
+#teste 3 -> texto normal:
+estado_inicial = {
+    "input_usuario": "Escreva uma regra Sigma para alertar quando um administrador usar o utilitário 'wevtutil' para limpar os logs de Segurança (cl Security) no Windows.",
+    "tipo_input": "",
+    "termo_busca": "",
+    "contexto_rag": "",
+    "contexto_api": "",
+    "regra_gerada": "",
+    "erro_validacao": "",
+    "tentativas": 0
+}
+
+
+#teste 4 -> CVE-2021-44228
+"Escreva uma regra Sigma para o "
+
+#teste 5 -> CVE 2026-20182      ESTE NÃO TINHA REGRA SIGMA AINDA
+estado_inicial = {
+    "input_usuario": "Escreva uma regra Sigma para o CVE-2026-20182.",
+    "tipo_input": "",
+    "termo_busca": "",
+    "contexto_rag": "",
+    "contexto_api": "",
+    "regra_gerada": "",
+    "erro_validacao": "",
+    "tentativas": 0
+}
+
+
+#teste 6 -> CVE-2026-33829
+estado_inicial = {
+    "input_usuario": "Escreva uma regra Sigma para o CVE-2026-33829.",
+    "tipo_input": "",
+    "termo_busca": "",
+    "contexto_rag": "",
+    "contexto_api": "",
+    "regra_gerada": "",
+    "erro_validacao": "",
+    "tentativas": 0
+}
+
+
+#teste 7 -> proc_creation_win_schtasks_openssh_tunnelling       
+#PROMPT 1:
+estado_inicial = {
+    "input_usuario": (
+        "Escreva uma regra Sigma para Windows Process Creation"
+        "que alerte a criação de uma scheduled task maliciosa projetada"
+        "para abrir túneis OpenSSH (ssh ou sshd)."
+        "O objetivo é pegar a persistência de atacantes"
+        "que usam o comando de criação do schtasks para essa finalidade."
+    ),
+    "tipo_input": "",
+    "termo_busca": "",
+    "contexto_rag": "",
+    "contexto_api": "",
+    "regra_gerada": "",
+    "erro_validacao": "",
+    "tentativas": 0
+}
+
+#PROMPT 2:
+estado_inicial = {
+    "input_usuario": (
+        "Gere uma regra Sigma de severidade alta focada na tática de Escalada de"
+        "Privilégio e Persistência (T1053.005). O atacante utiliza tarefas agendadas do"
+        "Windows via linha de comando para instalar um túnel SSH. Detecte quando o"
+        "utilitário schtasks.exe é executado com o parâmetro /create para invocar o ssh.exe"
+        "(usando -i) ou o sshd.exe (usando -f)."
+    ),
+    "tipo_input": "",
+    "termo_busca": "",
+    "contexto_rag": "",
+    "contexto_api": "",
+    "regra_gerada": "",
+    "erro_validacao": "",
+    "tentativas": 0
+}
+
+#PROMPT 3:
+estado_inicial = {
+    "input_usuario": (
+        "Crie uma regra Sigma para detectar tentativas de persistência via túnel SSH"
+        "reverso no Windows. A regra deve monitorar a criação de processos apontando"
+        "para o uso do 'schtasks.exe' (ou arquivos originais com esse nome) contendo a flag"
+        "'/create' em conjunto com binários do OpenSSH. Especificamente, quero alertar se"
+        "o comando contiver 'sshd.exe' com a flag '-f', ou 'ssh.exe' com a flag '-i'."
+    ),
+    "tipo_input": "",
+    "termo_busca": "",
+    "contexto_rag": "",
+    "contexto_api": "",
+    "regra_gerada": "",
+    "erro_validacao": "",
+    "tentativas": 0
+}
