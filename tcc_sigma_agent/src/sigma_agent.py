@@ -33,7 +33,7 @@ class GraphState(TypedDict):
 # >>>>>>>> NÓ 1 (classificador determinístico de entrada) <<<<<<<<<<
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 #vai analisar a entrada do usuário e definir qual será a estratégia de busca
-def no1_classificador(state: GraphState) -> GraphState: #recebe um state como argumento; -> G.. avisa o langgraph q a função vai devolver um dicionário GraphState
+def no_1_classificador(state: GraphState) -> GraphState: #recebe um state como argumento; -> G.. avisa o langgraph q a função vai devolver um dicionário GraphState
     
     print("||Nó 1|| Classificando input...")
     texto = state["input_usuario"]              #acessa o dicionário state e pega o input do usuário
@@ -66,7 +66,7 @@ def no1_classificador(state: GraphState) -> GraphState: #recebe um state como ar
 # agora no laptop vou usar o modelo all-MiniLM-L6-v2 de embeddings
 # então:    o nó 2 vai acessar o chromadb e buscar as regras Sigma que são mais parecidas com a entrada;
 #           essas regras servirão de molde pra LLM (few-shot prompting)
-def no2_rag(state: GraphState) -> GraphState:
+def no_2_rag(state: GraphState) -> GraphState:
 
     print("\n||Nó 2|| Buscando contexto no RAG...\n")
     
@@ -103,13 +103,13 @@ def no2_rag(state: GraphState) -> GraphState:
 #    estado_inicial = {"input_usuario": "Crie uma regra para detectar a execução do mimikatz na memória."}
     
     # Executa o Nó 1
-#    estado_atualizado_1 = no1_classificador(estado_inicial)
+#    estado_atualizado_1 = no_1_classificador(estado_inicial)
     
     # O LangGraph junta os estados nos bastidores, então vamos emular isso:
 #    estado_inicial.update(estado_atualizado_1) 
     
     # Executa o Nó 2
-#    estado_atualizado_2 = no2_rag(estado_inicial)
+#    estado_atualizado_2 = no_2_rag(estado_inicial)
     
 #    print("\n[RESULTADO FINAL DO ESTADO]")
 #    print(f"Tipo: {estado_atualizado_1['tipo_input']}")
@@ -236,7 +236,8 @@ def no_5_validador(state: GraphState) ->GraphState:
     tentativas = state.get("tentativas", 0) + 1
 
     # ~* LIMPEZA DE MARKDOWN *~ agora vai limpar tudo de markdown e/ou vai extrair tudo entre ``` e ```:
-    padrao_regex = ```r"(?:yaml)?\n(.?)\n"```
+    marcador = "`" * 3
+    padrao_regex = marcador + r"(?:yaml)?\n(.*?)\n" + marcador
     match = re.search(padrao_regex, regra_revisao, re.DOTALL | re.IGNORECASE)
     yaml_limpo = match.group(1).strip() if match else regra_revisao.strip()
 
@@ -257,7 +258,7 @@ def no_5_validador(state: GraphState) ->GraphState:
         return {"erro_validacao":msg_erro, "tentativas":tentativas}
     
     campos_obrigatorios = ["title", "logsource", "detection"]
-    for campo in campos_obrigatorios
+    for campo in campos_obrigatorios:
         if campo not in regra_dict:
             msg_erro = f"Etapa 2 falhou - faltou campo obrigatório: '{campo}'"
             print(f"ERRO: \n{msg_erro}")
@@ -271,7 +272,7 @@ def no_5_validador(state: GraphState) ->GraphState:
         msg_erro = f"Etapa 3 falhou - erro de semântica - \npySigma relata: {e}"
         print(f"ERRO: \n{msg_erro}")
         return {"erro_validacao":msg_erro, "tentativas":tentativas}
-    except Exception e:
+    except Exception as e:
         msg_erro = f"Etapa 3 falhou - \npySigma relata: {e}"
         print(f"ERRO: \n{msg_erro}")
         return {"erro_validacao":msg_erro, "tentativas":tentativas}
@@ -283,5 +284,78 @@ def no_5_validador(state: GraphState) ->GraphState:
         "tentativas": tentativas
     }
 
+# >>>>>>>>>>>>> roteador de validação <<<<<<<<<<<<<<
+#não altera o estado, apenas lê o erro e decide o próximo passo, se precisa corrigir ou não
+def roteador_de_validacao(state: GraphState) -> str:
+    erro = state.get("erro_validacao", "")
+    tentativas = state.get("tentativas", 0)
+
+    if erro == "APROVADO":
+        return "fim"
+    if tentativas >= 3:
+        print("\n!!! Atingiu 3 tentativas de correção; já é suficiente.")
+        return "fim"
+    print("\n-> Enviando regra para correção...")
+    return "refazer"
+
+# >>>>>>>>>>>>> montagem e compilação do grafo <<<<<<<<<<<<<<
+#print("\n")
+builder = StateGraph(GraphState)    #montando a arquitetura do grafo langgraph
+
+# i) adicionando os nós no grafo:
+builder.add_node("entendimento", no_1_classificador)
+builder.add_node("rag", no_2_rag)
+builder.add_node("api", no_3_api)
+builder.add_node("geracao", no_4_gerador)
+builder.add_node("validacao", no_5_validador)
+
+# ii) fluxo do grafo:
+builder.add_edge(START, "entendimento")
+builder.add_edge("entendimento", "rag")
+builder.add_edge("rag", "api")
+builder.add_edge("api", "geracao")
+builder.add_edge("geracao", "validacao")
+
+# iii) rota condicional:
+builder.add_conditional_edges(
+    "validacao",    #a decisão parte deste nó
+    roteador_de_validacao,      #a função que toma a decisão
+    {
+        "fim": END,     #se retornar "fim", termina a execução
+        "refazer":"geracao"     #se retornar "refazer", manda de novo pro nó 4
+    }
+)
+
+# iv) compilação:
+agente_sigma = builder.compile()
+
+# ==========================================
+# TESTANDO A EXECUÇÃO DO AGENTE
+# ==========================================
+if __name__ == '__main__':
+    estado_inicial = {
+        "input_usuario": (
+            "Crie uma regra Sigma para detectar tentativas de persistência via túnel SSH"
+            "reverso no Windows. A regra deve monitorar a criação de processos apontando"
+            "para o uso do 'schtasks.exe' (ou arquivos originais com esse nome) contendo a flag"
+            "'/create' em conjunto com binários do OpenSSH. Especificamente, quero alertar se"
+            "o comando contiver 'sshd.exe' com a flag '-f', ou 'ssh.exe' com a flag '-i'."
+        ),
+        "tipo_input": "",
+        "termo_busca": "",
+        "contexto_rag": "",
+        "contexto_api": "",
+        "regra_gerada": "",
+        "erro_validacao": "",
+        "tentativas": 0
+    }
+
+    print("\nAgente irá executar.\n")
+    resultado_final = agente_sigma.invoke(estado_inicial)       #.invoke() liga a máquina de estados e faz tudo acontecer
+    if resultado_final["erro_validacao"] == "APROVADO":
+        print("\n\tDeu certo.\n")
+    else:
+        print("\n\tA execução falhou.\n")
+    print(resultado_final["regra_gerada"])
 
 
