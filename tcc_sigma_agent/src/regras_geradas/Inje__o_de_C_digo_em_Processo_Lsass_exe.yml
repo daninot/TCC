@@ -1,0 +1,23 @@
+title: Injeção de Código em Processo Lsass.exe
+id: 30295c4b-ecd2-4c13-b0bb-ed55834da0a7
+status: test
+description: Detecta injeção de código em processos legítimos do sistema, especificamente no processo lsass.exe.
+references:
+    - https://docs.microsoft.com/en-us/sysinternals/downloads/procmon
+author: "Seu Nome"
+date: 2023-07-20
+tags:
+    - attack.code-injection
+logsource:
+    product: windows
+detection:
+    selection:
+        EventID: 8 # Process Create Event
+        ImageLoaded: '*\lsass.exe'
+        NewProcessName: 'lsass.exe'
+        ParentImage: '*\lsass.exe' # Verifica se o processo pai é lsass.exe
+        CommandLine: '*\lsass.exe*'
+    condition: selection
+falsepositives:
+    - Processos legítimos que simulam comportamento suspeito
+level: high

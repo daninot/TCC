@@ -1,6 +1,7 @@
 import re
 import os
 import yaml
+import uuid
 import requests     #biblioteca pra conversar com a internet (pip3 install requests)
 from typing import TypedDict
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -39,7 +40,7 @@ class GraphState(TypedDict):
 #vai analisar a entrada do usuário e definir qual será a estratégia de busca
 def no_1_classificador(state: GraphState) -> GraphState: #recebe um state como argumento; -> G.. avisa o langgraph q a função vai devolver um dicionário GraphState
     
-    print("||Nó 1|| Classificando input...")
+    print("\n||Nó 1|| Classificando input...")
     texto = state["input_usuario"]              #acessa o dicionário state e pega o input do usuário
     
     padrao_cve = re.search(r"CVE-\d{4}-\d+", texto, re.IGNORECASE)      
@@ -77,7 +78,7 @@ def no_2_rag(state: GraphState) -> GraphState:
     # Se o Nó 1 identificou um termo (ex: um CVE), usamos ele para buscar.
     # Se for texto livre, usamos a frase inteira do usuário.
     termo_pesquisa = state["termo_busca"] if state.get("termo_busca") else state["input_usuario"]
-    print(f" -> Pesquisando no banco vetorial por: {termo_pesquisa}")
+    print(f" -> Pesquisando no banco vetorial por: {termo_pesquisa}\n")
 
     # Carregamos o modelo leve de embeddings e o banco criado
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
@@ -126,7 +127,7 @@ def no_2_rag(state: GraphState) -> GraphState:
 #Se a API falhar ou não tiver internet, o agente não dá erro, vai seguir em frente.
 def no_3_api(state: GraphState) -> GraphState:
 
-    print("||Nó 3|| Buscando dados em APIs externas...")
+    print("\n||Nó 3|| Buscando dados em APIs externas...")
     
     #opção 1: CVE
     tipo = state.get("tipo_input", "")  #usar .get() evita q o programa quebre (keyerror) caso as chaves não existam no estado
@@ -134,7 +135,7 @@ def no_3_api(state: GraphState) -> GraphState:
     contexto_api = "Nenhum dado externo coletado."      #inicialização da váriavel que vai pegar esse contexto
 
     if tipo == "cve" and termo:
-        print(f"--> Consultando MITRE para '{termo}'. . .")
+        print(f" -> Consultando MITRE para '{termo}'...")
         url = f"https://cveawg.mitre.org/api/cve/{termo}"       #API pública e gratuita que não exige API key
 
         try:
@@ -147,30 +148,30 @@ def no_3_api(state: GraphState) -> GraphState:
                 if descricoes:
                     texto_descricao = descricoes[0].get("value", "Descrição indisponível.")
                     contexto_api = f"Informação do MITRE para {termo}: {texto_descricao}"
-                    print(" --> Dados extraídos com sucesso da web.")
+                    print(" -> Dados extraídos com sucesso da web.")
                 
                 else:   #o JSON veio sem descrição por algum motivo
-                    print(f"--> CVE encontrado, mas não possui descrição.")
+                    print(f" -> CVE encontrado, mas não possui descrição.")
             
             else:       #se receber um erro 404 (não encontrado)
-                print(f" --> Erro HTTP {resposta.status_code} ao consultar a API.")
+                print(f" -> Erro HTTP {resposta.status_code} ao consultar a API.")
         except requests.exceptions.RequestException as e:
-            print(f" --> Falha de conexão com a API do MITRE: {e}")
+            print(f" -> Falha de conexão com a API do MITRE: {e}")
 
     #opção 2: Hash
     elif tipo == "hash" and termo:
-        print(f"--> Consultando plataforma para a hash '{termo}'. . .")
+        print(f" -> Consultando plataforma para a hash '{termo}'. . .")
         #as hashes são consultadas no virustotal.com, mas ele exige uma API key pessoal. tenho aqui uma simulação apenas para entender a lógica
         contexto_api=(
             f"Simulação de API: a hash {termo} foi identificada como malware\n"
             f"{termo} cria processo x em diretórios temporários.\n"
             f"{termo} está associada à man in the middle."
         )
-        print("--> Dados da hash carregados.")
+        print(" -> Dados da hash carregados.")
 
     #opção 3: texto livre
     else:
-        print("--> Busca por texto livre (sem consulta de hash e CVE).")
+        print(" -> Busca por texto livre (sem consulta de hash e CVE).")
 
     return {"contexto_api": contexto_api}   #atualiza o graphstate com a matéria-prima técnica
 
@@ -195,7 +196,7 @@ def no_4_gerador(state: GraphState) -> GraphState:
     tentativa_atual = state.get("tentativas", 0) + 1    #sinalizar quantas tentativas
     print(f"\n||Nó 4|| Gerando a regra... Tentativa {tentativa_atual}")
 
-    llm = ChatOllama(model="qwen2.5:1.5b", temperature=0.1)
+    llm = ChatOllama(model="llama3.1", temperature=0.1)
 
     prompt = f"""Você é um Engenheiro de Detecção de Ameaças (Threat Hunter) Sênior.
     Sua tarefa é criar uma regra Sigma válida baseada exclusivamente no pedido do usuário.
@@ -229,7 +230,7 @@ def no_4_gerador(state: GraphState) -> GraphState:
     3. Certifique-se de que os campos obrigatórios do Sigma (title, logsource, detection, condition) estejam presentes.
     """
 
-    print(" -> Enviando contexto para a GPU com Qwen 2.5. . .")
+    print(" -> Enviando contexto para a GPU...")
     resposta = llm.invoke(prompt)   #chama a LLM
     print(" -> Regra gerada.")
     return {"regra_gerada": resposta.content}
@@ -247,47 +248,63 @@ def no_5_validador(state: GraphState) ->GraphState:
 
     # ~* LIMPEZA DE MARKDOWN *~ agora vai limpar tudo de markdown e/ou vai extrair tudo entre ``` e ```:
     marcador = "`" * 3
-    padrao_regex = marcador + r"(?:yaml)?\n(.*?)\n" + marcador
+    padrao_regex = marcador + r"[^\n]*\n(.*?)\n" + marcador
     match = re.search(padrao_regex, regra_revisao, re.DOTALL | re.IGNORECASE)
     yaml_limpo = match.group(1).strip() if match else regra_revisao.strip()
 
+    # ~* Correção automática de UUID *~ pro caso do agente gerar um id errado
+    regra_corrigida = re.sub(
+        r'^id:\s*.+$',
+        f'id: {uuid.uuid4()}',
+        yaml_limpo,
+        flags=re.MULTILINE
+    )
+    if not re.search(r'^id:', regra_corrigida, re.MULTILINE):
+        regra_corrigida = re.sub(
+            r'^(title:.+)$',
+            r'\1\nid: ' + str(uuid.uuid4()),
+            regra_corrigida,
+            flags=re.MULTILINE
+        )
+    yaml_limpo = regra_corrigida
+
     # 1. PyYAML - validação da sintaxe:
-    print("~~ [1/3] ~~ Validando a sintaxe com PyYAML")
+    print(" [1/3] -> Validando a sintaxe com PyYAML")
     try:
         regra_dict = yaml.safe_load(yaml_limpo)
     except yaml.YAMLError as e:
         msg_erro = f"[1/3] falhou (erro de sintaxe YAML. \nDetalhes: {e})"
-        print(f"ERRO: \n{msg_erro}")
+        print(f"    ERRO: \n{msg_erro}")
         return{"erro_validacao":msg_erro, "tentativas":tentativas}
     
     # 2. Validação pelo Python:
-    print("~~ [2/3] ~~ Validando estrutura mínima")
+    print(" [2/3] -> Validando estrutura mínima")
     if not isinstance(regra_dict, dict):
         msg_erro = "Etapa 2 falhou - o texto gerado não é um YAML válido."
-        print(f"ERRO: \n{msg_erro}")
+        print(f"    ERRO: \n{msg_erro}")
         return {"erro_validacao":msg_erro, "tentativas":tentativas}
     
     campos_obrigatorios = ["title", "logsource", "detection"]
     for campo in campos_obrigatorios:
         if campo not in regra_dict:
             msg_erro = f"Etapa 2 falhou - faltou campo obrigatório: '{campo}'"
-            print(f"ERRO: \n{msg_erro}")
+            print(f"    ERRO: \n{msg_erro}")
             return {"erro_validacao":msg_erro, "tentativas":tentativas}
         
     # 3. pySigma - validação semântica do Sigma:
-    print("~~ [3/3] ~~ Validação semântica e lógica pelo pySigma")
+    print(" [3/3] -> Validação semântica e lógica pelo pySigma")
     try:
         colecao = SigmaCollection.from_yaml(yaml_limpo)
     except SigmaError as e:
         msg_erro = f"Etapa 3 falhou - erro de semântica - \npySigma relata: {e}"
-        print(f"ERRO: \n{msg_erro}")
+        print(f"    ERRO: \n{msg_erro}")
         return {"erro_validacao":msg_erro, "tentativas":tentativas}
     except Exception as e:
         msg_erro = f"Etapa 3 falhou - \npySigma relata: {e}"
-        print(f"ERRO: \n{msg_erro}")
+        print(f"    ERRO: \n{msg_erro}")
         return {"erro_validacao":msg_erro, "tentativas":tentativas}
     
-    print("\n--- Regra validada pelas 3 etapas. ---\n")
+    print("\n ---> Regra validada pelas 3 etapas.\n")
     return{
         "erro_validacao": "APROVADO",
         "regra_gerada": yaml_limpo,
@@ -305,7 +322,7 @@ def roteador_de_validacao(state: GraphState) -> str:
     if tentativas >= 3:
         print("\n!!! Atingiu 3 tentativas de correção; já é suficiente.")
         return "fim"
-    print("\n-> Enviando regra para correção...")
+    print("\n -> Enviando regra para correção...")
     return "refazer"
 
 # >>>>>>>>>>>>> montagem e compilação do grafo <<<<<<<<<<<<<<
@@ -345,14 +362,16 @@ def criar_agente():
 # TESTANDO A EXECUÇÃO DO AGENTE
 # ==========================================
 if __name__ == '__main__':
-    print("\nAgente irá executar.\n")
-
+    print("\nBem vindo ao Agente_Sigma!\n")
     agente_sigma = criar_agente()       #chama a função e guarda o resultado
+    entrada_terminal = input("Digite a entrada para a geração da regra ('s' para encerrar):\n")    
+    
+    if entrada_terminal.strip().lower() == 's' or not entrada_terminal.strip():
+        print("Encerrando o agente. Até logo.\n")
+        exit()
+
     estado_inicial = {
-        "input_usuario": (
-        "Crie uma detecção para o arquivo malicioso com hash "
-        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855."
-    ),
+        "input_usuario": entrada_terminal,
         "tipo_input": "",
         "termo_busca": "",
         "contexto_rag": "",
@@ -364,9 +383,43 @@ if __name__ == '__main__':
     resultado_final = agente_sigma.invoke(estado_inicial)       #.invoke() liga a máquina de estados e faz tudo acontecer
     
     if resultado_final["erro_validacao"] == "APROVADO":
-        print("\n\tDeu certo.\n")
+        print("\n\tDeu certo.  \,,/\n")
     else:
         print("\n\tA execução falhou.\n")
-    print(resultado_final["regra_gerada"])
+    #print(resultado_final["regra_gerada"])
+
+# ==========================================
+# SALVANDO A REGRA EM ARQUIVO
+# ==========================================
+regra = resultado_final["regra_gerada"]
+if regra:
+    #extrai o title via regex p usar como nome do arquivo:
+    match = re.search(r'^title:\s*(.+)$', regra, re.MULTILINE)
+
+    if match:
+        #limpa o título p ser um nome de arquivo válido e remove aspas se tiver:
+        title = match.group(1).strip().strip('"\'')
+        #substitui caracteres inválidos por underline:
+        filename = re.sub(r'[^a-zA-Z0-9_-]', '_', title) + ".yml"
+    else:
+        filename = "regra_sigma_gerada.yml"     #fallback
+
+    pasta_destino = os.path.join(BASE_DIR, "regras_geradas")
+    os.makedirs(pasta_destino, exist_ok=True)
+
+    caminho_arquivo = os.path.join(pasta_destino, filename)
+    
+    #contador para adicionar no nome do arquivo caso rode mais de uma vez para a mesma regra:
+    cont = 1    
+    while os.path.exists(caminho_arquivo):
+        nome_base = filename.replace(".yml", "")
+        caminho_arquivo = os.path.join(pasta_destino, f"{nome_base}_{cont}.yml")
+        cont += 1
+    
+    #salva o arquivo em modo escrita (write):
+    with open(caminho_arquivo, "w", encoding="utf-8") as file:
+        file.write(regra)
+    
+    print(f"\n\tRegra salva em: {caminho_arquivo}\n")
 
 
