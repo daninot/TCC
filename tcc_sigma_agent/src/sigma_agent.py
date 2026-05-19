@@ -1,4 +1,5 @@
 import re
+import os
 import yaml
 import requests     #biblioteca pra conversar com a internet (pip3 install requests)
 from typing import TypedDict
@@ -9,6 +10,9 @@ from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, START, END
 from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaError
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CHROMA_DIR = os.path.join(BASE_DIR, "..", "data", "chroma_db")
 
 # >>>>>>>> máquina de estados <<<<<<<<<<
 # nó 1 = classificador determinístico de entrada (Entendimento)
@@ -78,7 +82,7 @@ def no_2_rag(state: GraphState) -> GraphState:
     # Carregamos o modelo leve de embeddings e o banco criado
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vector_store = Chroma(
-        persist_directory="../data/chroma_db", 
+        persist_directory=CHROMA_DIR, 
         embedding_function=embeddings
     )
 
@@ -125,42 +129,48 @@ def no_3_api(state: GraphState) -> GraphState:
     print("||Nó 3|| Buscando dados em APIs externas...")
     
     #opção 1: CVE
-    tipo = state["tipo_input"]
-    termo = state["termo_busca"]
+    tipo = state.get("tipo_input", "")  #usar .get() evita q o programa quebre (keyerror) caso as chaves não existam no estado
+    termo = state.get("termo_busca", "")
     contexto_api = "Nenhum dado externo coletado."      #inicialização da váriavel que vai pegar esse contexto
 
-    if tipo == "cve"    and termo:
-        print(f"-> Consultando MITRE para '{termo}'. . .")
+    if tipo == "cve" and termo:
+        print(f"--> Consultando MITRE para '{termo}'. . .")
         url = f"https://cveawg.mitre.org/api/cve/{termo}"       #API pública e gratuita que não exige API key
 
         try:
             resposta = requests.get(url, timeout=10)        #timeout evita q o código trave se cair a internet
-            if resposta.status_code == 200:     # ?
+            if resposta.status_code == 200:     #só vou ler o JSON se a resposta for 200, ou seja, um sucesso
                 dados = resposta.json()
-
-                descricoes = dados.get("containers", {}).get("cna", {}).get("descriptions", [])     #vai navegar no JSON p achar a descrição em inglês
+                
+                #navega no JSON v5 do MITRE p achar a descrição em inglês:
+                descricoes = dados.get("containers", {}).get("cna", {}).get("descriptions", [])     
                 if descricoes:
                     texto_descricao = descricoes[0].get("value", "Descrição indisponível.")
                     contexto_api = f"Informação do MITRE para {termo}: {texto_descricao}"
                     print(" --> Dados extraídos com sucesso da web.")
-                else:
-                    print(f" --> CVE não encontrado na API ou erro {resposta.status_code}.")
-        except Exception as e:
-            print(f" --> Falha de conexão com API: {e}")
+                
+                else:   #o JSON veio sem descrição por algum motivo
+                    print(f"--> CVE encontrado, mas não possui descrição.")
+            
+            else:       #se receber um erro 404 (não encontrado)
+                print(f" --> Erro HTTP {resposta.status_code} ao consultar a API.")
+        except requests.exceptions.RequestException as e:
+            print(f" --> Falha de conexão com a API do MITRE: {e}")
 
     #opção 2: Hash
     elif tipo == "hash" and termo:
-        print(f"-> Consultando plataforma para a hash '{termo}'. . .")
+        print(f"--> Consultando plataforma para a hash '{termo}'. . .")
         #as hashes são consultadas no virustotal.com, mas ele exige uma API key pessoal. tenho aqui uma simulação apenas para entender a lógica
         contexto_api=(
-            f"Simulação de API: a hash {termo} foi identificada como malware"
-            f"{termo} cria processo x em diretórios temporários"
-            f"{termo} está associada à man in the middle"
+            f"Simulação de API: a hash {termo} foi identificada como malware\n"
+            f"{termo} cria processo x em diretórios temporários.\n"
+            f"{termo} está associada à man in the middle."
         )
+        print("--> Dados da hash carregados.")
 
     #opção 3: texto livre
     else:
-        print("-> Busca por texto livre (sem consulta de hash e CVE).")
+        print("--> Busca por texto livre (sem consulta de hash e CVE).")
 
     return {"contexto_api": contexto_api}   #atualiza o graphstate com a matéria-prima técnica
 
@@ -183,7 +193,7 @@ def no_3_api(state: GraphState) -> GraphState:
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 
 def no_4_gerador(state: GraphState) -> GraphState:
     tentativa_atual = state.get("tentativas", 0) + 1    #sinalizar quantas tentativas
-    print("\n||Nó 4|| Iniciando o motor de IA para gerar a regra...")
+    print(f"\n||Nó 4|| Gerando a regra... Tentativa {tentativa_atual}")
 
     llm = ChatOllama(model="qwen2.5:1.5b", temperature=0.1)
 
@@ -300,47 +310,49 @@ def roteador_de_validacao(state: GraphState) -> str:
 
 # >>>>>>>>>>>>> montagem e compilação do grafo <<<<<<<<<<<<<<
 #print("\n")
-builder = StateGraph(GraphState)    #montando a arquitetura do grafo langgraph
+def criar_agente():
+    builder = StateGraph(GraphState)    #montando a arquitetura do grafo langgraph
 
-# i) adicionando os nós no grafo:
-builder.add_node("entendimento", no_1_classificador)
-builder.add_node("rag", no_2_rag)
-builder.add_node("api", no_3_api)
-builder.add_node("geracao", no_4_gerador)
-builder.add_node("validacao", no_5_validador)
+    # i) adicionando os nós no grafo:
+    builder.add_node("entendimento", no_1_classificador)
+    builder.add_node("rag", no_2_rag)
+    builder.add_node("api", no_3_api)
+    builder.add_node("geracao", no_4_gerador)
+    builder.add_node("validacao", no_5_validador)
 
-# ii) fluxo do grafo:
-builder.add_edge(START, "entendimento")
-builder.add_edge("entendimento", "rag")
-builder.add_edge("rag", "api")
-builder.add_edge("api", "geracao")
-builder.add_edge("geracao", "validacao")
+    # ii) fluxo do grafo:
+    builder.add_edge(START, "entendimento")
+    builder.add_edge("entendimento", "rag")
+    builder.add_edge("rag", "api")
+    builder.add_edge("api", "geracao")
+    builder.add_edge("geracao", "validacao")
 
-# iii) rota condicional:
-builder.add_conditional_edges(
-    "validacao",    #a decisão parte deste nó
-    roteador_de_validacao,      #a função que toma a decisão
-    {
-        "fim": END,     #se retornar "fim", termina a execução
-        "refazer":"geracao"     #se retornar "refazer", manda de novo pro nó 4
-    }
-)
+    # iii) rota condicional:
+    builder.add_conditional_edges(
+        "validacao",    #a decisão parte deste nó
+        roteador_de_validacao,      #a função que toma a decisão
+        {
+            "fim": END,     #se retornar "fim", termina a execução
+            "refazer":"geracao"     #se retornar "refazer", manda de novo pro nó 4
+        }
+    )
 
-# iv) compilação:
-agente_sigma = builder.compile()
+    # iv) compilação:
+    agente_sigma = builder.compile()
+    return agente_sigma
 
 # ==========================================
 # TESTANDO A EXECUÇÃO DO AGENTE
 # ==========================================
 if __name__ == '__main__':
+    print("\nAgente irá executar.\n")
+
+    agente_sigma = criar_agente()       #chama a função e guarda o resultado
     estado_inicial = {
         "input_usuario": (
-            "Crie uma regra Sigma para detectar tentativas de persistência via túnel SSH"
-            "reverso no Windows. A regra deve monitorar a criação de processos apontando"
-            "para o uso do 'schtasks.exe' (ou arquivos originais com esse nome) contendo a flag"
-            "'/create' em conjunto com binários do OpenSSH. Especificamente, quero alertar se"
-            "o comando contiver 'sshd.exe' com a flag '-f', ou 'ssh.exe' com a flag '-i'."
-        ),
+        "Crie uma detecção para o arquivo malicioso com hash "
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855."
+    ),
         "tipo_input": "",
         "termo_busca": "",
         "contexto_rag": "",
@@ -349,9 +361,8 @@ if __name__ == '__main__':
         "erro_validacao": "",
         "tentativas": 0
     }
-
-    print("\nAgente irá executar.\n")
     resultado_final = agente_sigma.invoke(estado_inicial)       #.invoke() liga a máquina de estados e faz tudo acontecer
+    
     if resultado_final["erro_validacao"] == "APROVADO":
         print("\n\tDeu certo.\n")
     else:

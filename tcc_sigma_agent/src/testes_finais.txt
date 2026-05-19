@@ -1,0 +1,61 @@
+# ==========================================
+# TESTANDO A EXECUÇÃO DO AGENTE
+# ==========================================
+if __name__ == '__main__':
+    print("\nAgente irá executar.\n")
+
+    agente_sigma = criar_agente()       #chama a função e guarda o resultado
+    estado_inicial = {
+        "input_usuario": (
+            "Crie uma regra Sigma para detectar tentativas de persistência via túnel SSH"
+            "reverso no Windows. A regra deve monitorar a criação de processos apontando"
+            "para o uso do 'schtasks.exe' (ou arquivos originais com esse nome) contendo a flag"
+            "'/create' em conjunto com binários do OpenSSH. Especificamente, quero alertar se"
+            "o comando contiver 'sshd.exe' com a flag '-f', ou 'ssh.exe' com a flag '-i'."
+        ),
+        "tipo_input": "",
+        "termo_busca": "",
+        "contexto_rag": "",
+        "contexto_api": "",
+        "regra_gerada": "",
+        "erro_validacao": "",
+        "tentativas": 0
+    }
+    resultado_final = agente_sigma.invoke(estado_inicial)       #.invoke() liga a máquina de estados e faz tudo acontecer
+    
+    if resultado_final["erro_validacao"] == "APROVADO":
+        print("\n\tDeu certo.\n")
+    else:
+        print("\n\tA execução falhou.\n")
+    print(resultado_final["regra_gerada"])
+
+
+
+    estado_inicial = {
+    "input_usuario": "Gere uma regra Sigma para detectar exploração do CVE-2022-30190.",
+    "tipo_input": "",
+    "termo_busca": "",
+    "contexto_rag": "",
+    "contexto_api": "",
+    "regra_gerada": "",
+    "erro_validacao": "",
+    "tentativas": 0
+}
+
+
+
+estado_inicial = {
+    "input_usuario": (
+        "Crie uma detecção para o arquivo malicioso com hash "
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855."
+    ),
+    "tipo_input": "",
+    "termo_busca": "",
+    "contexto_rag": "",
+    "contexto_api": "",
+    "regra_gerada": "",
+    "erro_validacao": "",
+    "tentativas": 0
+}
+
+
