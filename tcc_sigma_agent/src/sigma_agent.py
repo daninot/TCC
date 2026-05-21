@@ -11,6 +11,7 @@ from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, START, END
 from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaError
+from bs4 import BeautifulSoup
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CHROMA_DIR = os.path.join(BASE_DIR, "..", "data", "chroma_db")
@@ -28,6 +29,7 @@ class GraphState(TypedDict):
     input_usuario: str       #entrada: "gere uma regra para ..."
     tipo_input: str          #pode ser cve, uma hash ou 'texto_livre'
     termo_busca: str         #cve ou hash extraído
+    url_fornecida: str       #possível url que esteja no input
     contexto_rag: str        #exemplos de regras (nó 2)
     contexto_api: str        #dados técnicos da ameaça (nó 3)
     regra_gerada: str        #YAML gerado pela LLM (nó 4)
@@ -45,9 +47,10 @@ def no_1_classificador(state: GraphState) -> GraphState: #recebe um state como a
     
     padrao_cve = re.search(r"CVE-\d{4}-\d+", texto, re.IGNORECASE)      
     #re.search varre a string inteira procurando o primeiro local onde o padrão regex acontece p/ encontrar um padrão de cve (CVE-2024-1234)
-    
     padrao_hash = re.search(r"\b[a-fA-F0-9]{32,64}\b", texto)           #procura um padrão de hash (md5, sha1, sha256); explicação nas anotações
-    
+    padrao_url = re.search(r"https?://[^\s]+", texto)       #procura padrão de url
+
+    #classifica o tipo:
     if padrao_cve:
         tipo = "cve"
         termo = padrao_cve.group().upper()
@@ -57,11 +60,15 @@ def no_1_classificador(state: GraphState) -> GraphState: #recebe um state como a
     else:
         tipo = "texto_livre"
         termo = texto           #mantém o texto inteiro para buscar no banco vetorial depois
-        
+    
+    #extrai a url, independente do tipo:
+    url = padrao_url.group() if padrao_url else ""      #está fora das condições porque pode aparecer com qualquer um dos anteriores
+
     print(f" -> Tipo: {tipo}")
     print(f" -> Termo isolado: {termo}")
-    
-    return {"tipo_input": tipo, "termo_busca": termo}           #retorna apenas o que for atualizar no "Caderno"
+    if url:
+        print(f" -> URL detectada: {url}")
+    return {"tipo_input": tipo, "termo_busca": termo, "url_fornecida": url}           #retorna apenas o que for atualizar no "Caderno"
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # >>>>>>>> NÓ 2 (procura contexto no RAG) <<<<<<<<<<
@@ -129,49 +136,76 @@ def no_3_api(state: GraphState) -> GraphState:
 
     print("\n||Nó 3|| Buscando dados em APIs externas...")
     
-    #opção 1: CVE
     tipo = state.get("tipo_input", "")  #usar .get() evita q o programa quebre (keyerror) caso as chaves não existam no estado
     termo = state.get("termo_busca", "")
+    url = state.get("url_fornecida", "")
     contexto_api = "Nenhum dado externo coletado."      #inicialização da váriavel que vai pegar esse contexto
+    trechos = []
 
-    if tipo == "cve" and termo:
+    #1: url fornecida
+    if url:
+        print(f" -> URL fornecida detectada. Acessando: {url}")
+        try:
+            headers = {
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64)"
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36"
+                )
+            }
+            resposta_url = requests.get(url, timeout=10)
+            if resposta_url.status_code == 200:
+                sopinha = BeautifulSoup(resposta_url.text, "html.parser")
+                texto_limpo = sopinha.get_text(separator=" ", strip=True)
+                trechos.append(f"Conteúdo da URL fornecida ({url}):\n{texto_limpo[:3000]}")
+                print(" -> Conteúdo da URL extraído com sucesso.")
+            else:
+                print(f" -> ERRO HTTP {resposta_url.status_code} ao acessar a URL.")
+        except requests.exceptions.RequestException as e:
+            print(f" -> Falha ao acessar a URL: {e}")
+
+    #2: CVE - API do MITRE
+    elif tipo == "cve" and termo:
         print(f" -> Consultando MITRE para '{termo}'...")
-        url = f"https://cveawg.mitre.org/api/cve/{termo}"       #API pública e gratuita que não exige API key
+        
+        #https://cveawg.mitre.org/api/cve/{termo}
+        #API pública e gratuita que não exige API key
 
         try:
-            resposta = requests.get(url, timeout=10)        #timeout evita q o código trave se cair a internet
+            resposta = requests.get(f"https://cveawg.mitre.org/api/cve/{termo}", timeout=10)        #timeout evita q o código trave se cair a internet
             if resposta.status_code == 200:     #só vou ler o JSON se a resposta for 200, ou seja, um sucesso
                 dados = resposta.json()
-                
                 #navega no JSON v5 do MITRE p achar a descrição em inglês:
                 descricoes = dados.get("containers", {}).get("cna", {}).get("descriptions", [])     
                 if descricoes:
                     texto_descricao = descricoes[0].get("value", "Descrição indisponível.")
-                    contexto_api = f"Informação do MITRE para {termo}: {texto_descricao}"
-                    print(" -> Dados extraídos com sucesso da web.")
-                
+                    trechos.append(f"Informação do MITRE para {termo}: {texto_descricao}")
+                    print(" -> Dados extraídos com sucesso do MITRE")
                 else:   #o JSON veio sem descrição por algum motivo
                     print(f" -> CVE encontrado, mas não possui descrição.")
-            
+                    
             else:       #se receber um erro 404 (não encontrado)
                 print(f" -> Erro HTTP {resposta.status_code} ao consultar a API.")
         except requests.exceptions.RequestException as e:
             print(f" -> Falha de conexão com a API do MITRE: {e}")
 
-    #opção 2: Hash
+    #3: Hash
     elif tipo == "hash" and termo:
-        print(f" -> Consultando plataforma para a hash '{termo}'. . .")
+        #print(f" -> Consultando plataforma para a hash '{termo}'. . .")
         #as hashes são consultadas no virustotal.com, mas ele exige uma API key pessoal. tenho aqui uma simulação apenas para entender a lógica
-        contexto_api=(
+        trechos.append(
             f"Simulação de API: a hash {termo} foi identificada como malware\n"
             f"{termo} cria processo x em diretórios temporários.\n"
             f"{termo} está associada à man in the middle."
         )
         print(" -> Dados da hash carregados.")
 
-    #opção 3: texto livre
+    #4: texto livre
     else:
         print(" -> Busca por texto livre (sem consulta de hash e CVE).")
+
+    if trechos: #junta tudo
+        contexto_api = "\n\n---\n\n".join(trechos)
 
     return {"contexto_api": contexto_api}   #atualiza o graphstate com a matéria-prima técnica
 
@@ -359,7 +393,7 @@ def criar_agente():
     return agente_sigma
 
 # ==========================================
-# TESTANDO A EXECUÇÃO DO AGENTE
+# EXECUÇÃO DO AGENTE
 # ==========================================
 if __name__ == '__main__':
     print("\nBem vindo ao Agente_Sigma!\n")
@@ -374,6 +408,7 @@ if __name__ == '__main__':
         "input_usuario": entrada_terminal,
         "tipo_input": "",
         "termo_busca": "",
+        "url_fornecida": "",
         "contexto_rag": "",
         "contexto_api": "",
         "regra_gerada": "",

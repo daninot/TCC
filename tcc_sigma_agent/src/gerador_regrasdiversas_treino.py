@@ -31,7 +31,7 @@ def main():
     for root, dirs, files in os.walk(SIGMA_REPO_DIR):       #os.walk gera os nomes dos arquivos numa árvore de diretórios; 
                                                             #root = string-> pasta onde está, dirs = lista dos nomes das subpastas, files = lista dos nomes dos arquivos
         for filename in files:                              #itera na última folha da árvore; filename é str e files é uma lista dos arquivos soltos na pasta;
-            if filename.endswith(".yml") and not filename.startswith("deprecated"):     #confere se um .yml mesmo e garante que não está deprecated
+            if filename.endswith(".yml") and "deprecated" not in root:     #confere se um .yml mesmo e garante que não está deprecated
                 filepath = os.path.join(root, filename)     #filepath é uma string do diretório+nome do arquivo
                 chave = get_logsource_key(filepath)         #usa o filepath pra pegar a assinatura (chave) do arquivo
                 
