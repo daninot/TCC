@@ -1,4 +1,41 @@
 # ==========================================
+# TESTANDO O NÓ 2
+# ==========================================
+# Atualize o bloco final do arquivo para testarmos a passagem de bastão:
+#if __name__ == "__main__":
+    # Teste de integração: Nó 1 passando para o Nó 2
+#    estado_inicial = {"input_usuario": "Crie uma regra para detectar a execução do mimikatz na memória."}
+    
+    # Executa o Nó 1
+#    estado_atualizado_1 = no_1_classificador(estado_inicial)
+    
+    # O LangGraph junta os estados nos bastidores, então vamos emular isso:
+#    estado_inicial.update(estado_atualizado_1) 
+    
+    # Executa o Nó 2
+#    estado_atualizado_2 = no_2_rag(estado_inicial)
+    
+#    print("\n[RESULTADO FINAL DO ESTADO]")
+#    print(f"Tipo: {estado_atualizado_1['tipo_input']}")
+#    print(f"Tamanho do Contexto RAG gerado: {len(estado_atualizado_2['contexto_rag'])} caracteres")
+
+
+# ==========================================
+# TESTANDO O NÓ 3
+# ==========================================
+# Testar se o script consegue baixar dados reais da internet.
+#__name__ == "__main__"
+#estado_teste = {
+#    "input_usuário": "Preciso de uma regra Sigma para o CVE-2021-44228",
+#    "tipo_input": "cve",
+#    "termo_busca": "CVE-2021-44228"     #log4shell
+#}
+#estado_atualizado = no_3_api(estado_teste)
+#print("\n~*Resultado do contexto da API*~")
+#print(estado_atualizado["contexto_api"])
+
+
+# ==========================================
 # TESTANDO O NÓ 4
 # ==========================================
 

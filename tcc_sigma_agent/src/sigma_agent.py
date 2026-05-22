@@ -12,6 +12,7 @@ from langgraph.graph import StateGraph, START, END
 from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaError
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CHROMA_DIR = os.path.join(BASE_DIR, "..", "data", "chroma_db")
@@ -22,6 +23,63 @@ CHROMA_DIR = os.path.join(BASE_DIR, "..", "data", "chroma_db")
 # nó 3 = procura informações nas APIs (threat intelligence)
 # nó 4 = criação da regra com LLM local
 # nó 5 = validação com o Sigma CLI
+
+#função para encontrar todas as menções de CVE e CWE em qualquer texto:
+def extrair_referencias(texto: str):
+    cves = set(m.group().upper() for m in re.finditer(r"CVE-\d{4}-\d+", texto, re.IGNORECASE))
+    cwes = set(m.group().upper() for m in re.finditer(r"CWE-\d+", texto, re.IGNORECASE))
+    return cves, cwes
+
+#função para extrair palavras significativas do caminho de uma URL. usado quando a página fica inacessível:
+def extrair_palavras_chave_url(url:str):
+    caminho = urlparse(url).path
+    texto = re.sub(r"[/\-_\.]+", " ", caminho)
+    lixo = {"html", "htm", "php", "asp", "aspx", "vuln", "detail", "www"}
+    return [
+        p.lower() for p in texto.split()
+        if len(p) >= 3 and not p.isdigit() and p.lower() not in lixo
+    ]
+
+#função para consultar a API do MITRE para um CVE:
+def consulta_mitre(cve_id:str):
+    try:
+        r = requests.get(f"https://cveawg.mitre.org/api/cve/{cve_id}", timeout=10)
+        if r.status_code == 200:
+            descricoes = r.json().get("containers",{}).get("cna",{}).get("descriptions",[])
+            if descricoes:
+                return descricoes[0].get("value", "")   #retorna a descrição ou None
+    except requests.exceptions.RequestException:
+        pass
+    return None
+
+#função que consulta a API do NVD para um CVE:
+def consulta_nvd(cve_id:str):
+    try:
+        url_api = f"https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={cve_id}"
+        r = requests.get(url_api, timeout=10)
+        if r.status_code == 200:
+            vulns = r.json().get("vulnerabilities",[])
+            if vulns:
+                cve_item = vulns[0].get("cve",{})
+                descricao = next(
+                    (x["value"] for x in cve_item.get("descriptions",[]) if x.get("lang") == "en"),
+                    None
+                )
+                cwes = [
+                    d["value"]
+                    for w in cve_item.get("weaknesses",[])
+                    for d in w.get("description",[])
+                    if d.get("lang") == "en"
+                ]
+                cvss = None
+                for chave in ("cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
+                    if chave in cve_item.get("metrics",{}) and cve_item["metrics"][chave]:
+                        cvss = cve_item["metrics"][chave][0].get("cvssData", {}).get("baseScore")
+                        break
+                return {"descricao": descricao, "cwes": cwes, "cvss": cvss}
+    except requests.exceptions.RequestException:
+        pass
+    return None
 
 
 # >>>>>>>> ESTADO <<<<<<<<<     (caderno de anotações)
@@ -106,30 +164,9 @@ def no_2_rag(state: GraphState) -> GraphState:
     # Atualizamos o "caderno de anotações" com os exemplos
     return {"contexto_rag": contexto_formatado}
 
-# ==========================================
-# TESTANDO O NÓ 2
-# ==========================================
-# Atualize o bloco final do arquivo para testarmos a passagem de bastão:
-#if __name__ == "__main__":
-    # Teste de integração: Nó 1 passando para o Nó 2
-#    estado_inicial = {"input_usuario": "Crie uma regra para detectar a execução do mimikatz na memória."}
-    
-    # Executa o Nó 1
-#    estado_atualizado_1 = no_1_classificador(estado_inicial)
-    
-    # O LangGraph junta os estados nos bastidores, então vamos emular isso:
-#    estado_inicial.update(estado_atualizado_1) 
-    
-    # Executa o Nó 2
-#    estado_atualizado_2 = no_2_rag(estado_inicial)
-    
-#    print("\n[RESULTADO FINAL DO ESTADO]")
-#    print(f"Tipo: {estado_atualizado_1['tipo_input']}")
-#    print(f"Tamanho do Contexto RAG gerado: {len(estado_atualizado_2['contexto_rag'])} caracteres")
-
-#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-#>>>>>>>>> NÓ 3 (API) <<<<<<<< 
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+#>>>>>>>>>>>>>>>>>>>> NÓ 3 (API) <<<<<<<<<<<<<<<<<<<<<<<<
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 #Vai buscar informações técnicas na internet sobre a ameaça extraída.
 #Se a API falhar ou não tiver internet, o agente não dá erro, vai seguir em frente.
 def no_3_api(state: GraphState) -> GraphState:
@@ -139,57 +176,83 @@ def no_3_api(state: GraphState) -> GraphState:
     tipo = state.get("tipo_input", "")  #usar .get() evita q o programa quebre (keyerror) caso as chaves não existam no estado
     termo = state.get("termo_busca", "")
     url = state.get("url_fornecida", "")
+    entrada_usuario = state.get("input_usuario", "")
     contexto_api = "Nenhum dado externo coletado."      #inicialização da váriavel que vai pegar esse contexto
     trechos = []
 
-    #1: url fornecida
+    #1: procura CVEs e CWEs em todo o texto de entrada do usuário:
+    cves_encontrados, cwes_encontrados = extrair_referencias(entrada_usuario)
+
+    #2: procura uma URL para acessar:
     if url:
         print(f" -> URL fornecida detectada. Acessando: {url}")
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64)"
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            )
+        }
+        acesso_ok = False
         try:
-            headers = {
-                "User-Agent": (
-                    "Mozilla/5.0 (X11; Linux x86_64)"
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/124.0.0.0 Safari/537.36"
-                )
-            }
-            resposta_url = requests.get(url, timeout=10)
+            resposta_url = requests.get(url, timeout=10, headers=headers)
             if resposta_url.status_code == 200:
-                sopinha = BeautifulSoup(resposta_url.text, "html.parser")
-                texto_limpo = sopinha.get_text(separator=" ", strip=True)
-                trechos.append(f"Conteúdo da URL fornecida ({url}):\n{texto_limpo[:3000]}")
+                soup = BeautifulSoup(resposta_url.text, "html.parser")
+                texto_limpo = soup.get_text(separator=" ", strip=True)
+                trechos.append(f"Conteúdo da URL {url}:\n{texto_limpo[:3000]}")
                 print(" -> Conteúdo da URL extraído com sucesso.")
+                acesso_ok = True
             else:
                 print(f" -> ERRO HTTP {resposta_url.status_code} ao acessar a URL.")
         except requests.exceptions.RequestException as e:
             print(f" -> Falha ao acessar a URL: {e}")
-
-    #2: CVE - API do MITRE
-    elif tipo == "cve" and termo:
-        print(f" -> Consultando MITRE para '{termo}'...")
         
-        #https://cveawg.mitre.org/api/cve/{termo}
-        #API pública e gratuita que não exige API key
+        #mesmo se o acesso funcionar, vai procurar CVE/CWE na URL:
+        cves_url, cwes_url = extrair_referencias(url)
+        cves_encontrados.update(cves_url)
+        cwes_encontrados.update(cwes_url)
 
-        try:
-            resposta = requests.get(f"https://cveawg.mitre.org/api/cve/{termo}", timeout=10)        #timeout evita q o código trave se cair a internet
-            if resposta.status_code == 200:     #só vou ler o JSON se a resposta for 200, ou seja, um sucesso
-                dados = resposta.json()
-                #navega no JSON v5 do MITRE p achar a descrição em inglês:
-                descricoes = dados.get("containers", {}).get("cna", {}).get("descriptions", [])     
-                if descricoes:
-                    texto_descricao = descricoes[0].get("value", "Descrição indisponível.")
-                    trechos.append(f"Informação do MITRE para {termo}: {texto_descricao}")
-                    print(" -> Dados extraídos com sucesso do MITRE")
-                else:   #o JSON veio sem descrição por algum motivo
-                    print(f" -> CVE encontrado, mas não possui descrição.")
-                    
-            else:       #se receber um erro 404 (não encontrado)
-                print(f" -> Erro HTTP {resposta.status_code} ao consultar a API.")
-        except requests.exceptions.RequestException as e:
-            print(f" -> Falha de conexão com a API do MITRE: {e}")
+        #se a URL falhar, extrai as palavras-chave do caminho (fallback):
+        if not acesso_ok:
+            palavras = extrair_palavras_chave_url(url)
+            if palavras:
+                trechos.append(
+                    f"\tURL inacessível. Palavras extraídas da URL: {', '.join(palavras)}"
+                )
+                print(f" -> Palavras da URL: {', '.join(palavras)}")
+        
+    #3: Consulta o MITRE e o NVD para cada CVE encontrado no texto ou na URL:
+    if cves_encontrados:
+        for cve_id in sorted(cves_encontrados):
+            print(f" -> Consultando MITRE e NVD para {cve_id}...")
 
-    #3: Hash
+            desc_mitre = consulta_mitre(cve_id)
+            if desc_mitre:
+                trechos.append(f"MITRE - {cve_id}:\n{desc_mitre}")
+                print(" -> Dados obtidos do MITRE.")
+            else:
+                print(" -> Sem dados obtidos do MITRE.")
+            
+            dados_nvd = consulta_nvd(cve_id)
+            if dados_nvd:
+                texto = f"NVD - {cve_id}:\n"
+                if dados_nvd["descricao"]:
+                    texto += f"Descrição: {dados_nvd['descricao']}\n"
+                if dados_nvd["cwes"]:
+                    texto += f"CWE associado: {', '.join(dados_nvd['cwes'])}\n"
+                    cwes_encontrados.update(dados_nvd["cwes"])
+                if dados_nvd["cvss"]:
+                    texto += f"CVSS: {dados_nvd['cvss']}\n"
+                trechos.append(texto)
+                print(" -> Dados obtidos do NVD.")
+            else:
+                print(" -> Dados não obtidos do NVD.")
+
+    #4: Registra os CWEs encontrados como contexto adicional:
+    if cwes_encontrados:
+        trechos.append(f"CWEs identificados: {', '.join(sorted(cwes_encontrados))}")
+
+    #5: Se for Hash consulta a API do VirusTotal:
     elif tipo == "hash" and termo:
         #print(f" -> Consultando plataforma para a hash '{termo}'. . .")
         #as hashes são consultadas no virustotal.com, mas ele exige uma API key pessoal. tenho aqui uma simulação apenas para entender a lógica
@@ -199,29 +262,14 @@ def no_3_api(state: GraphState) -> GraphState:
             f"{termo} está associada à man in the middle."
         )
         print(" -> Dados da hash carregados.")
-
-    #4: texto livre
-    else:
-        print(" -> Busca por texto livre (sem consulta de hash e CVE).")
-
-    if trechos: #junta tudo
+    
+    #6: junta tudo
+    if trechos:
         contexto_api = "\n\n---\n\n".join(trechos)
-
+    else:
+        print(" -> Sem fonte de texto com referências.")
     return {"contexto_api": contexto_api}   #atualiza o graphstate com a matéria-prima técnica
 
-# ==========================================
-# TESTANDO O NÓ 3
-# ==========================================
-# Testar se o script consegue baixar dados reais da internet.
-#__name__ == "__main__"
-#estado_teste = {
-#    "input_usuário": "Preciso de uma regra Sigma para o CVE-2021-44228",
-#    "tipo_input": "cve",
-#    "termo_busca": "CVE-2021-44228"     #log4shell
-#}
-#estado_atualizado = no_3_api(estado_teste)
-#print("\n~*Resultado do contexto da API*~")
-#print(estado_atualizado["contexto_api"])
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # >>>>>>>>>> NÓ 4 (GERAÇÃO DA REGRA - LLM) <<<<<<<<<<<<
@@ -423,38 +471,38 @@ if __name__ == '__main__':
         print("\n\tA execução falhou.\n")
     #print(resultado_final["regra_gerada"])
 
-# ==========================================
-# SALVANDO A REGRA EM ARQUIVO
-# ==========================================
-regra = resultado_final["regra_gerada"]
-if regra:
-    #extrai o title via regex p usar como nome do arquivo:
-    match = re.search(r'^title:\s*(.+)$', regra, re.MULTILINE)
+    # ==========================================
+    # SALVANDO A REGRA EM ARQUIVO
+    # ==========================================
+    regra = resultado_final["regra_gerada"]
+    if regra:
+        #extrai o title via regex p usar como nome do arquivo:
+        match = re.search(r'^title:\s*(.+)$', regra, re.MULTILINE)
 
-    if match:
-        #limpa o título p ser um nome de arquivo válido e remove aspas se tiver:
-        title = match.group(1).strip().strip('"\'')
-        #substitui caracteres inválidos por underline:
-        filename = re.sub(r'[^a-zA-Z0-9_-]', '_', title) + ".yml"
-    else:
-        filename = "regra_sigma_gerada.yml"     #fallback
+        if match:
+            #limpa o título p ser um nome de arquivo válido e remove aspas se tiver:
+            title = match.group(1).strip().strip('"\'')
+            #substitui caracteres inválidos por underline:
+            filename = re.sub(r'[^a-zA-Z0-9_-]', '_', title) + ".yml"
+        else:
+            filename = "regra_sigma_gerada.yml"     #fallback
 
-    pasta_destino = os.path.join(BASE_DIR, "regras_geradas")
-    os.makedirs(pasta_destino, exist_ok=True)
+        pasta_destino = os.path.join(BASE_DIR, "regras_geradas")
+        os.makedirs(pasta_destino, exist_ok=True)
 
-    caminho_arquivo = os.path.join(pasta_destino, filename)
-    
-    #contador para adicionar no nome do arquivo caso rode mais de uma vez para a mesma regra:
-    cont = 1    
-    while os.path.exists(caminho_arquivo):
-        nome_base = filename.replace(".yml", "")
-        caminho_arquivo = os.path.join(pasta_destino, f"{nome_base}_{cont}.yml")
-        cont += 1
-    
-    #salva o arquivo em modo escrita (write):
-    with open(caminho_arquivo, "w", encoding="utf-8") as file:
-        file.write(regra)
-    
-    print(f"\n\tRegra salva em: {caminho_arquivo}\n")
+        caminho_arquivo = os.path.join(pasta_destino, filename)
+        
+        #contador para adicionar no nome do arquivo caso rode mais de uma vez para a mesma regra:
+        cont = 1    
+        while os.path.exists(caminho_arquivo):
+            nome_base = filename.replace(".yml", "")
+            caminho_arquivo = os.path.join(pasta_destino, f"{nome_base}_{cont}.yml")
+            cont += 1
+        
+        #salva o arquivo em modo escrita (write):
+        with open(caminho_arquivo, "w", encoding="utf-8") as file:
+            file.write(regra)
+        
+        print(f"\n\tRegra salva em: {caminho_arquivo}\n")
 
 
