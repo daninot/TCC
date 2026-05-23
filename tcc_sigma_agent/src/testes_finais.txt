@@ -46,8 +46,7 @@ if __name__ == '__main__':
 
 estado_inicial = {
     "input_usuario": (
-        "Crie uma detecção para o arquivo malicioso com hash "
-        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855."
+        "Crie uma detecção para o arquivo malicioso com hash e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855."
     ),
     "tipo_input": "",
     "termo_busca": "",

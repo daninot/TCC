@@ -278,7 +278,7 @@ def no_4_gerador(state: GraphState) -> GraphState:
     tentativa_atual = state.get("tentativas", 0) + 1    #sinalizar quantas tentativas
     print(f"\n||Nó 4|| Gerando a regra... Tentativa {tentativa_atual}")
 
-    llm = ChatOllama(model="llama3.1", temperature=0.1)
+    llm = ChatOllama(model="qwen2.5:1.5b", temperature=0.1)
 
     prompt = f"""Você é um Engenheiro de Detecção de Ameaças (Threat Hunter) Sênior.
     Sua tarefa é criar uma regra Sigma válida baseada exclusivamente no pedido do usuário.
@@ -330,10 +330,18 @@ def no_5_validador(state: GraphState) ->GraphState:
 
     # ~* LIMPEZA DE MARKDOWN *~ agora vai limpar tudo de markdown e/ou vai extrair tudo entre ``` e ```:
     marcador = "`" * 3
-    padrao_regex = marcador + r"[^\n]*\n(.*?)\n" + marcador
+    padrao_regex = marcador + r"[^\n]*\n(.*?)\n?" + marcador
     match = re.search(padrao_regex, regra_revisao, re.DOTALL | re.IGNORECASE)
-    yaml_limpo = match.group(1).strip() if match else regra_revisao.strip()
-
+    if match:
+        yaml_limpo = match.group(1).strip() #if match else regra_revisao.strip()
+    else:
+        yaml_limpo = regra_revisao.strip()  #remove crases manualmente caso o regex falhe
+        if yaml_limpo.startswith(marcador):     #remove a linha inicial se começar com ```
+            linhas = yaml_limpo.split("\n",1) 
+            yaml_limpo = linhas[1] if len(linhas) > 1 else ""
+        if yaml_limpo.rstrip().endswith(marcador):
+            yaml_limpo = yaml_limpo.rstrip()[:-len(marcador)].rstrip()
+                
     # ~* Correção automática de UUID *~ pro caso do agente gerar um id errado
     regra_corrigida = re.sub(
         r'^id:\s*.+$',
