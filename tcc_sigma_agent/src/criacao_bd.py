@@ -2,21 +2,22 @@ import os
 import shutil   #biblioteca manipula pastas
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 
 def criar_banco_chroma():
 
-    pasta_banco = "./chroma_db"
-    pasta_conhecimento = "./rag_knowledge"
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    pasta_banco = os.path.join(BASE_DIR, "..", "data", "chroma_db")
+    pasta_conhecimento = os.path.join(BASE_DIR, "..", "data", "rag_knowledge")
 
     #se já existe uma pasta, limpa a antiga pra criar uma nova:
     if os.path.exists(pasta_banco):     #só apaga a pasta se ela já existe
-            printf("--- Removendo o banco antigo em {pasta_banco} ---")
+            print(f"--- Removendo o banco antigo em {pasta_banco} ---")
             shutil.rmtree(pasta_banco)      #deleta a pasta inteira e os diretórios, recursivamente
 
     print(f"i) Carregando as regras da pasta '{pasta_conhecimento}'.")       
     if not os.path.exists(pasta_conhecimento):       #teste pra ver se a pasta existe mesmo.
-        print("Erro: a pasta '{pasta_conhecimento}' não foi encontrada.")
+        print(f"Erro: a pasta '{pasta_conhecimento}' não foi encontrada.")
         return
     
     loader = DirectoryLoader(pasta_conhecimento, glob="**/*.yml", loader_cls=TextLoader)             #carrega todos os arquivos .yml da pasta

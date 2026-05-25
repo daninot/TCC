@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CHROMA_DIR = os.path.join(BASE_DIR, "..", "data", "chroma_db")
+EMBEDDINGS_MODEL = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 # >>>>>>>> máquina de estados <<<<<<<<<<
 # nó 1 = classificador determinístico de entrada (Entendimento)
@@ -146,10 +147,10 @@ def no_2_rag(state: GraphState) -> GraphState:
     print(f" -> Pesquisando no banco vetorial por: {termo_pesquisa}\n")
 
     # Carregamos o modelo leve de embeddings e o banco criado
-    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    #embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vector_store = Chroma(
         persist_directory=CHROMA_DIR, 
-        embedding_function=embeddings
+        embedding_function=EMBEDDINGS_MODEL
     )
 
     # Buscamos as 2 regras que mais se aproximam do contexto pedido
@@ -157,9 +158,15 @@ def no_2_rag(state: GraphState) -> GraphState:
     resultados = vector_store.similarity_search(termo_pesquisa, k=2)
 
     # Pegamos o conteúdo dos arquivos YAML encontrados e juntamos em uma string só
-    contexto_formatado = "\n\n---\n\n".join([doc.page_content for doc in resultados])
-    
-    print(f" -> {len(resultados)} regras de exemplo recuperadas com sucesso.")
+    #contexto_formatado = "\n\n---\n\n".join([doc.page_content for doc in resultados])
+    if resultados:
+        contexto_formatado = "\n\n---\n\n".join([doc.page_content for doc in resultados])
+        print(f" -> {len(resultados)} regras de exemplo recuperadas com sucesso.")
+    else:
+        contexto_formatado = "Nenhuma regra de exemplo encontrada no banco."
+        print(" -> Aviso: nenhuma regra similar encontrada.")
+
+    #print(f" -> {len(resultados)} regras de exemplo recuperadas com sucesso.")
     
     # Atualizamos o "caderno de anotações" com os exemplos
     return {"contexto_rag": contexto_formatado}
@@ -188,7 +195,7 @@ def no_3_api(state: GraphState) -> GraphState:
         print(f" -> URL fornecida detectada. Acessando: {url}")
         headers = {
             "User-Agent": (
-                "Mozilla/5.0 (X11; Linux x86_64)"
+                "Mozilla/5.0 (X11; Linux x86_64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/124.0.0.0 Safari/537.36"
             )
@@ -253,7 +260,7 @@ def no_3_api(state: GraphState) -> GraphState:
         trechos.append(f"CWEs identificados: {', '.join(sorted(cwes_encontrados))}")
 
     #5: Se for Hash consulta a API do VirusTotal:
-    elif tipo == "hash" and termo:
+    if tipo == "hash" and termo:
         #print(f" -> Consultando plataforma para a hash '{termo}'. . .")
         #as hashes são consultadas no virustotal.com, mas ele exige uma API key pessoal. tenho aqui uma simulação apenas para entender a lógica
         trechos.append(
@@ -310,6 +317,9 @@ def no_4_gerador(state: GraphState) -> GraphState:
     1. Retorne APENAS o código YAML da regra Sigma.
     2. Não adicione explicações, saudações ou formatações markdown fora do bloco de código.
     3. Certifique-se de que os campos obrigatórios do Sigma (title, logsource, detection, condition) estejam presentes.
+    4. Na seção 'references:', insira APENAS URLs que aparecem literalmente no PEDIDO DO USUÁRIO ou no CONTEXTO TÉCNICO.
+    5. Não copie URLs do MOLDE DE FORMATAÇÃO -- esses são apenas exemplos estruturais.
+    6. É estritamente proibido inventar ou criar URLs que não estejam no contexto fornecido.
     """
 
     print(" -> Enviando contexto para a GPU...")
@@ -491,11 +501,16 @@ if __name__ == '__main__':
             #limpa o título p ser um nome de arquivo válido e remove aspas se tiver:
             title = match.group(1).strip().strip('"\'')
             #substitui caracteres inválidos por underline:
-            filename = re.sub(r'[^a-zA-Z0-9_-]', '_', title) + ".yml"
+            base = re.sub(r'[^a-zA-Z0-9_-]', '_', title).strip('_') 
+            
+            if not base:        
+                filename = "regra_sem_nome.yml"
+            else:
+                filename = base + ".yml"
         else:
             filename = "regra_sigma_gerada.yml"     #fallback
 
-        pasta_destino = os.path.join(BASE_DIR, "regras_geradas")
+        pasta_destino = os.path.join(BASE_DIR, "..", "data", "regras_geradas")
         os.makedirs(pasta_destino, exist_ok=True)
 
         caminho_arquivo = os.path.join(pasta_destino, filename)
@@ -512,5 +527,3 @@ if __name__ == '__main__':
             file.write(regra)
         
         print(f"\n\tRegra salva em: {caminho_arquivo}\n")
-
-

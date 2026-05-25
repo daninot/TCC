@@ -18,7 +18,7 @@ DIRETORIOS_PERMITIDOS = [
 random.seed(42)     #mantém os datasets idênticos sempre que o script for executado
 
 #lê um arquivo yaml e extrai uma assinatura a partir do logsource:
-def get_logsource_key(filepath)
+def get_logsource_key(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             docs = list(yaml.safe_load_all(f))
@@ -46,17 +46,24 @@ def main():
         for file in files:
             if file.endswith('.yml'):
                 all_valid_rules.append(os.path.join(root, file))
+    
+    total_rules_count = len(all_valid_rules)
+    print(f" -> Encontradas {total_rules_count} regras válidas.")
+
+    if total_rules_count == 0:
+        print("ERRO: nenhuma regra encontrada. Verificar SIGMA_REPO_DIR.")
+        return
 
     #ii)agrupamento por categorias:
     #print("Agrupando regras por assinatura...")
-    regras_por_categoria = {}
+    regras_por_categoria = {}       #dicionário q organiza as categorias de regras
     for rule_path in all_valid_rules:
         key = get_logsource_key(rule_path)
         if key not in regras_por_categoria:
             regras_por_categoria[key] = []
         regras_por_categoria[key].append(rule_path)
-
-    print("Regras agrupadas em {len(regras_por_categoria)} categorias.")
+    
+    print(f"Regras agrupadas em {len(regras_por_categoria)} categorias.")
 
     #iii)separação das regras de teste (50 regras):
     #uso de round-robin p garantir q pegarei 1 regra de cada até fechar 50
@@ -78,21 +85,29 @@ def main():
     print(f" -> {len(test_set)} regras de teste isoladas.")
 
     #iv)separação das regras de treino:
-    #print("Selecinando as regras para base de treinamento RAG.")
-    remaining_rules = []
-    for cat, rules in regras_por_categoria.items():
-        remaining_rules.extend(rules)
-    
+    #print("Selecinando as regras para base de treinamento RAG.")    
     target_train_count = int(total_rules_count * 0.60)
+    train_set = []
 
-    if len(remaining_rules) < target_train_count:
-        print(f" !Aviso! Não existem regras restantes o suficiente para 60%. Usando as {len(remaining_rules)} restantes.")
-        train_set = remaining_rules
-    else:
-        train_set = random.sample(remaining_rules, target_train_count)      #sorteia aleatoriamente dentre as regras que sobraram
+    #atualiza as categorias - pq algumas podem ter sido esvaziadas na seleção de teste:
+    lista_categorias = [cat for cat in regras_por_categoria.keys() if len(regras_por_categoria[cat]) > 0]
+    
+    while len(train_set) < target_train_count and len(lista_categorias) > 0:
+        for cat in list(lista_categorias):
+            if len(train_set) >= target_train_count:
+                break
+            if regras_por_categoria[cat]:
+                regra_escolhida = random.choice(regras_por_categoria[cat])
+                train_set.append(regra_escolhida)
+                regras_por_categoria[cat].remove(regra_escolhida)
+            else:
+                lista_categorias.remove(cat)    #se não tem mais regra dessa categoria, tira o lugarzinho dela
 
-    print(f" -> {len(train_set)} regras de treino selecionadas (60% de {total_rules_count}).")
+    if len(train_set) < target_train_count:
+        print(f"AVISO: regras restantes insuficientes para atingir 60%; foram selecionadas {len(train_set)}.")
 
+    print(f" -> {len(train_set)} regras de treino selecionadas.")    
+    
     #v)copia os arquivos físicos:
     #print("Limpando pastas antigas e gravando novos arquivos.")
     for folder in [TRAIN_DIR, TEST_DIR]:
@@ -100,7 +115,7 @@ def main():
             shutil.rmtree(folder)
         os.makedirs(folder, exist_ok=True)      #exist_ok=True previne falha de concorrência com o SO na criação da pasta
 
-    def copy_files_to_dir(file_list, dest_dir):
+    def copy_files_to_dir(file_list, dest_dir):     #nested function
         regras_copiadas = 0
         for src_path in file_list:
             caminho_relativo = os.path.relpath(src_path, SIGMA_REPO_DIR)
