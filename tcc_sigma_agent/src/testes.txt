@@ -1,0 +1,15 @@
+Regra 1:
+    Crie uma regra para detectar a execução do mimikatz na memória.
+Regra 2:
+    Gere uma regra para detectar a execução da hash 1d727dfdeab136e659b8a530eb7c8ebc
+Regra 3:
+    Escreva uma regra Sigma para alertar quando um administrador usar o utilitário 'wevtutil' para limpar os logs de Segurança (cl Security) no Windows.    
+    (não deu certo com o Qwen, não gerava o campo de logsource)
+Regra 4:
+    Preciso de uma regra Sigma para o CVE-2021-44228.
+Regra 5:
+    Escreva uma regra Sigma para o CVE-2026-20182.
+Regra 6:
+    Escreva uma regra para https://www.cve.org/CVERecord?id=CVE-2026-9082
+Regra 7:
+    

@@ -155,7 +155,8 @@ def no_2_rag(state: GraphState) -> GraphState:
 
     # Buscamos as 2 regras que mais se aproximam do contexto pedido
     # Usamos k=2 para não sobrecarregar a memória do nosso pequeno Qwen 2.5
-    resultados = vector_store.similarity_search(termo_pesquisa, k=2)
+    #Usando k=5 porque condiz com o Llama 3.1
+    resultados = vector_store.similarity_search(termo_pesquisa, k=5)
 
     # Pegamos o conteúdo dos arquivos YAML encontrados e juntamos em uma string só
     #contexto_formatado = "\n\n---\n\n".join([doc.page_content for doc in resultados])
@@ -285,48 +286,53 @@ def no_4_gerador(state: GraphState) -> GraphState:
     tentativa_atual = state.get("tentativas", 0) + 1    #sinalizar quantas tentativas
     print(f"\n||Nó 4|| Gerando a regra... Tentativa {tentativa_atual}")
 
-    llm = ChatOllama(model="qwen2.5:1.5b", temperature=0.1)
+    #llm = ChatOllama(model="qwen2.5:1.5b", temperature=0.1)
+    llm = ChatOllama(model="llama3.1", temperature=0.1)
 
-    prompt = f"""Você é um Engenheiro de Detecção de Ameaças (Threat Hunter) Sênior.
-    Sua tarefa é criar uma regra Sigma válida baseada exclusivamente no pedido do usuário.
+    prompt = f"""You are a Senior Threat Detection Engineer (Threat Hunter).
+    Your task is to create a valid Sigma rule based exclusively on the user's request.
+    The entire rule MUST be written in English, including all descriptive fields
+    (title, description, falsepositives, etc.).
 
-    PEDIDO DO USUÁRIO:
+    USER REQUEST:
     {state['input_usuario']}
 
-    MOLDE DE FORMATAÇÃO -- Baseie a estrutura do seu YAML rigorosamente nos exemplos a seguir:
+    FORMATTING TEMPLATE -- Base the structure of your YAML strictly on the following examples:
     {state['contexto_rag']}
 
-    CONTEXTO TÉCNICO ADICIONAL -- Use estas informações para criar a lógica de detecção, se relevante:
+    ADDITIONAL TECHNICAL CONTEXT -- Use this information to build the detection logic, if relevant:
     {state['contexto_api']}
     """
-    
+
     erro_anterior = state.get("erro_validacao","")
     if erro_anterior and erro_anterior != "APROVADO":
         prompt+= f"""
-        ATENÇÃO! SUA TENTATIVA ANTERIOR FALHOU:
-        O código YAML que você gerou anteriormente falhou na validação com o seguinte erro:
+        ATTENTION! YOUR PREVIOUS ATTEMPT FAILED:
+        The YAML code you generated previously failed validation with the following error:
         {erro_anterior}.
 
-        Regra gerada com erro:
+        Rule generated with error:
         {state.get('regra_gerada','')}
 
-        Corrija o erro apontado acima e reescreva o código YAML perfeitamente.
+        Fix the error pointed out above and rewrite the YAML code perfectly.
         """
-    prompt+= """    
-    Instruções:
-    1. Retorne APENAS o código YAML da regra Sigma.
-    2. Não adicione explicações, saudações ou formatações markdown fora do bloco de código.
-    3. Certifique-se de que os campos obrigatórios do Sigma (title, logsource, detection, condition) estejam presentes.
-    4. Na seção 'references:', insira APENAS URLs que aparecem literalmente no PEDIDO DO USUÁRIO ou no CONTEXTO TÉCNICO.
-    5. Não copie URLs do MOLDE DE FORMATAÇÃO -- esses são apenas exemplos estruturais.
-    6. É estritamente proibido inventar ou criar URLs que não estejam no contexto fornecido.
+    prompt+= """
+    Instructions:
+    1. Return ONLY the YAML code of the Sigma rule.
+    2. Do not add explanations, greetings, or markdown formatting outside the code block.
+    3. Ensure that mandatory Sigma fields (title, logsource, detection, condition) are present.
+    4. In the 'references:' section, insert ONLY URLs that appear literally in the USER REQUEST or in the ADDITIONAL TECHNICAL CONTEXT.
+    5. Do not copy URLs from the FORMATTING TEMPLATE -- those are structural examples only.
+    6. It is strictly forbidden to invent or create URLs not present in the provided context.
+    7. All textual content of the rule (title, description, falsepositives, etc.) MUST be in English.
     """
 
     print(" -> Enviando contexto para a GPU...")
     resposta = llm.invoke(prompt)   #chama a LLM
     print(" -> Regra gerada.")
+    #print(f"\n--- REGRA GERADA (para debug) ---\n{resposta}\n--- FIM ---\n")
     return {"regra_gerada": resposta.content}
-            
+    
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # >>>>>>>>> NÓ 5 (VALIDADOR SINTÁTICO) <<<<<<<<<< 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -464,9 +470,15 @@ def criar_agente():
 if __name__ == '__main__':
     print("\nBem vindo ao Agente_Sigma!\n")
     agente_sigma = criar_agente()       #chama a função e guarda o resultado
-    entrada_terminal = input("Digite a entrada para a geração da regra ('s' para encerrar):\n")    
-    
-    if entrada_terminal.strip().lower() == 's' or not entrada_terminal.strip():
+    print("Type your prompt and end it with word 'END' in the last line. Type 'q' alone to quit.\n")    
+    linhas = []
+    while True:
+        linha = input()
+        if linha.strip() == "END":
+            break
+        linhas.append(linha)
+    entrada_terminal = "\n".join(linhas)
+    if entrada_terminal.strip().lower() == 'q' or not entrada_terminal.strip():
         print("Encerrando o agente. Até logo.\n")
         exit()
 
