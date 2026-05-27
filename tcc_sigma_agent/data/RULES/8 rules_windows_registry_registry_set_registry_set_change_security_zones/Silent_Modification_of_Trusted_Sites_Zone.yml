@@ -1,0 +1,26 @@
+title: Silent Modification of Trusted Sites Zone
+id: 803b01cb-e088-46d6-9b2d-411925d246fe
+status: test
+description: Detects silent modification of Trusted Sites zone by adding malicious domains to the Windows Registry
+references:
+    - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone
+author: Threat Hunter
+date: 2023-08-17
+modified: 2023-08-17
+tags:
+    - attack.defense-evasion
+    - attack.persistence
+logsource:
+    category: registry_set
+    product: windows
+detection:
+    selection:
+        TargetObject|endswith: '\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains\'
+        Details: 'DWORD (0x00000000 or 0x00000001 or Empty)'
+    filter_trusted_sites:
+        # Filter out legitimate environment configurations
+        Details: not in ['My Computer', 'Local Intranet Zone']
+    condition: selection and not 1 of filter_trusted_sites
+falsepositives:
+    - Legitimate admin script
+level: medium

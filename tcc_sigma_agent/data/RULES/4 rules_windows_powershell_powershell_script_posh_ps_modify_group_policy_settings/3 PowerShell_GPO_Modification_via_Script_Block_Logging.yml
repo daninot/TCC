@@ -1,7 +1,7 @@
-title: PowerShell GPO Modification Detection
-id: ac509b73-7b39-4a86-a855-b94d9f767214
+title: PowerShell GPO Modification via Script Block Logging
+id: af2a110b-ecb4-4758-b4c2-35edc22dbb39
 status: test
-description: Detects PowerShell script modifying Group Policy-related settings on a Windows host.
+description: Detects PowerShell script block logging modifying Group Policy-related settings.
 references:
     - https://github.com/redcanaryco/atomic-red-team/blob/40b77d63808dd4f4eafb83949805636735a1fd15/atomics/T1484.001/T1484.001.md
 author: Your Name
@@ -10,17 +10,17 @@ modified: 2023-02-20
 tags:
     - attack.privilege-escalation
     - attack.persistence
-    - attack.t1082
+    - attack.t1086
 logsource:
     service: security
     product: windows
 detection:
     selection1:
         ScriptBlockText|contains: 'HKLM\SOFTWARE\Policies\Microsoft\Windows'
-        ScriptBlockText|contains: 'SAMTHEADMIN-'
+        ScriptBlockText|contains: 'gpupdate /force'
     selection2:
-        ScriptBlockText|contains: 'HKCU\Software\Policies\Microsoft\Windows'
-        ScriptBlockText|contains: 'SAMTHEADMIN-'
+        ScriptBlockText|contains: 'HKCU\Software\Policies\Microsoft\Office'
+        ScriptBlockText|contains: 'DisableSmartScreen'
     condition: 1 of selection*
 falsepositives:
     - Unknown

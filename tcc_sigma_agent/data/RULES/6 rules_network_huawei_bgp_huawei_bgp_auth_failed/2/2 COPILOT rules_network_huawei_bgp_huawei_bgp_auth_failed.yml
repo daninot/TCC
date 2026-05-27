@@ -1,0 +1,25 @@
+title: Huawei BGP Authentication Failure Detected  
+id: 4a9f2c7d-6b3e-4e1a-9d2f-7c5a8e9b2f31  
+status: experimental  
+description: Detects authentication failures on the Border Gateway Protocol (BGP) service of Huawei network devices. Repeated failures may indicate brute-force attempts to hijack or manipulate routing, potentially enabling traffic interception, persistence on the routing fabric, or adversary-in-the-middle scenarios. Requires Huawei BGP logs to be enabled and ingested.  
+references:  
+  - [https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf](https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf)  
+author: Senior Threat Detection Engineer  
+date: 2026-05-26  
+tags:  
+  - attack.initial_access  
+  - attack.credential_access  
+  - attack.persistence  
+  - attack.t1040  
+logsource:  
+  product: huawei  
+  service: bgp  
+  category: network  
+detection:  
+  keywords|all:  
+    - "BGP"  
+    - "Authentication failed"  
+condition: keywords  
+falsepositives:  
+  - Misconfiguration of BGP authentication settings or mismatched keys between peers.  
+level: medium  

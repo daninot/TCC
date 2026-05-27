@@ -1,0 +1,85 @@
+title: Windows - PrintNightmare or Printer Bug via Spooler RPC (RPC Firewall)
+id: 9b3e5f2a-7c1d-4e88-b094-1a36c74f8d29
+status: test
+description: |
+    Detects two distinct Windows Print Spooler attack paths logged by the Zero
+    Networks RPC Firewall (RPCFWP event log), identified through opnum-level
+    inspection of MS-RPRN (sync) and MS-PAR (async) interfaces:
+
+    1. PrintNightmare (CVE-2021-34527) — RpcAddPrinterDriverEx (MS-RPRN, opnum 89)
+       or RpcAsyncAddPrinterDriver (MS-PAR). The attacker installs a malicious DLL
+       into C:\Windows\System32\spool\drivers\, which spoolsv.exe loads as SYSTEM,
+       achieving RCE or LPE. The MS-PAR variant bypasses patches that only blocked
+       the MS-RPRN path.
+
+    2. Printer Bug / SpoolSample (NTLM Coercion) — RpcRemoteFindFirstPrinterChange-
+       Notification (opnum 62) or its Ex variant (opnum 65). Forces the targeted
+       host (often a DC) to authenticate outbound to the attacker, exposing its
+       TGT or NTLM hash for relay, pass-the-hash, or DCSync follow-on attacks.
+
+    Native Windows logging (ETW, Event 5145, 5156) cannot provide opnum-level
+    visibility for these calls. The RPC Firewall is required to surface UUID,
+    Opnum, CallerAddr, and CallerPrincipalName in a single auditable event.
+
+    Prerequisite: Zero Networks RPC Firewall installed and auditing spoolsv.exe.
+    https://github.com/zeronetworks/rpcfirewall
+references:
+    - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527
+    - https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rprn/d42db7d5-f141-4466-8f47-0a4be14e2fc1
+    - https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-pan/e44d984c-07d3-414c-8ffc-f8c8ad8512a8
+    - https://github.com/jsecurity101/MSRPC-to-ATTACK/blob/ddd4608fe8684fcf2fcf9b48c5f0b3c28097f8a3/documents/MS-RPRN-PAR.md
+    - https://github.com/zeronetworks/rpcfirewall
+    - https://zeronetworks.com/blog/stopping-lateral-movement-via-the-rpc-firewall/
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.execution
+    - attack.privilege_escalation
+    - attack.lateral_movement
+    - attack.t1210      # Exploitation of Remote Services (PrintNightmare RCE)
+    - attack.t1547.012  # Boot/Logon Autostart: Print Processors (DLL persistence)
+    - attack.t1187      # Forced Authentication (Printer Bug NTLM coercion)
+logsource:
+    product: windows
+    service: rpcfirewall    # RPCFWP event log — Zero Networks RPC Firewall required
+detection:
+    selection_printnightmare_rprn:
+        # MS-RPRN synchronous path — the original PrintNightmare vector
+        InterfaceUuid: '12345678-1234-ABCD-EF00-0123456789AB'
+        Opnum: 89          # RpcAddPrinterDriverEx
+    selection_printnightmare_par:
+        # MS-PAR asynchronous path — bypasses MS-RPRN-only patches
+        InterfaceUuid: '76F03F96-CDFD-44FC-A22C-64950A001209'
+        # Opnum omitted: any call to the MS-PAR interface on spoolsv.exe is unusual
+        # and warrants investigation; add Opnum filter after baselining your env
+    selection_printer_bug:
+        # MS-RPRN NTLM coercion — SpoolSample / Printer Bug
+        InterfaceUuid: '12345678-1234-ABCD-EF00-0123456789AB'
+        Opnum|in:
+            - 62  # RpcRemoteFindFirstPrinterChangeNotification
+            - 65  # RpcRemoteFindFirstPrinterChangeNotificationEx
+    filter_local_loopback:
+        # Exclude local in-process or loopback calls from the same host
+        CallerAddr|startswith:
+            - '127.'
+            - '::1'
+    filter_legitimate_printservers:
+        # Tune: add your known print server / admin workstation IPs here
+        # to suppress legitimate remote driver installs by print admins
+        # CallerAddr:
+        #     - '10.10.1.50'   # Print server
+        #     - '10.10.1.51'   # Print admin workstation
+        CallerAddr: null   # placeholder — replace with known-good IPs
+    condition: (1 of selection_*) and not 1 of filter_*
+fields:
+    - InterfaceUuid
+    - Opnum
+    - CallerAddr
+    - CallerPrincipalName
+    - ProcessName
+    - Endpoint
+falsepositives:
+    - Legitimate remote printer driver installation by print server admins (opnum 89)
+    - Print monitoring tools using change notification subscriptions (opnums 62/65)
+    - Backup or management agents invoking spooler RPC methods for inventory
+level: high

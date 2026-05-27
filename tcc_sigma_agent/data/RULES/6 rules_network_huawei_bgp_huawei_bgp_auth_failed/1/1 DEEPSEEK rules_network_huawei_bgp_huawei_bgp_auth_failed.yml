@@ -1,0 +1,55 @@
+title: Missing or Failed BGP MD5 Authentication
+id: f6b33fea-4b35-4fba-93e5-792c0b6d808d
+status: experimental
+description: |
+    Detects missing MD5 digests or failed MD5 authentication on BGP sessions.
+    This may indicate a missing security configuration or a brute force attack
+    against the BGP routing protocol.
+references:
+    - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+    - https://attack.mitre.org/techniques/T1598/
+author: Detection Engineering
+date: 2024-05-24
+tags:
+    - attack.initial-access
+    - attack.t1598
+logsource:
+    product: juniper
+    service: bgp
+    definition: 'Requirements: Juniper BGP logs must be enabled and ingested.'
+detection:
+    keywords_juniper:
+        - ':179'     # BGP protocol port
+        - 'missing MD5 digest'
+    condition: keywords_juniper
+falsepositives:
+    - Legitimate BGP session misconfigurations.
+level: low
+---
+title: Missing or Failed BGP MD5 Authentication
+id: 77c62405-df7a-4e44-8590-cd7cbca198e4
+status: experimental
+description: |
+    Detects missing MD5 digests or failed MD5 authentication on BGP sessions.
+    This may indicate a missing security configuration or a brute force attack
+    against the BGP routing protocol.
+references:
+    - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+    - https://attack.mitre.org/techniques/T1598/
+author: Detection Engineering
+date: 2024-05-24
+tags:
+    - attack.initial-access
+    - attack.t1598
+logsource:
+    product: cisco
+    service: bgp
+    definition: 'Requirements: Cisco BGP logs must be enabled and ingested.'
+detection:
+    keywords_cisco:
+        - ':179'                # BGP protocol port
+        - 'IP-TCP-3-BADAUTH'    # Cisco specific error code
+    condition: keywords_cisco
+falsepositives:
+    - Legitimate BGP session misconfigurations.
+level: low

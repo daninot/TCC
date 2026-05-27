@@ -1,0 +1,45 @@
+title: PowerShell Group Policy Registry Modification
+id: c2d4f8a1-5b3e-4c9d-b7f2-4a6e1d3c8b25
+status: experimental
+description: >
+  Detects a PowerShell script block that simultaneously references the Group
+  Policy system registry hive and one or more known Group Policy value names.
+  This pattern matches the LockBit Black technique of modifying Group Policy
+  settings via PowerShell to tamper with SmartScreen enforcement or suppress
+  policy refresh intervals, thereby delaying or disabling legitimate security
+  controls. The detection correlates the target registry path with specific
+  policy value names; either indicator in isolation would produce excessive
+  noise, whereas both together are a high-confidence signal of intentional GPO
+  manipulation. Requires PowerShell Script Block Logging (Event ID 4104) to be
+  enabled on monitored endpoints.
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/40b77d63808dd4f4eafb83949805636735a1fd15/atomics/T1484.001/T1484.001.md
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.defense_evasion
+  - attack.privilege_escalation
+  - attack.t1484.001
+logsource:
+  category: ps_script
+  product: windows
+detection:
+  selection_gp_path:
+    ScriptBlockText|contains: '\SOFTWARE\Policies\Microsoft\Windows\System'
+  selection_gp_values:
+    ScriptBlockText|contains:
+      - 'GroupPolicyRefreshTimeDC'
+      - 'GroupPolicyRefreshTimeOffsetDC'
+      - 'GroupPolicyRefreshTime'
+      - 'GroupPolicyRefreshTimeOffset'
+      - 'EnableSmartScreen'
+      - 'ShellSmartScreenLevel'
+  condition: selection_gp_path and selection_gp_values
+falsepositives:
+  - Legitimate Group Policy administration scripts executed by domain
+    administrators to tune policy refresh intervals or configure SmartScreen
+    settings as part of a sanctioned change-management process.
+  - Endpoint management tooling (e.g., SCCM, Intune remediation scripts,
+    DSC configurations) that programmatically manages the same registry keys
+    as part of a documented baseline enforcement workflow.
+level: high
