@@ -1,0 +1,30 @@
+title: Suspicious Database SQL Query Keywords
+id: 48011c2e-bfde-4b15-99d6-fcf9742be941
+status: stable
+description: Detects suspicious SQL query keywords associated with database reconnaissance, exfiltration, or destructive activity, such as dropping tables, truncating data, or performing wildcard selections often observed during SQL injection or database takeover attempts. This rule requires database SQL query logging to be enabled.
+references:
+
+* [https://github.com/sqlmapproject/sqlmap](https://github.com/sqlmapproject/sqlmap)
+author: Senior Threat Detection Engineer
+date: 2026/05/29
+tags:
+* attack.collection
+* attack.impact
+* attack.t1190
+* attack.t1485
+logsource:
+category: database
+detection:
+keywords:
+* 'DROP TABLE'
+* 'DROP DATABASE'
+* 'TRUNCATE TABLE'
+* 'UNION SELECT'
+* 'SELECT * FROM'
+* 'information_schema'
+condition: keywords
+falsepositives:
+
+
+* Legitimate database administration tasks, database backup operations, schema migrations, and authorized vulnerability penetration testing.
+level: medium

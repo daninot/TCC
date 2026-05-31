@@ -1,0 +1,57 @@
+title: KEGTAP / SINGLEMALT Loader Activity Detection
+id: 1a2b3c4d-unc1878-kegtap-2026
+status: experimental
+description: Detects indicators of KEGTAP / SINGLEMALT loader campaigns (suspicious service installation with embedded PowerShell stagers, long encoded command lines, and outbound connections to likely C2 infrastructure).
+author: Security Analyst
+date: 2026/05/30
+references:
+  - https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html
+logsource:
+  product: windows
+  service: security
+  category: process_creation
+detection:
+  selection_service_install:
+    EventID:
+      - 7045
+    Image|contains:
+      - "powershell"
+      - "-EncodedCommand"
+      - "-enc"
+  selection_sysmon_powershell:
+    EventID:
+      - 1
+    CommandLine|contains:
+      - "-EncodedCommand"
+      - "-enc"
+      - "IEX"
+      - "Invoke-Expression"
+      - "FromBase64String"
+  selection_network_c2:
+    EventID:
+      - 5156
+      - 5157
+    DestinationPort:
+      - 80
+      - 443
+    DestinationIp|cidr:
+      - "REPLACE_WITH_THREAT_INTEL_C2_CIDR_1"
+  condition: (selection_service_install or selection_sysmon_powershell) and selection_network_c2
+fields:
+  - timestamp
+  - EventID
+  - ComputerName
+  - SubjectUserName
+  - Image
+  - CommandLine
+  - DestinationIp
+  - DestinationPort
+falsepositives:
+  - Legitimate administrative service installs using PowerShell
+  - Enterprise management tools that deploy encoded scripts
+level: high
+tags:
+  - attack.initial_access
+  - attack.command_and_control
+  - intrusion.UNC1878
+

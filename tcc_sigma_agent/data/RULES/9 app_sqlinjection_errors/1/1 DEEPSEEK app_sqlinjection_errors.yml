@@ -1,0 +1,35 @@
+title: Potential SQL Injection Error Detection
+id: 5f1e3a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b
+status: experimental
+description: Detects SQL injection attempts via database error messages in logs or responses, indicating potential reconnaissance or exploitation.
+references:
+  - http://www.sqlinjection.net/errors
+author: Sigma Rule Generator
+date: 2026-05-29
+tags:
+  - attack.initial-access
+  - attack.t1190
+logsource:
+  product: database
+  service: error_log
+detection:
+  selection_mysql:
+    message|contains:
+      - 'SQL syntax'
+      - 'MySQL server version'
+      - 'You have an error in your SQL syntax'
+      - '1064 - '
+  selection_mssql:
+    message|contains:
+      - 'Unclosed quotation mark'
+      - 'Msg \d+, Level \d+, State \d+, Line \d+'
+      - 'Incorrect syntax near'
+  selection_oracle:
+    message|contains:
+      - 'ORA-'
+      - 'quoted string not properly terminated'
+  condition: 1 of selection_*
+falsepositives:
+  - Legitimate application errors due to malformed user input or bugs.
+  - Internal testing or vulnerability scanning activities.
+level: medium

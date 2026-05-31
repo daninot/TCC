@@ -1,0 +1,40 @@
+title: Suspicious SQL Query Keywords Indicative of Reconnaissance or Destructive Activity  
+id: 2d8f4b6a-3c9e-4f1b-9a7d-5e2b6c8f0a12  
+status: experimental  
+description: Detects SQL queries that contain keywords commonly associated with reconnaissance, data exfiltration, or destructive activity against databases (for example: dropping or truncating tables, dumping contents, wildcard selection, or use of database-specific file export functions). Requires SQL query logging to be enabled and ingested (capture full query text).  
+references:  
+  - [https://github.com/sqlmapproject/sqlmap](https://github.com/sqlmapproject/sqlmap)  
+author: Senior Threat Detection Engineer  
+date: 2026-05-29  
+tags:  
+  - attack.initial_access  
+  - attack.exfiltration  
+  - attack.impact  
+  - attack.t1190  
+  - attack.t1485  
+logsource:  
+  product: sql  
+  category: database  
+  requirement: SQL query logging must be enabled (capture full query text at the database or proxy level) and forwarded to the logging pipeline.  
+detection:  
+  selection_query:  
+    Query|contains:  
+      - "DROP TABLE"  
+      - "TRUNCATE TABLE"  
+      - "DELETE FROM"  
+      - "SELECT *"  
+      - "UNION SELECT"  
+      - "INFORMATION_SCHEMA"  
+      - "INTO OUTFILE"  
+      - "LOAD_FILE("  
+      - "xp_cmdshell"  
+      - "SLEEP("  
+      - "BENCHMARK("  
+      - "pg_dump"  
+      - "mysqldump"  
+      - "sqlite_master"  
+      - "ATTACH DATABASE"  
+  condition: selection_query  
+falsepositives:  
+  - Legitimate administrative or maintenance queries (backups, analytics, schema migrations, monitoring queries) and authorized pentesting activity.  
+level: high

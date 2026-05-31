@@ -1,0 +1,67 @@
+title: SQL Injection Probe Detected via Database Engine Error Messages
+id: e1c7d4b3-2f8a-4e5c-b9d1-6a3f7e2c1b84
+status: experimental
+description: >
+  Detects characteristic database error messages in SQL application logs that
+  are emitted when an attacker probes an application for SQL injection
+  vulnerabilities. These errors are generated when malformed or deliberately
+  malicious SQL fragments are injected into user-supplied input, causing the
+  database engine to fail while parsing or executing the resulting statement.
+  The rule covers the four most prevalent database engines targeted by SQL
+  injection tools: MySQL, Microsoft SQL Server, Oracle, and SQLite. An attacker
+  will typically trigger a burst of these errors during the reconnaissance and
+  fingerprinting phases of an attack before switching to a successful payload.
+  Requires application error logs to be collected at LOG_LEVEL ERROR or above
+  and forwarded to the SIEM; logs at WARNING or DEBUG level are out of scope
+  and will not surface these events.
+references:
+  - http://www.sqlinjection.net/errors
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  product: sql
+  category: application
+  definition: >
+    Requirements: application error logging must be enabled at LOG_LEVEL ERROR
+    or above on the target database service and the resulting logs must be
+    ingested into the SIEM. Lower severity log levels (WARNING, INFO, DEBUG)
+    are not required and will not surface the error signatures this rule
+    relies on.
+detection:
+  keywords:
+    - 'You have an error in your SQL syntax'
+    - 'check the manual that corresponds to your MySQL server version'
+    - 'mysql_fetch_array() expects parameter'
+    - 'supplied argument is not a valid MySQL result'
+    - 'Warning: mysql_'
+    - 'Unclosed quotation mark after the character string'
+    - 'Incorrect syntax near'
+    - 'Microsoft OLE DB Provider for SQL Server'
+    - 'Microsoft SQL Native Client error'
+    - 'ODBC SQL Server Driver'
+    - 'Conversion failed when converting'
+    - 'ORA-00907'
+    - 'ORA-00933'
+    - 'ORA-01756'
+    - 'ORA-00936'
+    - 'ORA-00942'
+    - 'SQLite error'
+    - 'SQLite3::query()'
+    - 'unrecognized token'
+    - 'no such column'
+    - 'no such table'
+  condition: keywords
+falsepositives:
+  - Genuine application bugs or ORM misconfigurations that produce malformed
+    queries in development or staging environments, triggering the same error
+    classes without any malicious intent.
+  - Automated database health-check or integration-test suites that
+    intentionally exercise error-handling paths and generate transient SQL
+    errors as part of normal test execution.
+  - Schema migration tooling that produces syntax errors when applying patches
+    to a database engine version whose SQL dialect differs from the migration
+    script's target version.
+level: medium

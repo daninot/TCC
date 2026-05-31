@@ -1,0 +1,22 @@
+title: OpenCanary - SSH New Connection Attempt
+id: 4e2f1a3b-5c6d-4e7f-8a9b-0c1d2e3f4a5b
+status: experimental
+description: Detects a new SSH connection attempt to an OpenCanary honeypot, indicating potential network reconnaissance or unauthorized access.
+references:
+  - https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration
+  - https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52
+author: Senior Threat Detection Engineer
+date: 2026-05-29
+tags:
+  - attack.initial-access
+  - attack.t1021
+logsource:
+  product: opencanary
+  category: application
+detection:
+  selection:
+    logtype: 4000
+  condition: selection
+falsepositives:
+  - Unlikely
+level: high

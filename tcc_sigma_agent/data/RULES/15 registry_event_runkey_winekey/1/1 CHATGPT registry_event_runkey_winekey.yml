@@ -1,0 +1,40 @@
+title: Suspicious ANCHOR Style Scheduled Task Creation
+id: 6d5c4b6f-7d9e-4e9e-bc3a-2c7f2c3b9d14
+status: experimental
+description: >
+  Detects creation of scheduled tasks matching the ANCHOR persistence
+  pattern described in KEGTAP and SINGLEMALT intrusion activity.
+  Threat actors associated with ransomware operations were observed
+  creating scheduled tasks named "autoupdate#<number>" from randomly
+  generated APPDATA directories.
+references:
+  - https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html
+author: OpenAI
+date: 2026-05-30
+tags:
+  - attack.persistence
+  - attack.execution
+  - attack.t1053.005
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+    Image|endswith: '\schtasks.exe'
+  selection_create:
+    CommandLine|contains: '/create'
+  selection_task:
+    CommandLine|contains|all:
+      - 'autoupdate#'
+      - '\AppData\'
+  condition: all of selection_*
+fields:
+  - Image
+  - CommandLine
+  - ParentImage
+  - User
+  - Computer
+falsepositives:
+  - Legitimate software using similarly named scheduled tasks
+  - Administrative task automation in user profile paths
+level: high
