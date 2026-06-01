@@ -1,0 +1,27 @@
+title: WINEKEY and Team9 Backdoor Registry Run Key Persistence
+id: b61d84f2-98ab-40fe-b83c-1b73e51d9501
+status: stable
+description: Detects potential registry modification by the WINEKEY or Team9 backdoor, associated with ransomware campaigns, achieving persistence by creating a specific Run key entry disguised as a legitimate backup manager application.
+references:
+
+* [https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html](https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html)
+author: Senior Threat Detection Engineer
+date: 2026/05/31
+tags:
+* attack.persistence
+* attack.t1547.001
+logsource:
+product: windows
+category: registry_event
+detection:
+selection:
+TargetObject|endswith:
+* '\SOFTWARE\Microsoft\Windows\CurrentVersion\Run'
+* '\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'
+Details|contains: 'Backup Manager'
+condition: selection
+falsepositives:
+
+
+* Legitimate third-party backup manager software or tools creating automatic startup settings.
+level: high
