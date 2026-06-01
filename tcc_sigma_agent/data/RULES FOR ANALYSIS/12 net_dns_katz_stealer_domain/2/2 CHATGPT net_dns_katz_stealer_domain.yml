@@ -1,0 +1,28 @@
+title: DNS Queries to Katz Stealer Infrastructure
+id: 8b4d5a7d-6f7d-4d8d-9d59-cf46d5c8d2f1
+status: experimental
+description: Detects DNS queries for known Katz Stealer command-and-control and panel domains. DNS lookups to this infrastructure are a strong indicator of compromise or active malware communication. This rule relies on raw DNS query logging.
+references:
+
+* Internal research
+  author: OpenAI
+  date: 2026/05/30
+  tags:
+* attack.command-and-control
+* attack.t1071.004
+* threat.emerging
+  logsource:
+  category: dns
+  detection:
+  selection:
+  query|contains:
+
+  * 'katz-stealer.com'
+  * 'katzstealer.com'
+  * 'twist2katz.com'
+  * 'pub-ce02802067934e0eb072f69bf6427bf6.r2.dev'
+    condition: selection
+    falsepositives:
+* No common benign use is expected; possible matches may come from malware research, sandbox analysis, or controlled security testing.
+  level: high
+

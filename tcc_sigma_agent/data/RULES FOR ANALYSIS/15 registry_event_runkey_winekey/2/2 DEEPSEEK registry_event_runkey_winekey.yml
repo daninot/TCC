@@ -1,0 +1,21 @@
+title: WINEKEY or Team9 Backdoor Registry Persistence
+id: f47a3e8b-2c5d-4e6f-8a9b-0c1d2e3f4a5b
+status: experimental
+description: Detects potential malicious modification of Run keys by WINEKEY or Team9 backdoor, which creates a value named "BackUp Mgr" under the Run key to achieve persistence.
+references:
+  - https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html
+author: Senior Threat Detection Engineer
+date: 2026-05-31
+tags:
+  - attack.persistence
+  - attack.t1547.001
+logsource:
+  product: windows
+  category: registry_event
+detection:
+  selection:
+    TargetObject|endswith: '\Software\Microsoft\Windows\CurrentVersion\Run\BackUp Mgr'
+  condition: selection
+falsepositives:
+  - Unknown
+level: high

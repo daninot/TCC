@@ -1,0 +1,32 @@
+title: Database SQL Error Patterns Indicating SQL Injection Probing
+id: e2b604f8-132d-4bfb-b62e-d1961b7fcd2a
+status: stable
+description: Detects characteristic SQL database error messages within application logs. Attackers frequently trigger these specific error signatures when probing or fuzzing inputs to identify SQL injection vulnerabilities across different database engines (Oracle, MySQL, SQL Server, SQLite). This rule requires application error logs to be captured at LOG_LEVEL ERROR or higher.
+references:
+
+* [http://www.sqlinjection.net/errors](http://www.sqlinjection.net/errors)
+author: Senior Threat Detection Engineer
+date: 2026/05/29
+tags:
+* attack.initial_access
+* attack.t1190
+logsource:
+product: sql
+category: application
+detection:
+keywords:
+* 'ORA-00933: SQL command not properly ended'
+* 'ORA-00942: table or view does not exist'
+* 'ORA-01756: quoted string not properly terminated'
+* 'You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version'
+* 'unclosed quotation mark after the character string'
+* 'Driver]SQL Server]Unclosed quotation mark'
+* 'Microsoft OLE DB Provider for SQL Server'
+* 'OperationalError: near'
+* 'no such table:'
+condition: keywords
+falsepositives:
+
+
+* Poorly handled application queries, broken software deployments, or unhandled null inputs causing syntax exceptions during legitimate application development and testing.
+level: medium

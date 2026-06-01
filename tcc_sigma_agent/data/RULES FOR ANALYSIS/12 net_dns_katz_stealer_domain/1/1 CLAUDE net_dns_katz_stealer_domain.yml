@@ -1,0 +1,67 @@
+title: DNS - Katz Stealer C2 and Payload Hosting Domain Query Detected
+id: d5f2e8a1-3c94-4b67-a09e-8f1c7d4b6e25
+status: test
+description: |
+    Detects DNS queries to domains associated with Katz Stealer, a Malware-as-a-
+    Service (MaaS) credential and data stealer active since at least May 2025.
+    Classified by Microsoft as Trojan:Win64/KatzStealer.RH!MTB (Severity: Severe).
+
+    The three monitored domains serve distinct roles in the kill chain:
+      1. katz-stealer.com  — Primary C2 and MaaS control panel domain.
+      2. twist2katz.com    — Hosts Discord backdoor code retrieved via HTTPS
+                             by the injected payload for process hijacking.
+      3. pub-ce02802067934e0eb072f69bf6427bf6.r2.dev — Cloudflare R2 bucket
+                             used to host the .NET stage-3 payload, downloaded by
+                             the in-memory .NET Reflection loader before injection
+                             into MSBuild.exe via Process Hollowing.
+
+    Infection vector: phishing emails, fake software downloads, malicious ads,
+                      and search-result manipulation delivering gzip-embedded JS.
+    Targets: Chrome, Edge, Brave, Firefox credentials/cookies/tokens; 154+
+             crypto wallet extensions; Discord, Telegram, Slack, Teams; Outlook
+             PST/OST; Steam; WiFi/VPN/FTP credentials; clipboard contents.
+
+    A DNS match is a high-fidelity indicator: no legitimate enterprise software
+    has reason to resolve these domains. Any match warrants immediate host
+    isolation and forensic investigation.
+references:
+    - https://www.nextron-systems.com/2025/05/23/katz-stealer-threat-analysis/
+    - https://www.picussecurity.com/resource/blog/understanding-katz-stealer-malware-and-its-credential-theft-capabilities
+    - https://cybersecsentinel.com/katz-stealer-malware-targets-browsers-wallets-and-messaging-platforms/
+    - https://attack.mitre.org/techniques/T1071/001/
+    - https://attack.mitre.org/techniques/T1041/
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.command_and_control
+    - attack.t1071.001   # Application Layer Protocol: Web (C2 over HTTPS)
+    - attack.exfiltration
+    - attack.t1041       # Exfiltration Over C2 Channel
+    - attack.execution
+    - attack.t1055.012   # Process Injection: Process Hollowing (MSBuild)
+logsource:
+    category: dns_query
+    product: windows
+detection:
+    selection_c2_domains:
+        # Primary C2 and Discord backdoor domains
+        # endswith catches apex domain AND any subdomains (api., www., cdn., etc.)
+        QueryName|endswith:
+            - 'katz-stealer.com'   # primary C2 / MaaS panel
+            - 'twist2katz.com'     # Discord backdoor code host
+    selection_payload_r2:
+        # Cloudflare R2 bucket hosting stage-3 .NET payload
+        # The 32-char hex prefix is unique — contains is safe against r2.dev FPs
+        QueryName|contains: 'pub-ce02802067934e0eb072f69bf6427bf6'
+    condition: 1 of selection_*
+fields:
+    - QueryName
+    - QueryResults
+    - Image
+    - ProcessId
+    - User
+falsepositives:
+    - Threat intelligence platforms performing automated IOC reputation lookups
+    - Security researchers analysing Katz Stealer samples in isolated lab networks
+    - Malware sandboxes detonating samples (should be network-isolated)
+level: high

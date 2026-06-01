@@ -1,0 +1,51 @@
+The `LOG_SSH_LOGIN_ATTEMPT` constant is confirmed as `4002` in OpenCanary's logger.py, and a real SSH login event log entry shows `"logtype": 4002` alongside fields such as `src_host`, `dst_port`, `honeycred`, and `logdata` containing `USERNAME` and `PASSWORD`.
+
+title: OpenCanary SSH Honeypot Login Attempt
+id: h1d4b3e2-7f9a-4c5d-b8e1-3a6f2c1d7e94
+status: stable
+description: >
+  Detects an SSH authentication attempt against an OpenCanary honeypot node,
+  identified by the native OpenCanary logtype value 4002
+  (LOG_SSH_LOGIN_ATTEMPT). OpenCanary is a modular deception honeypot that
+  emulates common network services; it has no legitimate operational purpose
+  and no authorised user should ever attempt to authenticate against it.
+  Any SSH login attempt directed at an OpenCanary node therefore constitutes
+  an unambiguous indicator of malicious or unauthorised activity. Typical
+  scenarios include: (1) an external attacker who has identified the decoy
+  host during reconnaissance and is testing credentials for initial access;
+  (2) an internal threat actor or already-compromised host performing lateral
+  movement via credential stuffing or brute-force against an internal SSH
+  listener; (3) automated scanning tooling whose scope has inadvertently or
+  intentionally reached the honeypot subnet. Each event carries the source IP,
+  destination port, and plaintext credentials submitted by the attacker in the
+  logdata fields (USERNAME, PASSWORD), making it immediately actionable for
+  both triage and threat intelligence enrichment. The honeycred field indicates
+  whether the submitted credential matched a configured canary credential, which
+  further elevates severity when true.
+references:
+  - https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration
+  - https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.initial_access
+  - attack.lateral_movement
+  - attack.persistence
+  - attack.credential_access
+  - attack.defense_evasion
+  - attack.t1110
+  - attack.t1021
+  - attack.t1078
+  - attack.t1133
+logsource:
+  category: application
+  product: opencanary
+detection:
+  selection:
+    logtype: 4002
+  condition: selection
+falsepositives:
+  - Authorized red-team or penetration-testing exercises where the rules of
+    engagement explicitly include interaction with honeypot infrastructure
+    and the source IP has been pre-approved and documented.
+level: high

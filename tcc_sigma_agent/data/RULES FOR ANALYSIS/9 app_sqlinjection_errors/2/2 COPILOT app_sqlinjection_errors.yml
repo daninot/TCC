@@ -1,0 +1,32 @@
+title: SQL Error Messages Indicative of SQL Injection Probing  
+id: 1f3b9a2e-8c4d-4f6a-9b2e-3d7c5a1e9b44  
+status: experimental  
+description: Detects application error log entries containing SQL engine error messages commonly triggered by SQL injection probing. Attackers often elicit these errors while testing payloads against different database engines (Oracle, MySQL, SQL Server, SQLite). Requires application error logs at LOG_LEVEL ERROR or above to be ingested.  
+references:  
+  - [http://www.sqlinjection.net/errors](http://www.sqlinjection.net/errors)  
+author: Senior Threat Detection Engineer  
+date: 2026-05-29  
+tags:  
+  - attack.initial_access  
+  - attack.t1190  
+logsource:  
+  product: sql  
+  category: application  
+  requirement: Application error logs must be collected at LOG_LEVEL ERROR or higher.  
+detection:  
+  selection_loglevel:  
+    LogLevel: "ERROR"  
+  keywords|contains:  
+    - "You have an error in your SQL syntax"  
+    - "Warning: mysql_"  
+    - "SQLSTATE["  
+    - "ORA-"  
+    - "Unclosed quotation mark after the character string"  
+    - "Incorrect syntax near"  
+    - "SQLite3::SQLException"  
+    - "SQLITE_ERROR"  
+    - "near \"SELECT\""  
+  condition: selection_loglevel and keywords  
+falsepositives:  
+  - Application bugs, malformed queries, or developer testing that legitimately produce SQL error messages.  
+level: medium

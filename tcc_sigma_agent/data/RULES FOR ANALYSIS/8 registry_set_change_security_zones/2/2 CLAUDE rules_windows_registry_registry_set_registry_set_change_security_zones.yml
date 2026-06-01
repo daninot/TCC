@@ -1,0 +1,44 @@
+title: Malicious Domain Added to Internet Explorer Trusted Sites Zone via Registry
+id: b8e4d3f2-6a1c-4e7b-9f3d-2c5a8b7e4f91
+status: experimental
+description: >
+  Detects registry write operations that add a domain entry under the Internet
+  Explorer ZoneMap Domains hive with a zone assignment that is neither My
+  Computer (zone 0) nor Local Intranet (zone 1) and is not an empty value.
+  Adversaries abuse this registry path to silently promote attacker-controlled
+  domains to the Trusted Sites security zone (zone 2), which disables
+  IE Protected Mode, allows automatic authentication, and permits ActiveX and
+  scripted content to execute with reduced restrictions — enabling credential
+  theft, drive-by execution, and defense evasion. This technique is commonly
+  used to pre-stage phishing infrastructure, C2 domains, or malicious update
+  servers so that they are implicitly trusted when visited by the victim.
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.defense_evasion
+  - attack.persistence
+  - attack.t1112
+logsource:
+  category: registry_set
+  product: windows
+detection:
+  selection:
+    TargetObject|contains: '\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains\'
+  filter_legitimate_zones:
+    Details:
+      - 'DWORD (0x00000000)'
+      - 'DWORD (0x00000001)'
+      - '(Empty)'
+  condition: selection and not filter_legitimate_zones
+falsepositives:
+  - Enterprise Group Policy or endpoint management tooling (e.g., SCCM, Intune,
+    Ansible) that legitimately populates the ZoneMap\Domains hive as part of a
+    documented intranet or proxy configuration baseline.
+  - Browser-helper or SSO software (e.g., Kerberos integrated-auth agents,
+    corporate portal installers) that programmatically adds internal hostnames
+    to the Trusted Sites zone during installation or profile provisioning.
+  - Administrators manually configuring ZoneMap entries for internal web
+    applications that require zone-aware authentication.
+level: high

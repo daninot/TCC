@@ -1,0 +1,41 @@
+title: Kerberos Golden Ticket Detection
+id: 7c2f9e8a-4d1e-11ef-9a2d-0242ac120002
+status: experimental
+description: Detects potential Kerberos Golden Ticket usage in Active Directory by monitoring suspicious ticket requests and anomalies.
+author: Copilot
+date: 2026/05/25
+references:
+  - https://adsecurity.org/?p=3458
+logsource:
+  product: windows
+  service: security
+  category: authentication
+detection:
+  selection_ticket_anomalies:
+    EventID:
+      - 4769   # Kerberos service ticket requested
+      - 4771   # Kerberos pre-authentication failed
+      - 4624   # Successful logon
+    TicketEncryptionType:
+      - "0x17"   # RC4-HMAC (legacy, often abused in Golden Tickets)
+    ServiceName|contains:
+      - "$"      # Computer accounts targeted
+  selection_suspicious_accounts:
+    AccountName|contains:
+      - "krbtgt"
+  condition: selection_ticket_anomalies or selection_suspicious_accounts
+fields:
+  - timestamp
+  - EventID
+  - AccountName
+  - ServiceName
+  - TicketEncryptionType
+  - IPAddress
+falsepositives:
+  - Legacy systems using RC4 encryption
+  - Misconfigured service accounts
+level: critical
+tags:
+  - attack.credential_access
+  - attack.t1558.001
+

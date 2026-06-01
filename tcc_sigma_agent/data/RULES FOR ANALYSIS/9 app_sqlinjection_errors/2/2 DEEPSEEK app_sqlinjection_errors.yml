@@ -1,0 +1,38 @@
+title: SQL Injection Error Messages
+id: 7b6c4d8e-9f0a-1b2c-3d4e-5f6a7b8c9d0e
+status: experimental
+description: Detects SQL error messages in application logs that indicate probing for SQL injection attacks. Attackers commonly trigger these errors while testing payloads against different database engines (Oracle, MySQL, SQL Server, SQLite). Requires application error logs to be collected at LOG_LEVEL ERROR and above.
+references:
+  - http://www.sqlinjection.net/errors
+author: Senior Threat Detection Engineer
+date: 2026-05-29
+tags:
+  - attack.initial-access
+  - attack.t1190
+  - attack.credential-access
+  - attack.t1528
+logsource:
+  product: sql
+  category: application
+detection:
+  keywords:
+    - Message|contains: 'You have an error in your SQL syntax'
+    - Message|contains: 'Unclosed quotation mark'
+    - Message|contains: 'quoted string not properly terminated'
+    - Message|contains: 'Incorrect syntax near'
+    - Message|contains: 'Conversion failed when converting'
+    - Message|contains: 'ORA-'
+    - Message|contains: 'invalid identifier'
+    - Message|contains: 'ERROR: syntax error at or near'
+    - Message|contains: 'ERROR: column'
+    - Message|contains: 'operator does not exist'
+    - Message|contains: 'SQLite error'
+    - Message|contains: 'SqliteError'
+    - Message|contains: 'OperationalError'
+    - Message|contains: 'near "?": syntax error'
+    - Message|contains: 'unterminated quoted string'
+  condition: keywords
+falsepositives:
+  - Syntax errors in non-dynamic (safe) queries, for example due to an empty `in()` clause
+  - Legitimate application errors that expose verbose database messages during development or misconfiguration
+level: medium

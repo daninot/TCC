@@ -1,0 +1,32 @@
+title: Kerberoasting Activity - Initial Query
+id: ecb17d56-6445-4bfd-84ee-b04c7221ed54
+status: test
+description: |
+    This rule will collect the data needed to start looking into possible kerberoasting activity.
+    Further analysis or computation within the query is needed focusing on requests from one specific host/IP towards multiple service names within a time period of 5 seconds.
+    You can then set a threshold for the number of requests and time between the requests to turn this into an alert.
+references:
+    - https://adsecurity.org/?p=3513
+author: '@kostastsale'
+date: 2022-01-21
+modified: 2025-10-19
+tags:
+    - attack.credential-access
+    - attack.t1558.003
+logsource:
+    product: Zeek
+    service: kerberos
+detection:
+    selection:
+        krb_tgs_type: TGS_REQ
+        ticket_encryption_type: '0x17'
+    filter_main_krbtgt:
+        service_name|endswith:
+            - 'krbtgt' # Ignore requests for the krbtgt service
+            - '$' # Ignore requests from service names that end with $ which are associated with genuine kerberos traffic
+    filter_main_machine_accounts:
+        target_username|contains: '$@' # Ignore requests from machines
+    condition: selection and not 1 of filter_main_*
+falsepositives:
+    - Legacy applications.
+level: medium

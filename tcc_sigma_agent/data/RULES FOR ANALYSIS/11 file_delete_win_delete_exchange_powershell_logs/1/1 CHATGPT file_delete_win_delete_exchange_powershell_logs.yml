@@ -1,0 +1,27 @@
+title: Exchange PowerShell Cmdlet History Deleted
+id: 4a1d4e86-6d76-4c3f-9d8d-8a4d0d6c1a7b
+status: test
+description: Detects the deletion of Exchange PowerShell cmdlet history logs which may indicate an attempt to destroy forensic evidence.
+references:
+  - https://m365internals.com/2022/10/07/hunting-in-on-premises-exchange-server-logs/
+author: OpenAI
+date: 2026-05-30
+tags:
+  - attack.defense_evasion
+  - attack.t1070
+logsource:
+  category: file_delete
+  product: windows
+detection:
+  selection:
+    TargetFilename|startswith: '\Logging\CmdletInfra\LocalPowerShell\Cmdlet\'
+    TargetFilename|contains: '_Cmdlet_'
+  condition: selection
+fields:
+  - TargetFilename
+  - Image
+  - User
+  - Computer
+falsepositives:
+  - Log rotation or maintenance tasks
+level: high

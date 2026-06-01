@@ -1,0 +1,30 @@
+title: PowerShell Script Modifying Group Policy Settings  
+id: 5f7b3c2d-9a4e-4c6d-8f2b-1d9e7a6b3c21  
+status: experimental  
+description: Detects PowerShell scripts that modify Group Policy-related settings via registry changes. Adversaries may abuse GPO modifications to disable security controls, escalate privileges, or persist in the environment. Requires PowerShell Script Block Logging to be enabled.  
+references:  
+  - [https://github.com/redcanaryco/atomic-red-team/blob/40b77d63808dd4f4eafb83949805636735a1fd15/atomics/T1484.001/T1484.001.md](https://github.com/redcanaryco/atomic-red-team/blob/40b77d63808dd4f4eafb83949805636735a1fd15/atomics/T1484.001/T1484.001.md)  
+author: Senior Threat Detection Engineer  
+date: 2026-05-25  
+tags:  
+  - attack.persistence  
+  - attack.defense_evasion  
+  - attack.t1484.001  
+logsource:  
+  product: windows  
+  category: ps_script  
+detection:  
+  selection_registry:  
+    ScriptBlockText|contains:  
+      - "HKLM\\Software\\Policies\\Microsoft\\Windows"  
+      - "HKCU\\Software\\Policies\\Microsoft\\Windows"  
+  selection_policy:  
+    ScriptBlockText|contains:  
+      - "EnableSmartScreen"  
+      - "DisableCMD"  
+      - "DisableRegistryTools"  
+      - "GroupPolicyRefreshInterval"  
+  condition: selection_registry and selection_policy  
+falsepositives:  
+  - Legitimate administrative activity modifying Group Policy settings for enterprise configuration management.  
+level: high  

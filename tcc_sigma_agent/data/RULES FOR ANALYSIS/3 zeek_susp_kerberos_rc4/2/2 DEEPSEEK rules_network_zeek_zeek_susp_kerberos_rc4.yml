@@ -1,0 +1,25 @@
+title: Kerberos TGS Request with RC4 Encryption (Potential Kerberoasting)
+id: 6f2b8a9c-1d3e-4f5a-9b7c-8d1e2f3a4b5c
+status: experimental
+description: Detects Kerberos Ticket-Granting Service (TGS) requests that use the weak RC4 encryption algorithm, which is a classic indicator of a Kerberoasting attack where adversaries request service tickets encrypted with RC4 to crack service account passwords offline.
+references:
+  - https://adsecurity.org/?p=3458
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.credential-access
+  - attack.t1558.003
+logsource:
+  product: zeek
+  service: kerberos
+detection:
+  selection:
+    request_type: "TGS-REQ"
+    cipher: "rc4-hmac"
+  exclude:
+    client|endswith: "$"
+  condition: selection and not exclude
+falsepositives:
+  - Legitimate TGS requests for service accounts that require RC4 due to legacy compatibility
+  - Normal enterprise SPN activity involving older service accounts or applications
+level: medium

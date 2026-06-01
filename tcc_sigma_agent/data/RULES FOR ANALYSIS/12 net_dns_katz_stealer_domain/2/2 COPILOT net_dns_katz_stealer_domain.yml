@@ -1,0 +1,29 @@
+title: DNS Query To Katz Stealer Domains  
+id: 9f1b2c3d-4a5e-4f6b-8c7d-1e2f3a4b5c6d  
+status: experimental  
+description: Detects DNS queries to domains associated with Katz Stealer malware. DNS lookups to Katz infrastructure in enterprise environments strongly indicate compromise or active command-and-control/exfiltration. Requires DNS query logging (query name) to be enabled and ingested.  
+references:  
+  - Internal research  
+author: Senior Threat Detection Engineer  
+date: 2026-05-30  
+tags:  
+  - attack.command-and-control  
+  - attack.t1071.004  
+  - detection.emerging-threats  
+logsource:  
+  product: dns  
+  category: dns  
+  requirement: DNS query logging must be enabled and include the full queried domain name (query field).  
+detection:  
+  selection:  
+    query|contains:  
+      - "katz-panel.com"  
+      - "katz-stealer.com"  
+      - "katzstealer.com"  
+      - "twist2katz.com"  
+      - "twist2katz"  
+      - "pub-ce02802067934e0eb072f69bf6427bf6.r2.dev"  
+  condition: selection  
+falsepositives:  
+  - Internal or partner infrastructure, developer/test environments, or benign lookups to similarly named domains; verify with asset owners before remediation.  
+level: high

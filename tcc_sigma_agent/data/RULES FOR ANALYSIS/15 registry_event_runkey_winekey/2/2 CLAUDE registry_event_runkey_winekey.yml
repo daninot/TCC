@@ -1,0 +1,42 @@
+title: WINEKEY or Team9 Backdoor Persistence via Run Key Backup Mgr
+id: d8f3a1c7-2b9e-4d5f-a6b3-1c7e4d2f8a35
+status: stable
+description: >
+  Detects the creation or modification of a Windows registry Run key entry
+  named "Backup Mgr" under the CurrentVersion\Run hive, a persistence
+  mechanism documented as characteristic of the WINEKEY backdoor (also
+  tracked as CORKBOT, BazarBackdoor, and Team9). WINEKEY is a post-compromise
+  backdoor deployed as part of a ransomware-enabling kill chain alongside the
+  KEGTAP/BazarLoader dropper and, in some intrusions, the ANCHOR backdoor.
+  Mandiant (formerly FireEye) observed this family being used throughout 2020
+  in campaigns that culminated in the deployment of Ryuk and Conti ransomware,
+  sometimes within 24 hours of initial access. The Run key value name "Backup
+  Mgr" is chosen to masquerade as a legitimate backup management application,
+  blending into the noise of enterprise startup entries. The endswith modifier
+  on TargetObject covers both HKCU and HKLM hive paths, as well as per-user
+  paths logged under HKU\<SID>, ensuring full coverage regardless of which
+  hive the malware targets on a given host.
+references:
+  - https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.persistence
+  - attack.defense_evasion
+  - attack.t1547.001
+  - attack.t1112
+logsource:
+  category: registry_event
+  product: windows
+detection:
+  selection:
+    TargetObject|endswith: '\Software\Microsoft\Windows\CurrentVersion\Run\Backup Mgr'
+  condition: selection
+falsepositives:
+  - A legitimate third-party backup management application that happens to
+    register itself under the exact Run key name "Backup Mgr" during
+    installation. This is considered highly unlikely given the specificity
+    of the value name; any match should be investigated and the backing
+    executable verified against a known-good application catalogue before
+    being dismissed.
+level: high

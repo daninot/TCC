@@ -1,0 +1,48 @@
+title: Suspicious sqlmap User-Agent in HTTP Requests
+id: 2d6b4f2b-1f0f-4b5a-9c7e-5ef4e7d2e3d1
+status: experimental
+description: Detects HTTP requests using the default sqlmap User-Agent string or a closely related sqlmap identifier. sqlmap is an open source penetration testing tool used to automate SQL injection detection and exploitation.
+references:
+
+https://github.com/sqlmapproject/sqlmap
+https://github.com/sqlmapproject/sqlmap/wiki/Usage
+author: OpenAI
+date: 2026-05-29
+tags:
+attack.initial_access
+attack.t1190
+attack.reconnaissance
+logsource:
+category: webserver
+detection:
+selection_useragent_1:
+UserAgent|contains:
+'sqlmap'
+'sqlmap.org'
+selection_useragent_2:
+user_agent|contains:
+'sqlmap'
+'sqlmap.org'
+selection_useragent_3:
+http_user_agent|contains:
+'sqlmap'
+'sqlmap.org'
+selection_useragent_4:
+cs(User-Agent)|contains:
+'sqlmap'
+'sqlmap.org'
+condition: 1 of selection_useragent_*
+fields:
+src_ip
+dest_ip
+url
+method
+UserAgent
+user_agent
+http_user_agent
+cs(User-Agent)
+falsepositives:
+Authorized security testing
+Internal vulnerability assessments
+Red team exercises
+level: medium

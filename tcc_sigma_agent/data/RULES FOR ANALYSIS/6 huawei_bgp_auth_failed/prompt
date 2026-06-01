@@ -1,0 +1,47 @@
+You are a Senior Threat Detection Engineer. Produce ONE valid SIGMA rule in YAML,
+following the specification at https://sigmahq.io/docs/basics/rules.html.
+
+# Threat to detect
+Authentication failures on the Border Gateway Protocol (BGP) service of a Huawei
+network device. Repeated BGP authentication failures can indicate brute-force
+attempts to hijack or manipulate routing — a high-impact attack that may enable
+traffic interception, persistence on the routing fabric, or downstream
+adversary-in-the-middle scenarios.
+
+# Target environment
+- Product: Huawei (network equipment)
+- Log source service: BGP
+- Requires Huawei BGP logs to be enabled and ingested — mention this requirement
+  in the rule.
+- The log format is unstructured / free-text, not a structured event with named
+  fields. Detection must therefore rely on keyword matching against the raw log
+  content, requiring ALL of the chosen indicators to be present simultaneously
+  in the same log entry.
+- The indicators that characterize this event are: (a) a marker identifying the
+  BGP protocol/port and (b) the textual error signature emitted by the device
+  when BGP authentication fails.
+
+# Authoritative references (use these to ground the technical context — do NOT
+invent any):
+- https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+
+# Requirements
+1. Include all mandatory fields: title, id (fresh UUIDv4), status, description,
+   references, author, date, tags, logsource, detection, falsepositives, level.
+2. `references` must contain ONLY the URL above.
+3. `detection` must use a keyword-style block (no structured field names),
+   appropriate for unstructured network-device logs, and must require ALL
+   indicators to co-occur (use the SIGMA `'|all'` modifier on the keyword list).
+4. Map the behavior to MITRE ATT&CK and place the tactic(s)/technique(s) in
+   `tags` using the format `attack.<tactic>` and `attack.t<technique_id>`.
+   Consider that brute-force authentication against a routing protocol can
+   map to multiple tactics (initial access, credential access, persistence,
+   among others) — include the relevant ones.
+5. `falsepositives` should acknowledge that misconfiguration is the main
+   non-malicious cause.
+6. `level` must reflect that, while the behavior is suspicious, isolated BGP
+   authentication failures are common in real networks and produce a noisy
+   baseline.
+
+# Output
+Return ONLY the YAML. No markdown fences, no explanations, no extra text.

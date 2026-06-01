@@ -1,0 +1,37 @@
+title: Suspicious SQL Query Keywords for Reconnaissance or Destructive Activity
+id: 0d8d2d69-1ef2-4a6e-8d9f-3bb7c9e1f2c4
+status: stable
+description: Detects suspicious SQL query keywords commonly associated with database reconnaissance, data dumping, or destructive activity such as dropping or truncating tables. SQL query logging must be enabled for this detection to function.
+references:
+
+* [https://github.com/sqlmapproject/sqlmap](https://github.com/sqlmapproject/sqlmap)
+  author: OpenAI
+  date: 2026/05/29
+  tags:
+* attack.discovery
+* attack.exfiltration
+* attack.impact
+* attack.t1190
+  logsource:
+  category: database
+  detection:
+  keywords:
+  query|contains:
+
+  * 'union select'
+  * 'information_schema'
+  * 'select *'
+  * 'drop table'
+  * 'truncate table'
+  * 'into outfile'
+  * 'load_file('
+  * 'xp_cmdshell'
+  * 'benchmark('
+  * 'sleep('
+  * 'dumpfile'
+    condition: keywords
+    falsepositives:
+* Legitimate administrative queries and database maintenance tasks.
+* Application debugging or development activity using verbose SQL logging.
+* Security testing and authorized assessment tooling.
+  level: medium

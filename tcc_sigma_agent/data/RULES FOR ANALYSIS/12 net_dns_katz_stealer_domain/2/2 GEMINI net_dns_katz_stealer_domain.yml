@@ -1,0 +1,27 @@
+title: DNS Queries to Katz Stealer Infrastructure
+id: 5c8a2b5e-ef1c-4b36-9a2f-cd768fe2547b
+status: experimental
+description: Detects DNS queries to domains associated with Katz Stealer infrastructure used for command-and-control (C2) or malware management panels.
+references:
+
+* 'Internal research'
+author: Senior Threat Detection Engineer
+date: 2026/05/30
+tags:
+* attack.command_and_control
+* attack.t1071.004
+* threat.emerging_threat
+logsource:
+category: dns
+detection:
+selection:
+query|contains:
+* 'twist2katz.com'
+* 'katz-stealer.com'
+* 'katzstealer.com'
+condition: selection
+falsepositives:
+
+
+* None known, as these domains are exclusively linked to malicious activities.
+level: critical

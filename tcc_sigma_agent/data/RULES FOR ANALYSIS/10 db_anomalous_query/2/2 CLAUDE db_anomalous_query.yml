@@ -1,0 +1,87 @@
+title: Suspicious SQL Keywords Indicating Injection Reconnaissance Exfiltration or Destruction
+id: c4a7d2f8-9b3e-4c1d-a5f7-8e2b6d1c3a49
+status: experimental
+description: >
+  Detects SQL queries in database logs that contain keywords characteristic of
+  SQL injection reconnaissance, data exfiltration, or destructive operations as
+  executed by automated tools such as sqlmap. The keywords span four attack
+  categories: (1) schema and metadata enumeration via information_schema,
+  sysobjects, sqlite_master, and equivalent system catalog objects; (2) data
+  exfiltration via UNION-based injection, file-write sinks (INTO OUTFILE /
+  INTO DUMPFILE), and file-read primitives (LOAD_FILE, OPENROWSET, BULK INSERT);
+  (3) time-delay blind injection probes (WAITFOR DELAY, SLEEP, BENCHMARK,
+  pg_sleep) used to confirm vulnerability without visible output; and
+  (4) destructive operations (DROP TABLE, DROP DATABASE, TRUNCATE TABLE) that
+  indicate an attacker escalating from reconnaissance to impact. Requires SQL
+  query logging to be enabled on the target database engine at the appropriate
+  logging level: general_log for MySQL, Unified Auditing or Traditional Auditing
+  for Oracle, Trace / Extended Events / Audit for SQL Server, and query-log for
+  PostgreSQL. Without query-level logging enabled, this rule will produce no
+  events.
+references:
+  - https://github.com/sqlmapproject/sqlmap
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.initial_access
+  - attack.collection
+  - attack.impact
+  - attack.t1190
+  - attack.t1213
+  - attack.t1485
+logsource:
+  category: database
+  product: sql
+  definition: >
+    Requirements: SQL query logging must be enabled on the monitored database
+    instance and forwarded to the SIEM. For MySQL, enable general_log or the
+    slow_query_log. For SQL Server, enable SQL Server Audit, Extended Events,
+    or C2 trace. For Oracle, enable Unified Auditing or the traditional
+    AUDIT statement. For PostgreSQL, set log_statement = 'all' or 'ddl' in
+    postgresql.conf. Environments with query logging disabled will not surface
+    the events this rule depends on.
+detection:
+  keywords:
+    - 'information_schema.tables'
+    - 'information_schema.columns'
+    - 'information_schema.schemata'
+    - 'sys.tables'
+    - 'sys.columns'
+    - 'sysobjects'
+    - 'syscolumns'
+    - 'all_tables'
+    - 'all_columns'
+    - 'sqlite_master'
+    - 'SHOW TABLES'
+    - 'SHOW DATABASES'
+    - 'SHOW COLUMNS'
+    - 'UNION SELECT'
+    - 'UNION ALL SELECT'
+    - 'INTO OUTFILE'
+    - 'INTO DUMPFILE'
+    - 'LOAD_FILE('
+    - 'OPENROWSET('
+    - 'BULK INSERT'
+    - 'xp_cmdshell'
+    - 'EXEC master..'
+    - 'WAITFOR DELAY'
+    - 'SLEEP('
+    - 'BENCHMARK('
+    - 'pg_sleep'
+    - 'DROP TABLE'
+    - 'DROP DATABASE'
+    - 'TRUNCATE TABLE'
+  condition: keywords
+falsepositives:
+  - Database administrators running legitimate schema inspection queries
+    against information_schema or system catalog objects during maintenance,
+    migration, or auditing work.
+  - ORM frameworks and database migration tooling (e.g., Flyway, Liquibase,
+    Alembic, Entity Framework) that introspect information_schema or issue
+    DDL statements such as DROP TABLE and TRUNCATE TABLE as part of
+    schema versioning or test-fixture teardown.
+  - Performance and monitoring agents that periodically query sys.tables,
+    sysobjects, or equivalent catalog views to collect database health metrics.
+  - Authorized penetration tests or red-team exercises operating under a
+    documented rules of engagement.
+level: medium

@@ -1,0 +1,28 @@
+title: Suspicious Mailbox Export Request
+id: 7a2e1c4d-5b6f-4a8b-9c0d-1e2f3a4b5c6d
+status: experimental
+description: Detects usage of the PowerShell New-MailboxExportRequest cmdlet to export a mailbox to an atypical directory or with an aspx file suffix, indicating potential data exfiltration or webshell staging on an Exchange Server.
+references:
+  - https://m365internals.com/2022/10/07/hunting-in-on-premises-exchange-server-logs/
+  - https://blog.orange.tw/2021/08/proxylogon-a-new-attack-surface-on-ms-exchange-part-1.html
+author: Senior Threat Detection Engineer
+date: 2026-05-29
+tags:
+  - attack.exfiltration
+  - attack.t1048
+  - attack.persistence
+  - attack.t1505.003
+logsource:
+  product: windows
+  service: msexchange-management
+detection:
+  selection:
+    - 'New-MailboxExportRequest'
+    - ' -Mailbox '
+    - '-FilePath "\\\\localhost\\C$'
+    - '-FilePath "\\\\127.0.0.1\\C$'
+    - '.aspx'
+  condition: selection
+falsepositives:
+  - Legitimate administrative exports performed for backup, migration, or compliance purposes.
+level: critical

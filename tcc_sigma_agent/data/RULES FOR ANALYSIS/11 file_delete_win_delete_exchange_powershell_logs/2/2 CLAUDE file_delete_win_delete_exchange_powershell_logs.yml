@@ -1,0 +1,44 @@
+title: Exchange PowerShell Cmdlet History Log File Deleted
+id: f3b2e8d1-7c4a-4f9e-b6d2-5a1c8f3e7b42
+status: experimental
+description: >
+  Detects the deletion of Exchange PowerShell cmdlet history log files from the
+  Exchange CmdletInfra LocalPowerShell logging directory. Commands executed
+  through the Exchange Management Shell are recorded in this directory with
+  filenames of the form <process>_<pid>_Cmdlet_<timestamp>, providing a
+  persistent audit trail of every cmdlet invoked, the authenticated user,
+  parameters passed, and execution results. Attackers with administrative access
+  to an Exchange Server — including those who have already cleared the
+  MSExchangeManagement Windows event log — may target these flat files to
+  destroy the secondary record of their activity and frustrate incident
+  response. The detection combines a path prefix match against the canonical
+  log directory path documented for Exchange Server V15 with a filename
+  substring match on the embedded Cmdlet marker to reduce false positives from
+  unrelated deletions elsewhere on the filesystem. Requires Sysmon Event ID 23
+  (FileDelete) or an equivalent file-system telemetry source to be deployed
+  and forwarding events to the SIEM.
+references:
+  - https://m365internals.com/2022/10/07/hunting-in-on-premises-exchange-server-logs/
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.defense_evasion
+  - attack.t1070.004
+logsource:
+  category: file_delete
+  product: windows
+detection:
+  selection:
+    TargetFilename|startswith: 'C:\Program Files\Microsoft\Exchange Server\V15\Logging\CmdletInfra\LocalPowerShell\Cmdlet'
+    TargetFilename|contains: '_Cmdlet_'
+  condition: selection
+falsepositives:
+  - Exchange Server's built-in log rotation and disk-quota management
+    processes, which periodically purge aged CmdletInfra log files to
+    reclaim disk space in line with the configured logging retention policy.
+  - Enterprise backup agents or archival scripts that stage log files to a
+    secondary location and then delete the originals as part of an approved
+    retention workflow.
+  - Exchange cumulative update or repair procedures that temporarily remove
+    or recreate log directories during installation.
+level: high

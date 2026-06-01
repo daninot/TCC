@@ -1,0 +1,27 @@
+title: Azure Entra ID OAuth Device Code Authentication
+id: 9e2d1cb5-4b6c-4894-b0d8-3e5cbfa4f6f7
+status: stable
+description: Detects authentication activity using the OAuth 2.0 Device Code flow in Azure Entra ID sign-in logs. While legitimate for input-constrained devices and CLI tooling, this flow can also be abused for device-code phishing or token theft attacks.
+references:
+
+* [https://learn.microsoft.com/en-us/entra/architecture/security-operations-applications#application-authentication-flows](https://learn.microsoft.com/en-us/entra/architecture/security-operations-applications#application-authentication-flows)
+  author: OpenAI
+  date: 2026/05/25
+  tags:
+* attack.initial-access
+* attack.credential-access
+* attack.t1078
+* attack.t1528
+  logsource:
+  product: azure
+  service: signinlogs
+  detection:
+  selection:
+  AuthenticationProtocol: "deviceCode"
+  condition: selection
+  falsepositives:
+* Legitimate authentication from input-constrained devices such as smart TVs or IoT devices.
+* Authorized use of Azure CLI, Microsoft authentication tooling, or developer workflows relying on the Device Code flow.
+* Accessibility or remote administration scenarios requiring Device Code authentication.
+  level: medium
+

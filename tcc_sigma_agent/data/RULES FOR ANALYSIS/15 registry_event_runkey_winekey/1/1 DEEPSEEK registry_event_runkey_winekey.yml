@@ -1,0 +1,32 @@
+title: Suspicious BITS Job Notification Command - KEGTAP/SINGLEMALT
+id: 8f2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+status: experimental
+description: Detects the creation of BITS jobs with suspicious notification commands, as used by KEGTAP and SINGLEMALT malware for persistence and execution.
+references:
+  - https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html
+  - https://cloud.google.com/blog/topics/threat-intelligence/kegtap-and-singlemalt-with-a-ransomware-chaser/
+author: Senior Threat Detection Engineer
+date: 2026-05-29
+tags:
+  - attack.persistence
+  - attack.t1197
+  - attack.defense-evasion
+  - attack.t1070
+  - attack.execution
+  - attack.t1059
+  - attack.command-and-control
+  - attack.t1071
+logsource:
+  product: windows
+  service: bits
+detection:
+  selection:
+    - EventID: 3  # BITS job creation
+    - NotifyCommand|contains: 'KEGTAP'
+    - NotifyCommand|contains: 'SINGLEMALT'
+    - NotifyCommand|contains: 'BEERBOT'
+    - NotifyCommand|contains: 'STILLBOT'
+  condition: selection
+falsepositives:
+  - Legitimate BITS jobs created by system administrators or software installers.
+level: high
