@@ -1,0 +1,70 @@
+title: Django Security Exception Raised in Application Log
+id: f2e9c4b7-3a6d-4f1e-b8d5-7c2a4f8e1b39
+status: experimental
+description: >
+  Detects Django security exception class names in application logs emitted
+  by the django.security logger at ERROR level or above. Django raises
+  SuspiciousOperation and its subclasses whenever the framework intercepts
+  a request that exhibits security-relevant anomalies: path traversal probes
+  trigger SuspiciousFileOperation; crafted session cookies or invalid session
+  data trigger InvalidSessionKey or SuspiciousSession; open-redirect attempts
+  trigger DisallowedRedirect; oversized request bodies trigger
+  RequestDataTooBig; malformed multipart submissions trigger
+  SuspiciousMultipartForm; and field-flooding attacks trigger
+  TooManyFieldsSent. DisallowedHost fires when the HTTP Host header does not
+  match ALLOWED_HOSTS, a common indicator of host-header injection probing.
+  PermissionDenied fires when application-layer access control explicitly
+  rejects a request and is logged by the django.request logger at WARNING
+  level; its presence in error logs at higher severity indicates repeated
+  or unusual access control violations. A burst of these exceptions across
+  short timeframes is a strong indicator of automated web-application
+  scanning, exploit tooling, or targeted exploitation. Requires Django
+  application logging to be configured to emit the django.security and
+  django.request loggers at LOG_LEVEL ERROR or above and to forward those
+  log streams to the SIEM.
+references:
+  - https://docs.djangoproject.com/en/1.11/ref/exceptions/
+  - https://docs.djangoproject.com/en/1.11/topics/logging/#django-security
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.initial_access
+  - attack.t1190
+logsource:
+  category: application
+  product: django
+  definition: >
+    Requirements: Django logging must be configured with the django.security
+    and django.request handlers emitting at LOG_LEVEL ERROR or WARNING
+    respectively, and the resulting log stream must be ingested by the SIEM.
+    Applications with logging disabled or configured below the required
+    threshold will not surface the exception events this rule depends on.
+detection:
+  keywords:
+    - 'SuspiciousOperation'
+    - 'DisallowedHost'
+    - 'DisallowedModelAdminLookup'
+    - 'DisallowedModelAdminToField'
+    - 'DisallowedRedirect'
+    - 'InvalidSessionKey'
+    - 'RequestDataTooBig'
+    - 'SuspiciousFileOperation'
+    - 'SuspiciousMultipartForm'
+    - 'SuspiciousSession'
+    - 'TooManyFieldsSent'
+    - 'PermissionDenied'
+  condition: keywords
+falsepositives:
+  - Misconfigured HTTP clients, load balancers, or reverse proxies that
+    submit Host headers not listed in ALLOWED_HOSTS, triggering
+    DisallowedHost without malicious intent, particularly during initial
+    deployment or DNS migration events.
+  - Legitimate users with large file uploads or form submissions that
+    exceed the application's configured DATA_UPLOAD_MAX_MEMORY_SIZE,
+    triggering RequestDataTooBig or TooManyFieldsSent under normal usage
+    patterns on upload-heavy applications.
+  - Automated integration-test suites that deliberately exercise
+    error-handling paths by submitting invalid or boundary-condition
+    requests as part of functional regression testing in non-production
+    environments.
+level: medium

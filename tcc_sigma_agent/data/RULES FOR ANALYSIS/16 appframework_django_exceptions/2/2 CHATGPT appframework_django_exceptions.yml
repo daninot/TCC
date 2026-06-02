@@ -1,0 +1,38 @@
+title: Django Security Exception Logging
+id: 1f3a9d72-7e2d-4d7a-9c58-3f4c9af1d2b8
+status: stable
+description: Detects Django security-relevant exceptions in application logs, including SuspiciousOperation and its subclasses plus PermissionDenied. These errors can indicate exploitation attempts such as path traversal, session tampering, redirect abuse, oversized request payloads, or other malicious probing. Django security logging must be enabled and application logs should capture ERROR-level events or above.
+references:
+
+* [https://docs.djangoproject.com/en/1.11/ref/exceptions/](https://docs.djangoproject.com/en/1.11/ref/exceptions/)
+* [https://docs.djangoproject.com/en/1.11/topics/logging/#django-security](https://docs.djangoproject.com/en/1.11/topics/logging/#django-security)
+  author: OpenAI
+  date: 2026/06/02
+  tags:
+* attack.initial-access
+* attack.t1190
+  logsource:
+  product: django
+  category: application
+  detection:
+  selection:
+  message|contains:
+
+  * 'SuspiciousOperation'
+  * 'DisallowedHost'
+  * 'DisallowedModelAdminLookup'
+  * 'DisallowedModelAdminToField'
+  * 'DisallowedRedirect'
+  * 'InvalidSessionKey'
+  * 'RequestDataTooBig'
+  * 'SuspiciousFileOperation'
+  * 'SuspiciousMultipartForm'
+  * 'SuspiciousSession'
+  * 'TooManyFieldsSent'
+  * 'PermissionDenied'
+    condition: selection
+    falsepositives:
+* Legitimate application requests that trigger Django security protections.
+* Malformed or user-generated input that is rejected by the application.
+* Security testing, fuzzing, or web scanning performed by authorized teams.
+  level: medium

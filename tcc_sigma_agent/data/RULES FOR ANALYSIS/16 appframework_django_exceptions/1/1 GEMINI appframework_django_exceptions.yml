@@ -1,0 +1,31 @@
+title: Django Security Logger Suspicious Operation
+id: 9a3e21fb-56d4-4bb2-bd17-91cbef71a25d
+status: experimental
+description: Detects security-relevant exceptions logged by Django's application security logging framework. This includes Host header validation failures, suspicious URL redirects, session key tampering, and invalid multi-part form submissions which are often indicative of automated web application scanning, fuzzing, or targeted exploitation attempts.
+references:
+    - https://docs.djangoproject.com/en/1.11/ref/exceptions/
+    - https://docs.djangoproject.com/en/1.11/topics/logging/#django-security
+author: Security Operations Center
+date: 2026/06/02
+tags:
+    - attack.initial_access
+    - attack.t1190 # Exploit Public-Facing Application
+logsource:
+    category: application
+detection:
+    selection_logger:
+        Message|contains: 'django.security'
+    selection_exceptions:
+        Message|contains:
+            - 'SuspiciousOperation'
+            - 'DisallowedHost'
+            - 'DisallowedRedirect'
+            - 'InvalidSessionKey'
+            - 'SuspiciousFileOperation'
+            - 'SuspiciousMultipartForm'
+            - 'TooManyFieldsSent'
+    condition: 1 of selection_*
+falsepositives:
+    - Public internet noise, bots, or web crawlers accessing the server directly via its raw IP address instead of the approved domain name configured in Django's ALLOWED_HOSTS, triggering a 'DisallowedHost' exception.
+    - Misconfigured upstream reverse proxies, CDN layers, or load balancers failing to properly pass the original Host headers.
+level: medium
