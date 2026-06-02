@@ -1,0 +1,27 @@
+title: Potential Django Security Exception - SuspiciousOperation or CSRF Failure
+id: 11111111-1111-1111-1111-111111111111
+status: experimental
+description: Detects security-related exceptions in a Django application, specifically SuspiciousOperation occurrences (e.g., DisallowedHost, CSRF failure) which may indicate malicious requests or security scanning attempts.
+references:
+  - https://docs.djangoproject.com/en/1.11/ref/exceptions/
+  - https://docs.djangoproject.com/en/1.11/topics/logging/#django-security
+author: o0p
+date: 2025-04-15
+tags:
+  - attack.t1190
+  - attack.initial-access
+logsource:
+  product: django
+  category: security
+detection:
+  selection:
+    logger_name|startswith: 'django.security'
+    level:
+      - 'WARNING'
+      - 'ERROR'
+  condition: selection
+falsepositives:
+  - Legitimate requests with malformed or missing CSRF tokens due to user session timeouts or misconfigured clients.
+  - Automated security scanning tools.
+  - Internal testing or debugging with DEBUG=True.
+level: medium
