@@ -1,25 +1,26 @@
-title: OpenCanary SSH Login Attempt Detected  
-id: 6b8f3d2a-1c4e-4f9b-9a2d-3e7c5b1a2f90  
-status: experimental  
-description: Detects SSH login attempts against an OpenCanary honeypot node. Any authentication interaction with an OpenCanary SSH service is inherently suspicious because legitimate users should not authenticate to a decoy host; such events indicate reconnaissance, lateral movement attempts, or active intrusion. Requires OpenCanary logging to be enabled and the logger output ingested (the rule matches the OpenCanary numeric logtype for SSH login attempts).  
-references:  
-  - [https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration](https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration)  
-  - [https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52](https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52)  
-author: Senior Threat Detection Engineer  
-date: 2026-05-30  
-tags:  
-  - attack.initial_access  
-  - attack.lateral_movement  
-  - attack.persistence  
-  - attack.t1021.002  
-logsource:  
-  product: opencanary  
-  category: application  
-  requirement: OpenCanary must be deployed and its logger output (including numeric logtype fields) forwarded to the logging pipeline.  
-detection:  
-  selection:  
-    logtype: 4002  
-  condition: selection  
-falsepositives:  
-  - None expected in normal operations; any logtype 4002 event against an OpenCanary instance should be treated as suspicious.  
+title: OpenCanary SSH Login Attempt Detected
+id: 4a6d2f9b-8c3e-4f1a-b7d2-9e5c1b2a3f4e
+status: experimental
+description: Detects SSH authentication attempts against an OpenCanary honeypot by matching the OpenCanary numeric logtype for SSH login events. Any authentication attempt against a honeypot SSH service is inherently suspicious and may indicate scanning, credential harvesting, or follow-on intrusion activity.
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+references:
+  - [https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration](https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration)
+  - [https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52](https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52)
+tags:
+  - attack.initial_access
+  - attack.lateral_movement
+  - attack.persistence
+  - honeypot
+  - opencanary
+logsource:
+  product: opencanary
+  category: application
+  description: OpenCanary application logs; ensure OpenCanary logging is forwarded to the SIEM.
+detection:
+  selection:
+    logtype: 1001
+  condition: selection
+falsepositives:
+  - Authorized security testing or internal red team activity targeting the honeypot.
 level: high

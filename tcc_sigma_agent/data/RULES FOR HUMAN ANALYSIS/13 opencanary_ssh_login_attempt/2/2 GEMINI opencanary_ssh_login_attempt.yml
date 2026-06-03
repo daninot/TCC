@@ -1,19 +1,16 @@
-title: OpenCanary - SSH Login Attempt
-id: 4ef70189-cd3a-4da2-84de-c82098b1e4a3
-status: stable
-description: Detects SSH login attempts against an OpenCanary honeypot node. Since OpenCanary is a decoy system, any interaction or authentication attempt against its SSH service is highly anomalous and indicates potential reconnaissance, initial access, or lateral movement activity.
+title: OpenCanary SSH Login Attempt
+id: 5a2c2069-7988-4e89-9a2d-1db9df845014
+status: experimental
+description: Detects an SSH login attempt against an OpenCanary honeypot node. Since the node is a decoy, any login attempt is inherently suspicious.
 references:
-
-* [https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration](https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration)
-* [https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52](https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52)
+- [https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration](https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration)
+- [https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52](https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52)
 author: Senior Threat Detection Engineer
-date: 2026/05/30
+date: 2026/06/02
 tags:
-* attack.initial_access
-* attack.lateral_movement
-* attack.persistence
-* attack.t1078
-* attack.t1021.004
+- attack.initial_access
+- attack.lateral_movement
+- attack.persistence
 logsource:
 product: opencanary
 category: application
@@ -22,5 +19,5 @@ selection:
 logtype: 4002
 condition: selection
 falsepositives:
-* Authorized internal network vulnerability scanners or routine pen-testing activities that have not been explicitly whitelisted in the honeypot's ignore list.
+- Authorized security testing or administrative misconfiguration.
 level: high

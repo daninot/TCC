@@ -1,30 +1,33 @@
-title: Registry Modification Adding Domains to Trusted Sites Zone  
-id: 3b9f1a2e-6c4d-4f8a-9b2e-1d3f5a6c7e88  
-status: experimental  
-description: Detects registry modifications that add domains under the Trusted Sites Zone path (`ZoneMap\Domains`) which can be abused for defense evasion and persistence by marking attacker-controlled domains as trusted. Requires collection of Windows registry modification events (e.g., Security Event ID 4657) and capture of the registry value details.  
-references:  
-  - [https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone](https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone)  
-author: Senior Threat Detection Engineer  
-date: 2026-05-30  
-tags:  
-  - attack.defense_evasion  
-  - attack.persistence  
-  - attack.t1112  
-logsource:  
-  product: windows  
-  category: registry  
-  requirement: Windows registry modification events must be collected (e.g., Security Event ID 4657) and include the `TargetObject` and `Details` fields.  
-detection:  
-  selection_path:  
-    TargetObject|startswith: "\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ZoneMap\\Domains\\"  
-  selection_details_present:  
-    Details|contains: "DWORD"  
-  exclusion_details:  
-    Details:  
-      - "DWORD (0x00000000)"  
-      - "DWORD (0x00000001)"  
-      - "(Empty)"  
-  condition: selection_path and selection_details_present and not exclusion_details  
-falsepositives:  
-  - Legitimate administrative configuration changes where administrators add internal or partner domains to Trusted Sites; changes from configuration management tools or documented maintenance windows.  
+title: Deletion of Exchange PowerShell Cmdlet History Logs
+id: e2a7f9b4-5c3d-4a6b-9f8e-1b2c3d4e5f60
+status: experimental
+description: Detects file deletion events that target Exchange Server PowerShell/Exchange cmdlet logging directories and filenames associated with cmdlet history or cmdlet logs. This may indicate an attempt to remove forensic evidence of administrative or malicious cmdlet execution. Requires file deletion auditing to be enabled on the host.
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+references:
+  - [https://m365internals.com/2022/10/07/hunting-in-on-premises-exchange-server-logs/](https://m365internals.com/2022/10/07/hunting-in-on-premises-exchange-server-logs/)
+tags:
+  - attack.defense_evasion
+  - attack.persistence
+  - detection
+logsource:
+  product: windows
+  category: file_delete
+detection:
+  selection_path:
+    TargetFilename|startswith:
+      - 'C:\\Program Files\\Microsoft\\Exchange Server\\V15\\Logging\\CmdletExtensionAgent\\'
+      - 'C:\\Program Files\\Microsoft\\Exchange Server\\V15\\Logging\\CmdletProxy\\'
+      - 'C:\\Program Files\\Microsoft\\Exchange Server\\V15\\Logging\\CmdletLogging\\'
+      - 'C:\\Program Files\\Microsoft\\Exchange Server\\V15\\Logging\\PowerShell\\'
+  selection_name:
+    TargetFilename|contains:
+      - 'Cmdlet'
+      - 'CmdletLog'
+      - 'CmdletHistory'
+      - 'PowerShell'
+  condition: selection_path and selection_name
+falsepositives:
+  - Legitimate administrative maintenance or log rotation processes that remove old cmdlet logs.
+  - Backup or cleanup scripts run by Exchange administrators or management tools.
 level: high

@@ -1,38 +1,33 @@
-title: SQL Injection Error Messages
-id: 7b6c4d8e-9f0a-1b2c-3d4e-5f6a7b8c9d0e
+title: Potential SQL Injection Probing via Database Error Messages
+id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
 status: experimental
-description: Detects SQL error messages in application logs that indicate probing for SQL injection attacks. Attackers commonly trigger these errors while testing payloads against different database engines (Oracle, MySQL, SQL Server, SQLite). Requires application error logs to be collected at LOG_LEVEL ERROR and above.
+description: Detects SQL error messages in application logs that may indicate attackers probing for SQL injection vulnerabilities by triggering syntax errors in Oracle, MySQL, SQL Server, or SQLite backends.
 references:
-  - http://www.sqlinjection.net/errors
+    - http://www.sqlinjection.net/errors
 author: Senior Threat Detection Engineer
-date: 2026-05-29
-tags:
-  - attack.initial-access
-  - attack.t1190
-  - attack.credential-access
-  - attack.t1528
+date: 2026-06-02
 logsource:
-  product: sql
-  category: application
+    product: sql
+    category: application
 detection:
-  keywords:
-    - Message|contains: 'You have an error in your SQL syntax'
-    - Message|contains: 'Unclosed quotation mark'
-    - Message|contains: 'quoted string not properly terminated'
-    - Message|contains: 'Incorrect syntax near'
-    - Message|contains: 'Conversion failed when converting'
-    - Message|contains: 'ORA-'
-    - Message|contains: 'invalid identifier'
-    - Message|contains: 'ERROR: syntax error at or near'
-    - Message|contains: 'ERROR: column'
-    - Message|contains: 'operator does not exist'
-    - Message|contains: 'SQLite error'
-    - Message|contains: 'SqliteError'
-    - Message|contains: 'OperationalError'
-    - Message|contains: 'near "?": syntax error'
-    - Message|contains: 'unterminated quoted string'
-  condition: keywords
+    selection:
+        # Level documentation: requires LOG_LEVEL ERROR or above to capture SQL errors
+        level: ERROR
+        message|contains:
+            # Oracle
+            - 'ORA-'
+            # MySQL
+            - 'You have an error in your SQL syntax'
+            # SQL Server
+            - 'Unclosed quotation mark after the character string'
+            # SQLite
+            - 'SQLiteException'
+    condition: selection
 falsepositives:
-  - Syntax errors in non-dynamic (safe) queries, for example due to an empty `in()` clause
-  - Legitimate application errors that expose verbose database messages during development or misconfiguration
+    - Legitimate application errors due to malformed user input or bugs.
+    - Maintenance scripts or internal testing.
 level: medium
+tags:
+    - attack.initial_access
+    - attack.t1190
+    - attack.t1133

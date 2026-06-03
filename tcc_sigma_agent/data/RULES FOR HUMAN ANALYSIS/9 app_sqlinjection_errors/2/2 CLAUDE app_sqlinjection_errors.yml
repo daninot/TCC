@@ -1,19 +1,21 @@
-title: SQL Injection Probe Detected via Database Engine Error Messages
-id: e1c7d4b3-2f8a-4e5c-b9d1-6a3f7e2c1b84
+title: SQL Injection Probe Indicated by Database Engine Syntax Error
+id: 3a8f1d2b-7c4e-4b9f-a5d3-6e2c1b8f4a07
 status: experimental
 description: >
-  Detects characteristic database error messages in SQL application logs that
-  are emitted when an attacker probes an application for SQL injection
-  vulnerabilities. These errors are generated when malformed or deliberately
-  malicious SQL fragments are injected into user-supplied input, causing the
-  database engine to fail while parsing or executing the resulting statement.
-  The rule covers the four most prevalent database engines targeted by SQL
-  injection tools: MySQL, Microsoft SQL Server, Oracle, and SQLite. An attacker
-  will typically trigger a burst of these errors during the reconnaissance and
-  fingerprinting phases of an attack before switching to a successful payload.
-  Requires application error logs to be collected at LOG_LEVEL ERROR or above
-  and forwarded to the SIEM; logs at WARNING or DEBUG level are out of scope
-  and will not surface these events.
+  Detects characteristic database engine error messages in SQL application
+  logs that are emitted when attacker-supplied input causes the database to
+  fail while parsing or executing a malformed SQL statement. Each keyword
+  represents the single most unambiguous injection-triggered syntax error for
+  one of the four most commonly targeted backend engines: MySQL, Microsoft
+  SQL Server, Oracle, and SQLite. Attackers deliberately induce these errors
+  during the reconnaissance and fingerprinting phases of a SQL injection
+  attack to confirm that unsanitised input reaches the query layer and to
+  identify the backend engine before selecting an engine-specific exploitation
+  payload. A burst of these messages over a short timeframe is a strong
+  indicator of automated injection tooling. Requires application error logs
+  to be collected at LOG_LEVEL ERROR or above and forwarded to the SIEM;
+  logs captured at WARNING or DEBUG level are out of scope and will not
+  surface these events.
 references:
   - http://www.sqlinjection.net/errors
 author: Senior Threat Detection Engineer
@@ -25,43 +27,24 @@ logsource:
   product: sql
   category: application
   definition: >
-    Requirements: application error logging must be enabled at LOG_LEVEL ERROR
-    or above on the target database service and the resulting logs must be
-    ingested into the SIEM. Lower severity log levels (WARNING, INFO, DEBUG)
-    are not required and will not surface the error signatures this rule
-    relies on.
+    Requirements: application error logging must be enabled at LOG_LEVEL
+    ERROR or above on the target database service and forwarded to the SIEM.
+    Environments with error logging disabled or set below the ERROR threshold
+    will not surface the events this rule depends on.
 detection:
   keywords:
     - 'You have an error in your SQL syntax'
-    - 'check the manual that corresponds to your MySQL server version'
-    - 'mysql_fetch_array() expects parameter'
-    - 'supplied argument is not a valid MySQL result'
-    - 'Warning: mysql_'
     - 'Unclosed quotation mark after the character string'
-    - 'Incorrect syntax near'
-    - 'Microsoft OLE DB Provider for SQL Server'
-    - 'Microsoft SQL Native Client error'
-    - 'ODBC SQL Server Driver'
-    - 'Conversion failed when converting'
-    - 'ORA-00907'
-    - 'ORA-00933'
-    - 'ORA-01756'
-    - 'ORA-00936'
-    - 'ORA-00942'
+    - 'ORA-'
     - 'SQLite error'
-    - 'SQLite3::query()'
-    - 'unrecognized token'
-    - 'no such column'
-    - 'no such table'
   condition: keywords
 falsepositives:
   - Genuine application bugs or ORM misconfigurations that produce malformed
     queries in development or staging environments, triggering the same error
-    classes without any malicious intent.
-  - Automated database health-check or integration-test suites that
-    intentionally exercise error-handling paths and generate transient SQL
-    errors as part of normal test execution.
-  - Schema migration tooling that produces syntax errors when applying patches
-    to a database engine version whose SQL dialect differs from the migration
-    script's target version.
+    signatures without any malicious intent.
+  - Database migration or schema management tooling that produces transient
+    syntax errors when applying patches against a mismatched engine version.
+  - Automated integration-test suites that intentionally exercise
+    error-handling paths and generate SQL errors as part of regression
+    testing in non-production environments.
 level: medium

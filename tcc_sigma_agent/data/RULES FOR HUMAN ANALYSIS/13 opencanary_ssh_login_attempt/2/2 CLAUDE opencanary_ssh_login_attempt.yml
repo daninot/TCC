@@ -1,0 +1,47 @@
+title: OpenCanary SSH Honeypot Login Attempt
+id: 3f1d7c4b-8a2e-4f6d-b9c3-5e2a1d7f4b83
+status: stable
+description: >
+  Detects an SSH authentication attempt against an OpenCanary honeypot node,
+  identified by the native OpenCanary logtype value 4002
+  (LOG_SSH_LOGIN_ATTEMPT). OpenCanary is a modular deception honeypot that
+  emulates common network services and has no operational purpose accessible
+  to legitimate users. Any SSH login attempt directed at an OpenCanary node
+  is therefore an unambiguous indicator of unauthorised activity. Typical
+  scenarios include an external attacker who has identified the decoy during
+  network scanning and is testing credentials for initial access; an
+  internally compromised host performing lateral movement via SSH credential
+  stuffing; or automated scanning tooling whose scope has reached a monitored
+  honeypot subnet. Each event emitted by OpenCanary includes the source IP,
+  destination port, and the plaintext credentials submitted by the attacker
+  in the logdata fields, making every match immediately actionable for both
+  triage and threat intelligence enrichment. The honeycred field indicates
+  whether the submitted credential matched a configured canary credential,
+  which further elevates confidence when true.
+references:
+  - https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration
+  - https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.initial_access
+  - attack.lateral_movement
+  - attack.persistence
+  - attack.credential_access
+  - attack.t1110
+  - attack.t1021
+  - attack.t1078
+  - attack.t1133
+logsource:
+  category: application
+  product: opencanary
+detection:
+  selection:
+    logtype: 4002
+  condition: selection
+falsepositives:
+  - Authorised red-team or penetration-testing exercises where the rules
+    of engagement explicitly include interaction with honeypot infrastructure
+    and the source IP has been pre-approved and documented prior to the
+    engagement.
+level: high

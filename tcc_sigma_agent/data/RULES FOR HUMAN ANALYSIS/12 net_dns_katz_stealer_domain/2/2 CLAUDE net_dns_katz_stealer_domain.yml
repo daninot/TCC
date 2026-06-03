@@ -1,27 +1,24 @@
-title: DNS Query to Known Katz Stealer C2 Infrastructure
-id: 2a7f4e1b-8c3d-4b6e-9f5a-1d2c7e4b3f85
+title: DNS Query to Known Katz Stealer C2 or Panel Infrastructure
+id: 7e3b1f9d-4c2a-4e8b-a7f1-9d5c3b2e6a48
 status: experimental
 description: >
   Detects DNS queries resolving domain names associated with Katz Stealer
-  command-and-control and payload-staging infrastructure. Katz Stealer is a
-  feature-rich information-stealing malware marketed as a Malware-as-a-Service
-  (MaaS) platform since April 2025. It exfiltrates browser credentials, session
-  cookies, cryptocurrency wallet data, Discord and Telegram tokens, VPN and
-  FTP credentials, clipboard contents, and screenshots from compromised hosts.
-  Operators interact with victims through a web-based management panel that
-  also serves as the data back-end for stolen logs. The malware establishes a
-  persistent TCP connection to its C2 server, downloads additional payloads, and
-  can inject modules into browser processes. DNS queries to the domains listed
-  below are a high-confidence indicator of active infection or ongoing C2
-  communication. Because the same base domains may be accessed via varying
-  subdomains (panel, api, cdn, etc.), substring matching is used to provide
-  coverage across the full observed namespace. This rule targets known
-  infrastructure as of mid-2025; the domain list should be reviewed and
-  supplemented as new Katz Stealer affiliate infrastructure is identified in
-  threat intelligence feeds. Detection requires DNS query logging to be enabled
-  and forwarded to the SIEM — either via Windows DNS debug logging, Sysmon
-  Event ID 22, or a network-level DNS sensor (e.g., Zeek, Suricata,
-  passive DNS tap).
+  command-and-control and panel infrastructure. Katz Stealer is a
+  Malware-as-a-Service information stealer active since mid-2025 that
+  exfiltrates browser credentials, session cookies, cryptocurrency wallet
+  files, Discord and Telegram tokens, VPN and FTP credentials, clipboard
+  contents, and screenshots from Windows hosts. Exfiltrated data is
+  transmitted directly to an operator-controlled panel hosted on attacker
+  infrastructure. DNS queries to the base domains listed below are a
+  high-confidence indicator of active infection or ongoing C2 communication.
+  Because the same base domains may be reached via operator-assigned
+  subdomains, the |contains modifier is used to provide coverage across
+  the full observed namespace beneath each domain. Detection requires DNS
+  query logging to be enabled and forwarded to the SIEM via Windows DNS
+  debug logging, Sysmon Event ID 22, or a network-level passive DNS sensor.
+  The domain list reflects infrastructure observed as of mid-2025 and should
+  be supplemented as new Katz Stealer affiliate infrastructure is identified
+  through threat intelligence feeds.
 references:
   - Internal research
 author: Senior Threat Detection Engineer
@@ -42,8 +39,9 @@ detection:
       - 'katzstealer.ru'
   condition: selection
 falsepositives:
-  - None expected; the listed domains have no known legitimate use and
-    are exclusively associated with Katz Stealer MaaS infrastructure.
-    Any match should be treated as a confirmed indicator requiring
-    immediate host isolation and incident response triage.
+  - None expected. The listed domains have no known legitimate use and are
+    exclusively associated with Katz Stealer MaaS infrastructure. Any match
+    in a production environment should be treated as a confirmed indicator
+    of compromise requiring immediate host isolation and incident response
+    triage.
 level: high
