@@ -1,0 +1,52 @@
+title: JVM Application Path Traversal Attempt via File Exception in Error Log
+id: 7c4a1e8f-3b2d-4f6c-a9e1-5d8b3c7f2a14
+status: experimental
+description: >
+  Detects co-occurrence of a Java file-access exception class and a path
+  traversal sequence in the same JVM application error log entry. When
+  user-controlled input is passed unsanitised into a file-read operation,
+  the JVM emits a FileNotFoundException or NoSuchFileException whose message
+  includes the attacker-supplied path. Adversaries exploit local file read
+  vulnerabilities to exfiltrate sensitive files such as /etc/passwd,
+  application configuration files, private keys, or cloud instance metadata.
+  The path traversal pattern ../ in the exception message is the canonical
+  indicator that a relative path has been injected to escape the intended
+  directory. Requiring both the exception class name and the traversal
+  pattern to appear in the same log line significantly reduces noise from
+  benign file-not-found conditions triggered by missing configuration or
+  resource files. Requires application error logs to be collected at
+  LOG_LEVEL ERROR or above and forwarded to the SIEM. Environments that
+  log below the ERROR threshold or suppress exception stack traces in
+  production will not surface these events.
+references:
+  - https://www.wix.engineering/post/threat-and-vulnerability-hunting-with-application-server-error-logs
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.initial_access
+  - attack.credential_access
+  - attack.t1190
+  - attack.t1083
+logsource:
+  product: jvm
+  category: application
+  definition: >
+    Requirements: application error logging must be enabled at LOG_LEVEL
+    ERROR or above and exception messages must be included in the log
+    output. JVM applications that suppress exception detail in production
+    logs or redirect ERROR output to a separate sink not ingested by the
+    SIEM will not surface these events.
+detection:
+  keywords|all:
+    - 'FileNotFoundException'
+    - '../'
+  condition: keywords
+falsepositives:
+  - Misconfigured application deployments where a relative path containing
+    .. is legitimately used to reference a file outside the working
+    directory as part of an approved directory layout, causing benign
+    FileNotFoundException entries that match the traversal pattern.
+  - Integration test suites that exercise error-handling code paths by
+    supplying invalid or nonexistent file paths containing traversal
+    sequences in a non-production environment.
+level: medium

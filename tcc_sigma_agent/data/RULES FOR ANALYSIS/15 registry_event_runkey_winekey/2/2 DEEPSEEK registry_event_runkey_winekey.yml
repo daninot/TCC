@@ -1,21 +1,28 @@
-title: WINEKEY or Team9 Backdoor Registry Persistence
-id: f47a3e8b-2c5d-4e6f-8a9b-0c1d2e3f4a5b
+title: Potential WINEKEY or Team9 Backdoor Persistence Via Run Key
+id: d4e2f3a1-5b6c-7d8e-9f0a-1b2c3d4e5f6a
 status: experimental
-description: Detects potential malicious modification of Run keys by WINEKEY or Team9 backdoor, which creates a value named "BackUp Mgr" under the Run key to achieve persistence.
+description: Detects registry modifications to a Run key entry that may indicate persistence established by the WINEKEY or Team9 backdoor, often disguised as a legitimate backup manager application.
 references:
-  - https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html
+    - https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html
 author: Senior Threat Detection Engineer
-date: 2026-05-31
-tags:
-  - attack.persistence
-  - attack.t1547.001
+date: 2026-06-02
 logsource:
-  product: windows
-  category: registry_event
+    product: windows
+    category: registry_event
 detection:
-  selection:
-    TargetObject|endswith: '\Software\Microsoft\Windows\CurrentVersion\Run\BackUp Mgr'
-  condition: selection
+    selection:
+        TargetObject|endswith:
+            - '\Software\Microsoft\Windows\CurrentVersion\Run\BackupManager'
+            - '\Software\Microsoft\Windows\CurrentVersion\Run\WindowsBackup'
+            - '\Software\Microsoft\Windows\CurrentVersion\Run\SystemBackup'
+            - '\Software\Microsoft\Windows\CurrentVersion\Run\CloudBackup'
+            - '\Software\Microsoft\Windows\CurrentVersion\Run\OneDriveBackup'
+    condition: selection
 falsepositives:
-  - Unknown
+    - Legitimate backup software using similar key names (e.g., genuine BackupManager).
+    - Administrative scripts or monitoring tools.
 level: high
+tags:
+    - attack.persistence
+    - attack.t1547.001
+    - attack.ransomware

@@ -1,37 +1,33 @@
-title: Suspicious SQL Query Keywords for Reconnaissance or Destructive Activity
-id: 0d8d2d69-1ef2-4a6e-8d9f-3bb7c9e1f2c4
-status: stable
-description: Detects suspicious SQL query keywords commonly associated with database reconnaissance, data dumping, or destructive activity such as dropping or truncating tables. SQL query logging must be enabled for this detection to function.
+title: Suspicious SQL Query Keywords Indicative Of Reconnaissance Or Destructive Activity
+id: 6f2d5e7c-1c8a-4c5f-9e33-4b4d2a9b7d1f
+status: experimental
+description: Detects potentially suspicious SQL statements in database query logs that may indicate reconnaissance, data exfiltration, or destructive activity. Requires SQL query logging to be enabled and ingested into the logging platform.
 references:
 
 * [https://github.com/sqlmapproject/sqlmap](https://github.com/sqlmapproject/sqlmap)
   author: OpenAI
-  date: 2026/05/29
+  date: 2026-06-02
   tags:
 * attack.discovery
+* attack.collection
 * attack.exfiltration
 * attack.impact
-* attack.t1190
   logsource:
   category: database
   detection:
+  selection:
   keywords:
-  query|contains:
 
-  * 'union select'
-  * 'information_schema'
-  * 'select *'
-  * 'drop table'
-  * 'truncate table'
-  * 'into outfile'
-  * 'load_file('
-  * 'xp_cmdshell'
-  * 'benchmark('
-  * 'sleep('
-  * 'dumpfile'
-    condition: keywords
+  * 'DROP TABLE'
+  * 'TRUNCATE TABLE'
+  * 'UNION SELECT'
+  * 'SELECT * FROM'
+  * 'INTO OUTFILE'
+    condition: selection
     falsepositives:
-* Legitimate administrative queries and database maintenance tasks.
-* Application debugging or development activity using verbose SQL logging.
-* Security testing and authorized assessment tooling.
+* Legitimate database administration activities
+* Database maintenance and migration scripts
+* Authorized reporting and data export operations
   level: medium
+  notes: SQL query logging must be enabled for this detection to function. Consider tuning based on approved administrative accounts, maintenance windows, and known application query patterns.
+

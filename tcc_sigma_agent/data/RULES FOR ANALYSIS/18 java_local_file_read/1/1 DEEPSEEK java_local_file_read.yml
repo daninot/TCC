@@ -1,0 +1,31 @@
+title: Suspicious Application-Level Error Indicators
+id: a6c5b9f3-2d91-4e1a-9c3e-5b8d7e6f2a0b
+status: experimental
+description: Detects suspicious application-level error indicators (e.g., SQL syntax exceptions, deserialization failures) that may indicate exploitation attempts of vulnerabilities such as SQL injection, XXE, SSTI, or insecure deserialization.
+references:
+  - https://www.wix.engineering/post/threat-and-vulnerability-hunting-with-application-server-error-logs
+author: Sigma Rule Generator
+date: 2026-06-03
+tags:
+  - attack.initial-access
+  - attack.t1190
+logsource:
+  category: application
+  definition: 'Requires application error logs (e.g., stack traces, exception messages) with log level ERROR or higher.'
+detection:
+  keywords:
+    - 'You have an error in your SQL syntax'
+    - 'Unclosed quotation mark'
+    - 'quoted string not properly terminated'
+    - 'ORA-'
+    - 'SQL syntax'
+    - 'Unexpected token'
+    - 'Invalid argument'
+    - 'Deserialization'
+    - 'SAXParseException'  # XXE
+    - 'External DTD'
+    - 'Template parsing error'
+  condition: keywords
+falsepositives:
+  - Legitimate application errors resulting from malformed input or edge cases (e.g., empty IN() clause causing SQL syntax errors).
+level: high

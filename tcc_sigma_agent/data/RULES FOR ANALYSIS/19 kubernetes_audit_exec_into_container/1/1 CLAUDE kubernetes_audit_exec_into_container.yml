@@ -1,0 +1,90 @@
+title: Kubernetes - Exec into Container via kubectl exec (Microsoft Threat Matrix)
+id: 7a5c9e31-4b82-4f67-a015-2d8e6c3b4f91
+status: test
+description: |
+    Detects the use of kubectl exec (or equivalent API call) to execute commands
+    inside a running container, mapped to the Microsoft Threat Matrix for
+    Kubernetes "Exec into container" technique (Execution tactic).
+
+    When kubectl exec is invoked, the Kubernetes API server logs an audit event
+    with a unique three-field fingerprint: verb="create", resource="pods",
+    subresource="exec". The API uses POST/WebSocket (verb: create) because exec
+    upgrades the HTTP connection to a bidirectional streaming WebSocket (HTTP 101).
+
+    Two detection tiers:
+      selection_exec       (MEDIUM) — any exec into any pod. Covers all kubectl exec
+        invocations regardless of command. Requires filter_ci_accounts tuning to
+        suppress legitimate CI/CD and debug workflows.
+      selection_exec_shell (HIGH) — exec with an interactive shell (bash, sh).
+        Interactive shells in production containers are almost always suspicious.
+        Very few legitimate automation tools request an interactive TTY.
+
+    Key triaging fields: user.username (who exec'd), objectRef.namespace (which
+    namespace), objectRef.name (which pod), requestURI (which command), and
+    responseStatus.code=101 (WebSocket upgrade = exec succeeded).
+    Mitigation: MS-M9010 — Restrict exec commands on pods via Kubernetes RBAC
+    by removing the pods/exec permission from non-administrative roles.
+references:
+    - https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Exec%20into%20container/
+    - https://microsoft.github.io/Threat-Matrix-for-Kubernetes/mitigations/MS-M9010%20Restrict%20Exec%20Commands%20on%20Pods/
+    - https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/
+    - https://attack.mitre.org/techniques/T1609/
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.execution
+    - attack.t1609       # Container Administration Command
+    - attack.lateral_movement
+    - attack.t1021.001   # Remote Services: SSH (interactive shell in container)
+logsource:
+    product: kubernetes
+    service: audit
+    definition: |
+        Kubernetes API server audit log (kube-apiserver --audit-log-path).
+        Enable at least Request and RequestResponse audit levels for the
+        pods/exec resource. Ingest as JSON; key fields: verb, objectRef.*,
+        user.username, requestURI, responseStatus.code.
+detection:
+    selection_exec:
+        # Three-field fingerprint unique to kubectl exec in Kubernetes API audit log
+        # verb is "create" because exec upgrades HTTP to WebSocket (bidirectional stream)
+        verb: 'create'
+        objectRef.resource: 'pods'
+        objectRef.subresource: 'exec'
+    selection_exec_shell:
+        # Interactive shell requested — high-confidence indicator of manual access
+        # URL-encoded variants (%2F = /) appear from some API clients and controllers
+        requestURI|contains:
+            - 'command=bash'
+            - 'command=sh'
+            - 'command=%2Fbin%2Fbash'      # URL-encoded: /bin/bash
+            - 'command=%2Fbin%2Fsh'        # URL-encoded: /bin/sh
+            - 'command=%2Fbin%2Fzsh'       # URL-encoded: /bin/zsh
+    filter_system_components:
+        # Kubernetes internal components that legitimately exec into pods
+        user.username|startswith:
+            - 'system:node:'              # kubelet node agent
+            - 'system:serviceaccount:kube-system:'
+    filter_ci_accounts:
+        # CI/CD service accounts that legitimately exec for health checks or migration
+        # Populate with your org's known automation service account names:
+        # user.username|in:
+        #     - 'system:serviceaccount:ci-cd:pipeline-runner'
+        #     - 'system:serviceaccount:jenkins:jenkins-agent'
+        user.username: null   # placeholder — populate with known CI/CD accounts
+    condition: selection_exec and not 1 of filter_*
+fields:
+    - user.username
+    - user.groups
+    - objectRef.namespace
+    - objectRef.name
+    - requestURI
+    - responseStatus.code
+    - sourceIPs
+    - impersonatedUser.username
+falsepositives:
+    - Developers legitimately debugging pods in development/staging namespaces
+    - CI/CD pipelines running smoke tests or migrations inside containers
+    - Database init containers that receive exec for schema migration verification
+    - SRE/platform teams performing authorized incident response in pods
+level: medium

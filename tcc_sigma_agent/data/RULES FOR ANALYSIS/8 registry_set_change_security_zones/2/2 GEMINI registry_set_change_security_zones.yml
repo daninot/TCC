@@ -1,0 +1,29 @@
+title: Internet Explorer ZoneMap Trusted Sites Modification
+id: 9b1d842b-7c72-46a4-9dfc-27943c22b9c1
+status: experimental
+description: Detects modifications to the Internet Explorer ZoneMap Domains registry key that add domains to untrusted or trusted zones, while excluding legitimate zones like My Computer, Local Intranet, or empty values.
+references:
+- [https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone](https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone)
+- [https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries](https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries)
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+tags:
+- attack.defense_evasion
+- attack.persistence
+- attack.t1112
+logsource:
+product: windows
+category: registry_set
+detection:
+selection:
+TargetObject|contains: '\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains'
+exclusion:
+Details:
+- 'DWORD (0x00000000)'
+- 'DWORD (0x00000001)'
+- ''
+- null
+condition: selection and not exclusion
+falsepositives:
+- Legitimate enterprise group policy deployments or administrative configurations.
+level: medium

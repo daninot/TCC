@@ -1,36 +1,30 @@
-title: SQL Injection Probing via Database Error Messages
-id: 2d8d2a4a-6a6f-4c2b-8a1f-9c9ddf4e7f31
-status: stable
-description: Detects application error log messages commonly returned by multiple database engines during SQL injection probing. This rule requires application logs at LOG_LEVEL ERROR or above so that database syntax and execution errors are captured in raw log content.
+title: SQL Error Messages Suggesting Injection Probing
+id: 1b6e3b6c-2c92-4d95-8f9d-5d3cb0b4cb7f
+status: experimental
+description: Detects application error logs at LOG_LEVEL ERROR or above that contain database-specific SQL error messages commonly triggered during SQL injection probing against Oracle, MySQL, SQL Server, and SQLite backends.
 references:
 
 * [http://www.sqlinjection.net/errors](http://www.sqlinjection.net/errors)
   author: OpenAI
-  date: 2026/05/29
+  date: 2026-06-02
   tags:
-* attack.initial-access
 * attack.t1190
+* attack.discovery
   logsource:
   product: sql
   category: application
   detection:
+  selection:
   keywords:
 
   * 'ORA-01756'
-  * 'ORA-00933'
-  * 'ORA-00936'
   * 'You have an error in your SQL syntax'
-  * 'quoted string not properly terminated'
   * 'Unclosed quotation mark after the character string'
-  * 'Microsoft OLE DB Provider for SQL Server'
-  * 'SQLite.Exception'
-  * 'near "SELECT": syntax error'
-  * 'mysql_fetch_array()'
-  * 'mysql_num_rows()'
-    condition: keywords
+  * 'near "'
+    condition: selection
     falsepositives:
-* Legitimate application errors caused by malformed queries or broken input handling.
-* Development, testing, or database migration activity.
-* Misconfigured applications that emit database syntax errors during normal use.
+* Application bugs causing database syntax errors in ERROR-level logs
+* Misconfigured or malformed client queries during normal testing
   level: medium
+  notes: This rule assumes application logs are only ingested at LOG_LEVEL ERROR or higher.
 

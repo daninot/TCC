@@ -1,28 +1,26 @@
 title: OpenCanary SSH Login Attempt
-id: 3f9bca13-7c6f-4c13-94ed-6f3e6d3c4b9d
-status: stable
-description: Detects SSH interaction events on an OpenCanary honeypot node. Any SSH login attempt against OpenCanary is inherently suspicious because the service is a decoy and should not receive legitimate authentication attempts. Requires OpenCanary SSH logging to be enabled and ingested.
+id: 6b4b8e1d-8c2a-4f6b-9d7d-2c5c0e8d4a19
+status: experimental
+description: Detects SSH login attempts recorded by an OpenCanary honeypot. Any authentication attempt against the decoy SSH service is suspicious.
 references:
 
 * [https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration](https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration)
 * [https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52](https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52)
   author: OpenAI
-  date: 2026/05/30
+  date: 2026-06-02
   tags:
-* attack.initial-access
-* attack.lateral-movement
+* attack.initial_access
+* attack.lateral_movement
 * attack.persistence
-* attack.privilege-escalation
-* attack.t1133
-* attack.t1021.004
+* attack.t1110
   logsource:
   product: opencanary
   category: application
   detection:
   selection:
-  logtype: 4000
+  logtype: 4002
   condition: selection
   falsepositives:
-* Unlikely.
+* None expected; OpenCanary is a decoy service and legitimate users should not authenticate to it.
   level: high
 

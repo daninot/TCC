@@ -1,29 +1,51 @@
-title: Suspicious SQL Query Keywords
-id: a3b7c5d9-1e2f-4a6b-8c7d-9e0f1a2b3c4d
+title: Suspicious SQL Activity via Query Log Analysis
+id: a1b2c3d4-e5f6-7890-1234-567890abcdef
 status: experimental
-description: Detects SQL queries containing keywords associated with reconnaissance, exfiltration, or destructive activities, such as dropping tables, truncating data, dumping contents, or wildcard selection. Requires SQL query logging to be enabled.
+description: Detects suspicious SQL keywords in database query logs associated with reconnaissance, exfiltration, or destructive activity including DROP, TRUNCATE, data dumping, or indiscriminate SELECT all columns.
 references:
-  - https://github.com/sqlmapproject/sqlmap
+    - https://github.com/sqlmapproject/sqlmap
 author: Senior Threat Detection Engineer
-date: 2026-05-29
-tags:
-  - attack.initial-access
-  - attack.exfiltration
-  - attack.impact
-  - attack.t1190
-  - attack.t1041
-  - attack.t1485
+date: 2026-06-02
 logsource:
-  category: database
+    category: database
 detection:
-  keywords:
-    - drop
-    - truncate
-    - dump
-    - select \*
-  condition: keywords
+    # Documentation: Requires SQL query logging to be enabled
+    selection:
+        query|contains:
+            # Destructive commands
+            - 'DROP TABLE'
+            - 'DROP DATABASE'
+            - 'TRUNCATE TABLE'
+            # Exfiltration / dumping
+            - 'INTO OUTFILE'
+            - 'INTO DUMPFILE'
+            - 'BULK INSERT'
+            - 'COPY ('
+            - "COPY ("
+            # Reconnaissance / schema grabbing
+            - 'SELECT * FROM'
+            - 'SELECT ALL FROM'
+            - 'SELECT COUNT(*)'  # Potential enumeration
+            - ' UNION SELECT'
+            - ' INFORMATION_SCHEMA.'
+            - 'sys.tables'
+            - 'sys.columns'
+            - 'all_tab_columns'
+            - 'mysql.user'
+            - 'sqlite_master'
+            # Potential time-based or heavy queries
+            - 'SLEEP('
+            - 'WAITFOR DELAY'
+            - 'BENCHMARK('
+    condition: selection
 falsepositives:
-  - Legitimate database maintenance operations (e.g., dropping temporary tables, truncating logs)
-  - Vulnerability scanners or authorized penetration testing
-  - Administrative scripts performing routine clean-up tasks
+    - Legitimate administrative tasks (e.g., backups, schema changes).
+    - Application ORM generating broad SELECT statements.
+    - Database maintenance scripts.
 level: medium
+tags:
+    - attack.exfiltration
+    - attack.impact
+    - attack.t1048
+    - attack.t1485
+    - attack.t1190

@@ -1,0 +1,32 @@
+title: Kubernetes Audit Exec Into Container Detected
+id: 1f3b9a6c-2d4e-4b7f-9c8a-0b1d2e3f4a5b
+status: experimental
+description: Detects Kubernetes API server audit events where an exec subresource is invoked on a pod (e.g., kubectl exec or equivalent). Execution of a shell inside a container via the API indicates potential unauthorized remote command execution, lateral movement, or persistence. Requires Kubernetes audit logging to be enabled and forwarded to the SIEM.
+author: Senior Threat Detection Engineer
+date: 2026/06/03
+references:
+  - [https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Exec%20into%20container/](https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Exec%20into%20container/)
+tags:
+  - attack.lateral_movement
+  - attack.privilege_escalation
+  - attack.t1059
+  - attack.t1021
+  - kubernetes
+logsource:
+  product: kubernetes
+  service: audit
+  category: application
+  description: Kubernetes API server audit logs must be enabled and collected. Audit policy should capture requestObject and objectRef fields.
+detection:
+  selection:
+    verb:
+      - 'create'
+    objectRef.resource:
+      - 'pods'
+    objectRef.subresource:
+      - 'exec'
+  condition: selection
+falsepositives:
+  - Legitimate administrative use of kubectl exec by cluster operators or automation/orchestration tooling.
+  - Debugging sessions initiated by developers or platform teams.
+level: high

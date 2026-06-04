@@ -1,0 +1,25 @@
+title: Kubernetes Container Exec Command Execution
+id: c46d9a0d-327a-4cb4-9640-bb627cfaee1a
+status: stable
+description: Detects remote command execution or shell access inside a Kubernetes pod container via the exec subresource. This technique allows an attacker with sufficient API access to bypass traditional network and host controls to execute arbitrary commands inside a running container.
+references:
+
+* [https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Exec%20into%20container/](https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Exec%20into%20container/)
+author: Senior Threat Detection Engineer
+date: 2026/06/03
+tags:
+* attack.execution
+* attack.t1609
+logsource:
+product: kubernetes
+category: application
+service: audit
+detection:
+selection:
+verb: 'create'
+objectRef.resource: 'pods'
+objectRef.subresource: 'exec'
+condition: selection
+falsepositives:
+* Authorized cluster administrators or developers troubleshooting applications and debugging running containers.
+level: medium
