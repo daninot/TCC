@@ -1,0 +1,26 @@
+title: Invoke-Obfuscation Command Concatenation Detection
+id: 9a8b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
+status: experimental
+description: Detects the use of concatenated strings with the '&' operator in PowerShell command lines, indicative of Invoke-Obfuscation framework usage.
+references:
+  - https://github.com/SigmaHQ/sigma/issues/1009
+  - https://github.com/danielbohannon/Invoke-Obfuscation
+author: Sigma Rule Generator
+date: 2024-05-23
+tags:
+  - attack.defense-evasion
+  - attack.t1027
+  - attack.execution
+  - attack.t1059.001
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    CommandLine|re: '&\([''"].*?[''"]\)|&\([""][^""]*?[""]\)|&\([{].*?[}]\)'
+    CommandLine|contains: 'Invoke-Expression'
+  condition: selection
+falsepositives:
+  - Administrative scripts that use dynamic command invocation.
+  - Legitimate use of the '&' operator for script execution.
+level: high

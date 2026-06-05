@@ -1,0 +1,77 @@
+title: Azure AD OAuth / Application Consent Abuse Detected
+id: 2b7f4c9e-2026-0001-0000-00000000a1b2
+status: experimental
+description: Detects suspicious Azure AD / Office 365 audit events consistent with OAuth application consent abuse or malicious app registrations (user or non-admin created applications, service principals, or OAuth permission grants with external redirect URIs or non-standard owners). These behaviors are commonly used to establish persistence, exfiltrate data, or escalate access via malicious OAuth apps (AAD backdoor patterns).
+author: Security Analyst
+date: 2026-06-04
+references:
+  - https://research.splunk.com/cloud/e155876a-6048-11eb-ae93-0242ac130002/
+  - https://o365blog.com/post/aadbackdoor/
+logsource:
+  product: azure
+  service: azuread
+  category: audit
+detection:
+  selection_app_registration:
+    OperationName|contains:
+      - "Add service principal"
+      - "Add application"
+      - "ApplicationRegistered"
+      - "Add application"
+      - "Create application"
+  selection_oauth_grant:
+    OperationName|contains:
+      - "Consent to application"
+      - "Add OAuth2PermissionGrant"
+      - "Add delegated permission"
+      - "Grant consent"
+  selection_non_admin_actor:
+    InitiatedBy.user.userPrincipalName|not_in:
+      - "REPLACE_WITH_TRUSTED_ADMIN_1@example.com"
+      - "REPLACE_WITH_TRUSTED_ADMIN_2@example.com"
+      - "REPLACE_WITH_SERVICE_ACCOUNT_1@example.com"
+  selection_external_redirect:
+    TargetResources|contains:
+      - "replyUrls"
+      - "redirectUris"
+    TargetResources|contains_any:
+      - "http://"
+      - "https://"
+    TargetResources|contains_not:
+      - "your-org-internal-domain.com"
+  selection_high_priv_scope:
+    TargetResources|contains_any:
+      - "Directory.Read.All"
+      - "User.Read.All"
+      - "Mail.Read"
+      - "Mail.ReadWrite"
+      - "Files.Read.All"
+      - "Files.ReadWrite.All"
+      - "offline_access"
+  condition: (selection_app_registration and selection_non_admin_actor and selection_external_redirect) or (selection_oauth_grant and selection_non_admin_actor and selection_high_priv_scope)
+fields:
+  - "@timestamp"
+  - OperationName
+  - InitiatedBy.user.userPrincipalName
+  - InitiatedBy.user.id
+  - TargetResources
+  - Result
+  - ClientIP
+  - UserAgent
+  - CorrelationId
+falsepositives:
+  - Legitimate developer or DevOps application registrations and consent flows initiated by non-admins (internal dev/test apps)
+  - Third-party SaaS onboarding where users are allowed to consent to high-privilege scopes by policy
+level: high
+tags:
+  - cloud.azure
+  - cloud.office365
+  - attack.credential_access
+  - attack.persistence
+  - attack.t1078
+notes: |
+  - Replace trusted admin/service account entries with your environment's allowlist.
+  - Tune by excluding known CI/CD, onboarding, or SaaS integration service principals.
+  - Investigate matched events by capturing the full audit record, reviewing the app's owners, reply/redirect URIs, granted scopes, and any subsequent token issuance or sign-ins by the app.
+  - Recommended response: revoke consent for suspicious apps, remove service principals, rotate affected credentials, and perform tenant-wide token revocation if compromise is confirmed.
+

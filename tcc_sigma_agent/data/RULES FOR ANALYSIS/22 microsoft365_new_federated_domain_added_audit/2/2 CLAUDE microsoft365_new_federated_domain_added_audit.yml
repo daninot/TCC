@@ -1,0 +1,48 @@
+title: Microsoft 365 New Federated Domain Added
+id: 6c1e8b4f-3d7a-4f2e-b9c5-4a2d1e7f3c86
+status: experimental
+description: >
+  Detects the addition of a new federated domain in a Microsoft 365 or Azure
+  Active Directory tenant as recorded in the Unified Audit Log. Domain
+  federation establishes a trust relationship between a Microsoft 365 tenant
+  and an external identity provider, causing authentication requests for the
+  federated domain to be handled by the external IdP via SAML assertions.
+  Adversaries — including the UNC2452/NOBELIUM group behind the SolarWinds
+  campaign — abuse this capability to establish a persistent backdoor by
+  adding a rogue federated domain and configuring an attacker-controlled
+  token-signing certificate. This Golden SAML technique allows the adversary
+  to forge arbitrary SAML responses and authenticate as any user in the
+  tenant, including privileged accounts, without knowing credentials and
+  without triggering MFA. The operation field is matched with |contains on
+  both the domain indicator and the creation verb so that variant operation
+  names such as Add-FederatedDomain, Set-MsolDomainFederationSettings, and
+  New-Domain are all captured by the combined condition.
+references:
+  - https://research.splunk.com/cloud/e155876a-6048-11eb-ae93-0242ac130002/
+  - https://o365blog.com/post/aadbackdoor/
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.persistence
+  - attack.defense_evasion
+  - attack.privilege_escalation
+  - attack.t1484.002
+  - attack.t1136.003
+logsource:
+  product: m365
+  service: audit
+detection:
+  selection_domain:
+    Operation|contains: 'domain'
+  selection_action:
+    Operation|contains:
+      - 'add'
+      - 'new'
+  condition: selection_domain and selection_action
+falsepositives:
+  - Legitimate IT or identity team operations that intentionally federate
+    a new corporate domain with a sanctioned enterprise identity provider
+    as part of an approved SSO rollout or merger and acquisition integration
+    workflow. These events should still be investigated and correlated with
+    a corresponding change-management record before being dismissed.
+level: high

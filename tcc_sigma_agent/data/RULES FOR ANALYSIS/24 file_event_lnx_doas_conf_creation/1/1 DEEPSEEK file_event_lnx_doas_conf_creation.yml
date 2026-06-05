@@ -1,0 +1,25 @@
+title: Linux Doas Conf File Creation
+id: 12345678-1234-1234-1234-123456789abc
+status: test
+description: Detects the creation or modification of the doas.conf file on a Linux host. This file is used by the doas utility to allow standard users to perform tasks as root, similar to sudo. This activity may indicate an attempt to gain elevated privileges.
+references:
+  - https://research.splunk.com/endpoint/linux_doas_conf_file_creation/
+  - https://www.makeuseof.com/how-to-install-and-use-doas/
+author: Sigma Rule Generator
+date: 2026-06-04
+tags:
+  - attack.privilege-escalation
+  - attack.defense-evasion
+  - attack.t1548.003
+logsource:
+  product: linux
+  service: audit
+detection:
+  selection:
+    type: 'SYSCALL'
+    path|contains: '/etc/doas.conf'
+  condition: selection
+falsepositives:
+  - Legitimate administrative updates to the doas configuration file by authorized users.
+  - Automated configuration management tools such as Ansible, Puppet, or Chef.
+level: medium
