@@ -1,0 +1,80 @@
+title: Web Application SQL Injection Attempt (Generic HTTP)
+id: 1b7c3d9e-4f2a-4b6e-9c1d-2a3b4c5d6e7f
+status: experimental
+description: Detects common SQL injection payloads and patterns in HTTP request fields (URI, query string, headers, body). Covers boolean-based, time-based, UNION/stacked queries and error-based techniques (e.g. `UNION SELECT`, `' OR 1=1`, `sleep()`/`benchmark()`, `information_schema`, `xp_cmdshell`, `load_file()`), including URL-encoded variants. Tune to your environment to reduce false positives from legitimate application traffic that may include SQL fragments.
+references:
+  - https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/
+  - https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/
+  - https://brightsec.com/blog/sql-injection-payloads/
+  - https://github.com/payloadbox/sql-injection-payload-list
+  - https://book.hacktricks.xyz/pentesting-web/sql-injection/mysql-injection
+author: detection-engineer
+date: 2025/10/07
+tags:
+  - attack.initial_access
+  - attack.injection
+  - attack.T1190
+  - web.application
+logsource:
+  product: webserver
+  service: http_access   # proxy, WAF, load-balancer, webserver logs; map fields to your ingestion
+
+detection:
+  selection_common_sqli_uri:
+    http.request.uri|regex:
+      - '(?i)(\%27)|(\')\s*(or|OR)\s*(\%271\%27|\d+|\b1\b)\s*=\s*(\%271\%27|\d+|\b1\b)'     # ' OR 1=1 and variants
+      - '(?i)(\%27\%20or\%20\%271\%27\=)'                                                # encoded ' or '1'=
+      - '(?i)union(\s+all)?\s+select'                                                    # UNION SELECT
+      - '(?i)information_schema'                                                         # information_schema access
+      - '(?i)load_file\s*\('                                                             # MySQL load_file()
+      - '(?i)into outfile'                                                               # writing files
+      - '(?i)benchmark\s*\('                                                             # time-based (MySQL)
+      - '(?i)sleep\s*\('                                                                 # time-based
+      - '(?i)xp_cmdshell'                                                                # mssql rce
+      - '(?i)exec\(\s*master'                                                            # mssql stored proc abuse
+      - '(?i)concat\('                                                                   # concat usage often in payloads
+      - '(?i)group_concat\('                                                             # error/data-based
+      - '(?i)updatexml\('                                                                # MySQL error-based
+      - '(?i)extractvalue\('                                                             # MySQL error-based
+      - '(?i)select.+from.+information_schema'                                           # probing metadata
+  selection_common_sqli_body:
+    http.request.body|regex:
+      - '(?i)(\%27)|(\')\s*(or|OR)\s*(\%271\%27|\d+|\b1\b)\s*=\s*(\%271\%27|\d+|\b1\b)'
+      - '(?i)union(\s+all)?\s+select'
+      - '(?i)sleep\s*\('
+      - '(?i)benchmark\s*\('
+      - '(?i)load_file\s*\('
+      - '(?i)into outfile'
+      - '(?i)updatexml\('
+      - '(?i)extractvalue\('
+      - '(?i)information_schema'
+  selection_common_sqli_headers:
+    http.request.headers|regex:
+      - '(?i)union(\s+all)?\s+select'
+      - '(?i)(\%27)|(\')\s*(or|OR)\s*(\%271\%27|\d+|\b1\b)\s*=\s*(\%271\%27|\d+|\b1\b)'
+      - '(?i)load_file\s*\('
+  selection_sql_commenting:
+    any:
+      - http.request.uri|regex:
+          - '(?i)(\%2d\%2d|\-\-|\%23|\#)\s*$'   # trailing SQL comment or encoded
+      - http.request.body|regex:
+          - '(?i)(\%2d\%2d|\-\-|\%23|\#)'
+  condition: selection_common_sqli_uri or selection_common_sqli_body or selection_common_sqli_headers or selection_sql_commenting
+
+falsepositives:
+  - Applications or APIs that legitimately include SQL fragments (e.g., search strings, SQL snippets in debug/test fields).
+  - Internal diagnostic tools, or scanners and pentest tools (whitelist known scanner IPs or internal QA systems).
+  - Carefully tune regex thresholds (e.g., require multiple distinct indicators or correlate with other suspicious activity to reduce noise).
+
+level: high
+
+fields:
+  - http.request.method
+  - http.request.uri
+  - http.request.query
+  - http.request.body
+  - http.request.headers
+  - http.response.status_code
+  - source.ip
+  - user_agent
+  - event.time

@@ -1,0 +1,27 @@
+title: Executable from Webdav
+id: 206b3a1c-2d0f-4c7e-8b9a-1c2d3e4f5a6b
+status: test
+description: Detects executable access via webdav6. Can be seen in APT 29 such as from the emulated APT 29 hackathon.
+references:
+    - http://carnal0wnage.attackresearch.com/2012/06/webdav-server-to-download-custom.html
+    - https://github.com/OTRF/detection-hackathon-apt29
+author: SOC Prime, Adam Swan
+date: 2020-05-01
+modified: 2021-11-27
+tags:
+    - attack.command-and-control
+    - attack.t1105
+logsource:
+    product: zeek
+    service: http
+detection:
+    selection_webdav:
+        c-useragent|contains: 'WebDAV'
+        c-uri|contains: 'webdav'
+    selection_executable:
+        resp_mime_types|contains: 'dosexec'
+        c-uri|endswith: '.exe'
+    condition: selection_webdav and selection_executable
+falsepositives:
+    - Unknown
+level: medium

@@ -1,0 +1,72 @@
+title: Windows - Malicious APPX/MSIX Package Deployment via AppInstaller Abuse (BazarLoader/Emotet)
+id: 8d4c7f21-3e95-4b57-a093-6b8e2d5c9f47
+status: test
+description: |
+    Detects abuse of the Windows AppInstaller (AppInstaller.exe) process as a
+    malware delivery vehicle via APPX/MSIX packages, covering techniques documented
+    by SentinelOne Labs (July 2022) and Sophos (November 2021) for multiple malware
+    families including BazarBackdoor, Emotet, Magniber ransomware, and ElectronBot.
+
+    The attack exploits the Windows ms-appinstaller: URI protocol handler.
+    When a user clicks a phishing link that redirects to ms-appinstaller:?source=URL,
+    the browser (Edge, Chrome, Firefox) spawns AppInstaller.exe to process the request.
+    AppInstaller.exe then downloads and installs the APPX package from the attacker's
+    URL, bypassing Mark-of-the-Web controls. Malicious packages typically declare the
+    "runFullTrust" capability, bypassing the UWP application sandbox.
+
+    Three detection tiers:
+      1. selection_browser_parent (HIGH) — browser spawns AppInstaller.exe via
+         ms-appinstaller: URI. Legitimate AppInstaller launches come from Explorer,
+         winget, or direct double-click — never from a browser process.
+      2. selection_office_parent (HIGH) — Office application spawns AppInstaller.exe.
+         Malicious documents can invoke the ms-appinstaller: handler directly.
+      3. selection_appinstaller_child (HIGH) — AppInstaller.exe spawns a command
+         interpreter or shell. Indicates post-install malicious payload execution.
+
+    Note: Microsoft temporarily disabled the ms-appinstaller handler after CVE-2021-43890
+    and again in late 2022, but the direct APPX sideloading vector via AppInstaller.exe
+    remains abusable when AppInstaller is invoked directly.
+references:
+    - https://www.sentinelone.com/labs/inside-malicious-windows-apps-for-malware-deployment/
+    - https://learn.microsoft.com/en-us/windows/win32/appxpkg/troubleshooting
+    - https://news.sophos.com/en-us/2021/11/11/bazarloader-call-me-back-attack-abuses-windows-10-apps-mechanism/
+    - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-43890
+    - https://attack.mitre.org/techniques/T1566/002/
+    - https://attack.mitre.org/techniques/T1218/
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.initial_access
+    - attack.t1566.002  # Phishing: Spearphishing Link (malicious ms-appinstaller: URL)
+    - attack.execution
+    - attack.t1204.002  # User Execution: Malicious File (APPX package)
+    - attack.defense_evasion
+    - attack.t1218      # System Binary Proxy Execution (AppInstaller as LOLBin)
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_browser_parent:
+        # Browser spawning AppInstaller.exe — primary ms-appinstaller: URI abuse vector
+        # (BazarLoader and Emotet technique per Sophos and SentinelOne)
+        ParentImage|endswith:
+            - '\msedge.exe'
+            - '\chrome.exe'
+            - '\firefox.exe'
+            - '\iexplore.exe'
+            - '\opera.exe'
+            - '\brave.exe'
+        Image|endswith: '\AppInstaller.exe'
+    selection_office_parent:
+        # Office application spawning AppInstaller.exe — malicious document variant
+        ParentImage|endswith:
+            - '\winword.exe'
+            - '\excel.exe'
+            - '\powerpnt.exe'
+            - '\outlook.exe'
+            - '\mshta.exe'
+        Image|endswith: '\AppInstaller.exe'
+    selection_appinstaller_child:
+        # AppInstaller.exe spawning interpreters — post-install malicious code execution
+        # Legitimate AppInstaller does not spawn command shells or script engines
+        ParentImage|end

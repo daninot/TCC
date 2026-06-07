@@ -1,0 +1,36 @@
+title: ClickOnce Loaded Module Unsigned Or Expired Signature
+id: d4b2f7a1-8c5e-4f3a-9b2d-6e7f8a0c1d2e
+status: experimental
+description: Detects when a ClickOnce-deployed application loads a module (DLL) that is unsigned or has an expired signature. Attackers may abuse ClickOnce's trusted execution path to load malicious unsigned DLLs while bypassing SmartScreen and other trust controls. Requires image load/module load telemetry that includes the loader process image path and module signature status.
+author: Senior Threat Detection Engineer
+date: 2026/06/08
+references:
+  - [https://posts.specterops.io/less-smartscreen-more-caffeine-ab-using-clickonce-for-trusted-code-execution-1446ea8051c5](https://posts.specterops.io/less-smartscreen-more-caffeine-ab-using-clickonce-for-trusted-code-execution-1446ea8051c5)
+  - [https://www.sentinelone.com/labs/inside-malicious-windows-apps-for-malware-deployment/](https://www.sentinelone.com/labs/inside-malicious-windows-apps-for-malware-deployment/)
+tags:
+  - attack.persistence
+  - attack.execution
+  - windows
+  - clickonce
+logsource:
+  product: windows
+  category: image_load
+  description: Image/module load events from endpoint telemetry (e.g., Sysmon ImageLoaded Event ID 7 or EDR module load events) that include Image (loader process path), LoadedModule (module path), and ModuleSignature or SignatureStatus fields.
+detection:
+  selection_clickonce:
+    Image|contains:
+      - '\\AppData\\Local\\Apps\\2.0\\'
+      - '\\Local\\Apps\\2.0\\'
+      - '\\AppData\\Local\\Apps\\2.0\\*\\'
+      - '\\Microsoft\\Windows\\ClickOnce\\'
+  selection_signature:
+    ModuleSignature|in:
+      - 'Unsigned'
+      - 'Expired'
+      - 'Signature expired'
+      - 'No signature'
+  condition: all of selection_*
+falsepositives:
+  - Internal or third-party components legitimately unsigned (development builds) loaded by ClickOnce applications.
+  - Expired signatures on benign legacy components awaiting re-signing during maintenance windows.
+level: high

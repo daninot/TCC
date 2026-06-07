@@ -1,0 +1,26 @@
+title: OpenCanary SSH Login Attempt Detected
+id: 4a6d2f9b-8c3e-4f1a-b7d2-9e5c1b2a3f4e
+status: experimental
+description: Detects SSH authentication attempts against an OpenCanary honeypot by matching the OpenCanary numeric logtype for SSH login events. Any authentication attempt against a honeypot SSH service is inherently suspicious and may indicate scanning, credential harvesting, or follow-on intrusion activity.
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+references:
+  - [https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration](https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration)
+  - [https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52](https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52)
+tags:
+  - attack.initial_access
+  - attack.lateral_movement
+  - attack.persistence
+  - honeypot
+  - opencanary
+logsource:
+  product: opencanary
+  category: application
+  description: OpenCanary application logs; ensure OpenCanary logging is forwarded to the SIEM.
+detection:
+  selection:
+    logtype: 1001
+  condition: selection
+falsepositives:
+  - Authorized security testing or internal red team activity targeting the honeypot.
+level: high

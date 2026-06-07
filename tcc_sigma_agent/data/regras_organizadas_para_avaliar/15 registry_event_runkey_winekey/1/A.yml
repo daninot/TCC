@@ -1,0 +1,82 @@
+title: Windows - BazarLoader (KEGTAP/SINGLEMALT) Persistence via Winlogon Registry Hijacking
+id: 1e3f9c72-5b84-4d90-a837-6c2e5f1a8d43
+status: test
+description: |
+    Detects modification of the Windows Winlogon Userinit or Shell registry values,
+    the primary persistence mechanism documented in FireEye's October 2020 report on
+    KEGTAP (BazarLoader) and SINGLEMALT (BazarBackdoor) campaigns by UNC1878
+    (WIZARD SPIDER — the threat actor behind TrickBot and Conti ransomware).
+
+    BazarLoader persistence (CISA AA20-302A): the malware appends its binary path
+    to the Userinit value, which Windows executes at every interactive logon.
+    Standard value: "C:\Windows\system32\userinit.exe,"
+    Compromised:    "C:\Windows\system32\userinit.exe,C:\...\malware.exe"
+    Any value that is NOT exactly the standard string is a high-confidence IOC.
+
+    The secondary selection covers Winlogon Shell hijacking (replaces explorer.exe),
+    a related T1547.004 technique used by malware families in the same ecosystem.
+
+    Threat context:
+      Actor: UNC1878 (WIZARD SPIDER)
+      Initial access: Phishing linking to Google Docs; EXE payloads named
+        Report-Review*.exe, Document_Print.exe, Text_Report.exe
+      Co-indicator: %APPDATA%\...\Startup\adobe.lnk (startup folder persistence)
+      Post-persistence: Cobalt Strike, BloodHound AD enumeration, Mimikatz
+      End-stage: RYUK ransomware — often within 24 hours of initial compromise
+      Primary targets: Hospitals, medical centers, retirement communities
+references:
+    - https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html
+    - https://us-cert.cisa.gov/ncas/alerts/aa20-302a
+    - https://attack.mitre.org/software/S0534/
+    - https://attack.mitre.org/techniques/T1547/004/
+    - https://www.lares.com/blog/endpoint-hunting-for-unc1878-kegtap-ttps/
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.persistence
+    - attack.t1547.004   # Boot/Logon Autostart: Winlogon Helper DLL
+    - attack.defense_evasion
+logsource:
+    category: registry_set
+    product: windows
+detection:
+    selection_userinit:
+        # BazarLoader primary vector: appends malware.exe after the trailing comma
+        # Fires on ANY value other than the exact standard string (see filter below)
+        TargetObject|endswith: '\CurrentVersion\Winlogon\Userinit'
+    selection_shell:
+        # Secondary: Winlogon Shell hijacking — replaces explorer.exe with malicious binary
+        TargetObject|endswith: '\CurrentVersion\Winlogon\Shell'
+    filter_userinit_standard:
+        # Exact-match suppression: only the unmodified standard value is whitelisted
+        # "C:\Windows\system32\userinit.exe,C:\malware.exe" does NOT match — fires alert
+        Details:
+            - 'C:\Windows\system32\userinit.exe,'
+            - 'C:\WINDOWS\system32\userinit.exe,'
+    filter_shell_standard:
+        # All accepted standard Windows shell values
+        Details:
+            - 'explorer.exe'
+            - 'C:\Windows\Explorer.exe'
+            - 'C:\Windows\explorer.exe'
+            - 'C:\WINDOWS\explorer.exe'
+    filter_setup_processes:
+        # Windows setup and deployment infrastructure legitimately writes these values
+        Image|endswith:
+            - '\SetupHost.exe'
+            - '\TiWorker.exe'
+            - '\msiexec.exe'
+    condition: ((selection_userinit and not filter_userinit_standard) or
+                (selection_shell and not filter_shell_standard))
+               and not filter_setup_processes
+fields:
+    - Image
+    - TargetObject
+    - Details
+    - User
+    - ProcessId
+falsepositives:
+    - Windows OS Feature Updates temporarily modifying Userinit during in-place upgrades
+    - Enterprise kiosk or digital signage software overriding the default explorer shell
+    - Accessibility or session management tools that replace the default Windows shell
+level: high

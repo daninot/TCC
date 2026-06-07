@@ -1,0 +1,40 @@
+title: Shai-Hulud Malware Execution Detected on Linux
+id: 8b2f1c4d-3e6a-4f9b-9d2c-5a7e8b0c1d2f
+status: experimental
+description: Detects execution of processes on Linux where the command line contains characteristic Shai-Hulud identifier strings left by the npm-worm family. These identifiers persist even when binaries are renamed and can indicate compromise from the Shai-Hulud supply-chain worm that spreads via npm packages and exfiltrates secrets.
+author: Senior Threat Detection Engineer
+date: 2026/06/08
+references:
+  - [https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack](https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack)
+  - [https://www.aikido.dev/blog/shai-hulud-strikes-again-hitting-zapier-ensdomains](https://www.aikido.dev/blog/shai-hulud-strikes-again-hitting-zapier-ensdomains)
+  - [https://semgrep.dev/blog/2025/digging-for-secrets-sha1-hulud-the-second-coming-of-the-npm-worm/](https://semgrep.dev/blog/2025/digging-for-secrets-sha1-hulud-the-second-coming-of-the-npm-worm/)
+tags:
+  - malware
+  - supply_chain
+  - npm
+  - linux
+  - shai-hulud
+logsource:
+  product: linux
+  category: process_creation
+  description: Process creation events from Linux endpoint telemetry (e.g., auditd, sysmon for Linux, osquery) that include the full CommandLine. Ensure command-line capture is enabled.
+detection:
+  selection:
+    CommandLine|contains:
+      - 'shai-hulud'
+      - 'shai_hulud'
+      - 'shaihulud'
+      - 'sha1-hulud'
+      - 'sha1hulud'
+      - 'hulud'
+      - 'shai-hulud-2'
+      - 'shai_hulud_2'
+      - 'shai-hulud-2.0'
+      - 'shai_hulud_2.0'
+      - 'shai_hulud_agent'
+      - 'shai-hulud-agent'
+  condition: selection
+falsepositives:
+  - Internal security research, malware analysis, or developer testing that intentionally runs Shai-Hulud samples or strings in a controlled environment.
+  - Tooling or scripts that include these strings for detection, demonstration, or documentation purposes.
+level: high

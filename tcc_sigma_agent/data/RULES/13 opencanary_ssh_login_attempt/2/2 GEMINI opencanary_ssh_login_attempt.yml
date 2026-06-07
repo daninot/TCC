@@ -1,0 +1,23 @@
+title: OpenCanary SSH Login Attempt
+id: 5a2c2069-7988-4e89-9a2d-1db9df845014
+status: experimental
+description: Detects an SSH login attempt against an OpenCanary honeypot node. Since the node is a decoy, any login attempt is inherently suspicious.
+references:
+- [https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration](https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration)
+- [https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52](https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52)
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+tags:
+- attack.initial_access
+- attack.lateral_movement
+- attack.persistence
+logsource:
+product: opencanary
+category: application
+detection:
+selection:
+logtype: 4002
+condition: selection
+falsepositives:
+- Authorized security testing or administrative misconfiguration.
+level: high

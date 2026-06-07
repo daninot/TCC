@@ -1,0 +1,26 @@
+title: Unsigned or Expired Module Loaded by ClickOnce Application
+id: f6a7b8c9-d0e1-42f3-84a5-6b7c8d9e0f1a
+status: experimental
+description: Detects an unsigned or expired-signature module loaded by a ClickOnce application, a technique abused by attackers to bypass SmartScreen and trust controls via the ClickOnce trusted execution mechanism.
+references:
+    - https://posts.specterops.io/less-smartscreen-more-caffeine-ab-using-clickonce-for-trusted-code-execution-1446ea8051c5
+author: Senior Threat Detection Engineer
+date: 2026-06-06
+logsource:
+    product: windows
+    category: image_load
+detection:
+    selection_path:
+        Image|contains: '\\Apps\\2.0\\'
+    selection_unsigned:
+        Signed: false
+    selection_expired:
+        SignatureStatus: 'Expired'
+    condition: selection_path and (selection_unsigned or selection_expired)
+falsepositives:
+    - Legitimate ClickOnce applications with self-signed or expired certificates during development or testing
+level: high
+tags:
+    - attack.defense_evasion
+    - attack.t1218
+    - attack.t1112

@@ -1,0 +1,24 @@
+title: OAuth 2.0 Device Code Flow Authentication
+id: 5c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+status: experimental
+description: Detects authentication using the OAuth 2.0 Device Code flow in Azure AD sign-in logs. This flow is intended for input-constrained devices; when observed outside that scenario, it may indicate a device-code phishing attack, misconfigured application, or attacker abusing the flow to obtain tokens from a victim's session.
+references:
+  - https://learn.microsoft.com/en-us/entra/architecture/security-operations-applications#application-authentication-flows
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.credential-access
+  - attack.t1528
+  - attack.t1550
+logsource:
+  product: azure
+  service: signinlogs
+detection:
+  selection:
+    AuthenticationProtocol: oauth2
+  filter_device_code:
+    AuthenticationProcessingDetails|contains: Device Code
+  condition: selection and filter_device_code
+falsepositives:
+  - Legitimate usage by input-constrained devices such as smart TVs, IoT devices, CLI tools, or headless systems that require the device code flow for authentication.
+level: medium

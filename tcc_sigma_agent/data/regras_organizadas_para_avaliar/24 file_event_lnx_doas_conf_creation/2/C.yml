@@ -1,0 +1,25 @@
+title: Doas Configuration File Creation
+id: 5f8d2c1a-7f4f-4d7a-9d1f-6c2f8b9a1e34
+status: experimental
+description: Detects creation of the doas configuration file on a Linux host, which may indicate establishment of privilege escalation capabilities.
+references:
+
+* [https://research.splunk.com/endpoint/linux_doas_conf_file_creation/](https://research.splunk.com/endpoint/linux_doas_conf_file_creation/)
+* [https://www.makeuseof.com/how-to-install-and-use-doas/](https://www.makeuseof.com/how-to-install-and-use-doas/)
+  author: OpenAI
+  date: 2026-06-04
+  tags:
+* attack.persistence
+* attack.privilege_escalation
+* attack.t1548
+  logsource:
+  product: linux
+  category: file_event
+  detection:
+  selection:
+  TargetFilename|endswith: '/doas.conf'
+  condition: selection
+  falsepositives:
+* Legitimate installation or administration of doas
+  level: medium
+

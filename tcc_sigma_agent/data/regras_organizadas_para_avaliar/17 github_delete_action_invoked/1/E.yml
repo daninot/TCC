@@ -1,0 +1,24 @@
+title: Suspicious Codespaces Environment Export
+id: 3f2a1c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+status: experimental
+description: Detects when a user exports a GitHub Codespaces environment to a branch, which may indicate unauthorized data exfiltration or intellectual property theft.
+references:
+  - https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions
+  - https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/security-log-events#codespaces
+author: Senior Threat Detection Engineer
+date: 2026-06-03
+tags:
+  - attack.exfiltration
+  - attack.t1048
+  - attack.initial-access
+  - attack.t1190
+logsource:
+  product: github
+  category: audit
+detection:
+  selection:
+    action: codespaces.export_environment
+  condition: selection
+falsepositives:
+  - Legitimate user actions for backup or migration purposes.
+level: high

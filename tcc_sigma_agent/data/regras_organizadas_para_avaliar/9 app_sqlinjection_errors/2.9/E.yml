@@ -1,0 +1,24 @@
+title: SQL Injection Probing Error Messages
+id: e069ba35-efde-43cb-b09e-7164ff0393b4
+status: experimental
+description: Detects SQL error messages in application logs indicating probing for SQL injection across Oracle, MySQL, SQL Server, and SQLite backends. Note that this rule requires application error logs to be captured at LOG_LEVEL ERROR or above.
+references:
+- [http://www.sqlinjection.net/errors](http://www.sqlinjection.net/errors)
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+tags:
+- attack.initial_access
+- attack.t1190
+logsource:
+product: sql
+category: application
+detection:
+keywords:
+- 'ORA-01756'
+- 'error in your SQL syntax'
+- 'Unclosed quotation mark'
+- 'sqlite3.OperationalError'
+condition: keywords
+falsepositives:
+- Legitimate application bugs, database migration errors, or failed software updates generating syntax errors.
+level: medium

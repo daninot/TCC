@@ -1,0 +1,55 @@
+title: Windows - GPO Refresh Disabled and SmartScreen Tampered via Registry (LockBit)
+id: e2a4c3b7-5f91-4d28-b736-9c5de8a17f43
+status: test
+description: |
+    Detects registry writes to HKLM\SOFTWARE\Policies\Microsoft\Windows\System
+    that disable Group Policy refresh intervals or disable Windows SmartScreen,
+    matching the LockBit Black ransomware technique (T1484.001 - Group Policy
+    Modification). Setting GroupPolicyRefreshTime* to 0 prevents the system from
+    re-applying legitimate domain policy, locking in attacker-controlled GPO changes.
+    Covers both cmd (reg.exe) and PowerShell (New-ItemProperty) execution vectors
+    as described in the Atomic Red Team test. Elevation is required to write
+    to HKLM, making this a high-confidence, low-noise indicator when seen outside
+    an approved change management window.
+references:
+    - https://github.com/redcanaryco/atomic-red-team/blob/40b77d63808dd4f4eafb83949805636735a1fd15/atomics/T1484.001/T1484.001.md
+    - https://attack.mitre.org/techniques/T1484/001/
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.defense_evasion
+    - attack.privilege_escalation
+    - attack.t1484.001    # Group Policy Modification
+    - attack.t1562.001    # Impair Defenses: Disable or Modify Tools (SmartScreen)
+logsource:
+    category: registry_set
+    product: windows
+detection:
+    selection_gp_refresh:
+        TargetObject|contains: '\SOFTWARE\Policies\Microsoft\Windows\System\'
+        TargetObject|endswith:
+            - '\GroupPolicyRefreshTimeDC'
+            - '\GroupPolicyRefreshTimeOffsetDC'
+            - '\GroupPolicyRefreshTime'
+            - '\GroupPolicyRefreshTimeOffset'
+        Details|contains: '0x00000000'  # value set to 0 = disabled
+    selection_smartscreen:
+        TargetObject|contains: '\SOFTWARE\Policies\Microsoft\Windows\System\'
+        TargetObject|endswith: '\EnableSmartScreen'
+        Details|contains: '0x00000000'  # SmartScreen disabled
+    filter_system_hive:
+        Image|endswith:
+            - '\svchost.exe'    # legitimate GP service writes
+            - '\WmiPrvSE.exe'   # WMI-driven GP infrastructure
+    condition: 1 of selection_* and not filter_system_hive
+fields:
+    - Image
+    - TargetObject
+    - Details
+    - User
+    - ProcessId
+falsepositives:
+    - Legitimate GP management tools writing these values in approved change windows
+    - Enterprise MDM or endpoint agents managing SmartScreen policy
+    - IT automation scripts tuning GP refresh timing in test environments
+level: high

@@ -1,0 +1,33 @@
+title: GitHub Audit Log Deletion Of Codespaces Environments Projects And Repositories
+id: 0b6f2d4c-2d69-4aa0-9d85-3e2d1a4f7c91
+status: experimental
+description: Detects deletion-related GitHub audit log events for codespaces, environments, projects, and repositories, which may indicate destructive activity or unauthorized resource removal.
+references:
+
+* [https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions](https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions)
+* [https://docs.github.com/en/codespaces/managing-codespaces-for-your-organization/reviewing-your-organizations-audit-logs-for-github-codespaces](https://docs.github.com/en/codespaces/managing-codespaces-for-your-organization/reviewing-your-organizations-audit-logs-for-github-codespaces)
+* [https://docs.github.com/enterprise-cloud%40latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise](https://docs.github.com/enterprise-cloud%40latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise)
+  author: OpenAI
+  date: 2026-06-02
+  tags:
+* attack.impact
+* attack.t1485
+  logsource:
+  product: github
+  service: audit
+  detection:
+  selection_codespace:
+  action: codespaces.destroy
+  selection_environment:
+  action: environment.delete
+  selection_project:
+  action: project.delete
+  selection_repository:
+  action: repo.destroy
+  condition: 1 of selection_*
+  falsepositives:
+* Authorized administrative cleanup
+* Planned migration or decommissioning activities
+  level: high
+  notes: GitHub audit log streaming must be enabled to collect these events. See the streaming setup documentation at [https://docs.github.com/enterprise-cloud%40latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise](https://docs.github.com/enterprise-cloud%40latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise).
+

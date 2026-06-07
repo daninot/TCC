@@ -1,0 +1,45 @@
+title: Internet Explorer Trusted Sites Zone Registry Modification
+id: 9e72d4a8-c5f4-4fd5-9e4d-3a61e7c8f1bb
+status: experimental
+description: >
+  Detects modification of Internet Explorer Trusted Sites Zone registry
+  entries. Adversaries may add malicious or attacker-controlled domains
+  to the Trusted Sites zone to reduce browser security restrictions,
+  facilitate phishing, enable ActiveX execution, or bypass security prompts.
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone
+  - https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries
+  - https://attack.mitre.org/techniques/T1112/
+author: OpenAI
+date: 2026-05-26
+tags:
+  - attack.defense_evasion
+  - attack.persistence
+  - attack.t1112
+logsource:
+  category: registry_set
+  product: windows
+detection:
+  selection_target:
+    TargetObject|contains:
+      - '\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains\'
+      - '\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\EscDomains\'
+  selection_zone:
+    Details:
+      - '2'
+    TargetObject|endswith:
+      - '\http'
+      - '\https'
+      - '\*'
+  condition: all of selection_*
+fields:
+  - TargetObject
+  - Details
+  - Image
+  - User
+  - Computer
+falsepositives:
+  - Legitimate enterprise browser configuration
+  - Administrative addition of trusted intranet applications
+  - Software deployment or endpoint management tools
+level: medium

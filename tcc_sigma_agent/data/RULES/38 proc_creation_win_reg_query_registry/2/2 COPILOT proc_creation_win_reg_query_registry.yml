@@ -1,0 +1,50 @@
+title: Registry Reconnaissance via reg.exe
+id: 0f7a9c3b-2d4e-4b6f-8a1c-9e2f3d4b5a6c
+status: experimental
+description: Detects use of reg.exe to query sensitive registry locations commonly targeted for credential discovery, persistence, service configuration, shell loading, policies, and logon settings. Matches both the process identity (Image and OriginalFileName) and command-line usage of the query subcommand targeting known sensitive registry keys. Requires process creation logging that captures Image, OriginalFileName, and CommandLine.
+author: Senior Threat Detection Engineer
+date: 2026/06/11
+references:
+  - [https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1012/T1012.md](https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1012/T1012.md)
+tags:
+  - attack.discovery
+  - attack.credential_access
+  - attack.persistence
+  - windows
+logsource:
+  product: windows
+  category: process_creation
+  description: Process creation events (e.g., Sysmon Event ID 1 or equivalent) that include Image, OriginalFileName, and CommandLine fields.
+detection:
+  selection_process:
+    Image|endswith:
+      - '\\reg.exe'
+      - '\\Reg.exe'
+    OriginalFileName|endswith:
+      - 'reg.exe'
+      - 'Reg.exe'
+  selection_query:
+    CommandLine|contains:
+      - ' query '
+      - '/query'
+      - ' query\\'
+      - ' query"'
+  selection_targets:
+    CommandLine|contains:
+      - 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run'
+      - 'HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run'
+      - 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce'
+      - 'HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce'
+      - 'HKLM\\SYSTEM\\CurrentControlSet\\Services'
+      - 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies'
+      - 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders'
+      - 'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon'
+      - 'HKCU\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon'
+      - 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\ShellExecuteHooks'
+      - 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Browser Helper Objects'
+      - 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\AppInit_DLLs'
+  condition: all of selection_process selection_query selection_targets
+falsepositives:
+  - Legitimate administrative or inventory tasks using reg.exe to inspect system configuration.
+  - Automated management, monitoring, or deployment tools that query registry keys for health checks or configuration validation.
+level: high

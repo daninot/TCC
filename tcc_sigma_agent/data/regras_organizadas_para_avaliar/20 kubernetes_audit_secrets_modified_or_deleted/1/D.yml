@@ -1,0 +1,27 @@
+title: Kubernetes Secret Access
+id: 4c8a2b1d-9e5f-4a7b-8c9d-1e2f3a4b5c6d
+status: test
+description: Detects when a Kubernetes secret is accessed via the API server, which may indicate credential theft or unauthorized data access.
+references:
+  - https://kubernetes.io/docs/reference/config-api/apiserver-audit.v1/
+  - https://commandk.dev/blog/guide-to-audit-k8s-secrets-for-compliance/
+author: Sigma Rule Generator
+date: 2026-06-03
+tags:
+  - attack.credential-access
+  - attack.t1552.007
+logsource:
+  product: kubernetes
+  service: audit
+detection:
+  selection:
+    objectRef.resource: secrets
+    verb:
+      - get
+      - list
+      - watch
+  condition: selection
+falsepositives:
+  - Legitimate access by system administrators or automated processes.
+  - Monitoring tools that regularly read secrets.
+level: high

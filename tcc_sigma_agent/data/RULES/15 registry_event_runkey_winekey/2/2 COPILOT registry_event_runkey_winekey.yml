@@ -1,0 +1,46 @@
+title: Registry Run Key Modification by WINEKEY / Team9 Backdoor
+id: 5b3c9d2e-1f4a-4e6b-9c7d-2a1f0e8b6c3d
+status: experimental
+description: Detects registry write events that create or modify Run key entries consistent with persistence by the WINEKEY or Team9 backdoor. Matches writes to standard Run key paths and looks for value names or data that reference known backdoor identifiers or that attempt to masquerade as backup manager applications.
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+references:
+  - [https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html](https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html)
+tags:
+  - attack.persistence
+  - attack.t1547.001
+  - malware.winekey
+  - malware.team9
+logsource:
+  product: windows
+  category: registry_event
+  description: Windows registry write events (create/modify) that include RegistryKey, RegistryValueName, and RegistryValueData.
+detection:
+  selection_runkey:
+    RegistryKey|endswith:
+      - '\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+      - '\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Run'
+  selection_malicious_name:
+    RegistryValueName|contains:
+      - 'WINEKEY'
+      - 'WineKey'
+      - 'Team9'
+      - 'team9'
+      - 'Backup'
+      - 'backup'
+      - 'BackupManager'
+      - 'BackupMgr'
+  selection_malicious_data:
+    RegistryValueData|contains:
+      - 'winekey'
+      - 'winekey.exe'
+      - 'team9'
+      - 'team9.exe'
+      - '\\AppData\\'
+      - '\\Temp\\'
+      - '.exe'
+  condition: selection_runkey and (selection_malicious_name or selection_malicious_data)
+falsepositives:
+  - Legitimate backup or management software that creates Run entries (e.g., vendor-signed backup agents).
+  - Endpoint management or deployment tools that register autostart entries.
+level: high

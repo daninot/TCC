@@ -1,0 +1,31 @@
+title: Bitbucket Secret Scanning Configuration Modified
+id: 59aef46e-1da5-429a-840f-7b7e3bd260a9
+status: experimental
+description: Detects global, project, or repository-level modifications to Bitbucket secret scanning rules and allowlists. Unauthorized deletion or relaxation of these patterns allows credentials to pass into source control blindly.
+references:
+    - https://confluence.atlassian.com/bitbucketserver/audit-log-events-776640423.html
+    - https://confluence.atlassian.com/bitbucketserver/secret-scanning-1157471613.html
+author: Security Operations Center
+date: 2026/05/25
+tags:
+    - attack.defense_evasion
+    - attack.t1562.001 # Impair Defenses: Disable or Modify Tools
+logsource:
+    product: bitbucket
+    service: audit
+detection:
+    selection_actions:
+        auditType.action:
+            - 'Global secret scanning deleted'
+            - 'Global secret scanning rule created'
+            - 'Global secret scanning rule updated'
+            - 'Repository secret scanning rule created'
+            - 'Repository secret scanning rule deleted'
+            - 'Repository secret scanning rule updated'
+            - 'Repository secret scanning allowlist rule added'
+            - 'Repository secret scanning allowlist rule deleted'
+            - 'Repository secret scanning allowlist rule updated'
+    condition: selection_actions
+falsepositives:
+    - Legitimate configuration adjustments, false-positive reductions, and allowlist updates carried out by authorized DevOps teams or Security Administrators.
+level: medium

@@ -1,0 +1,88 @@
+title: Suspicious Registry Query Activity (T1012)
+id: 1c9f4b2e-2026-t1012-registry-query
+status: experimental
+description: Detects processes and command lines commonly used to query Windows registry keys and values (reg.exe queries, PowerShell registry cmdlets, WMI StdRegProv calls, and common scripting patterns). Frequent or unexpected registry enumeration from non-admin users, from uncommon parent processes, or via encoded/obfuscated command lines may indicate discovery activity consistent with ATT&CK T1012.
+author: Daniela
+date: 2026-06-07
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1012/T1012.md
+logsource:
+  product: windows
+  service: sysmon
+  category: process_creation
+detection:
+  selection_reg_query:
+    EventID: 1
+    Image|re:
+      - '(?i)\\reg\.exe$'
+    CommandLine|re:
+      - '(?i)\bquery\b'
+      - '(?i)\bquery\s+HKLM\\'
+      - '(?i)\bquery\s+HKCU\\'
+  selection_powershell_registry_cmdlets:
+    EventID: 1
+    Image|re:
+      - '(?i)\\powershell\.exe$'
+      - '(?i)\\pwsh\.exe$'
+    CommandLine|re:
+      - '(?i)Get-ItemProperty\b'
+      - '(?i)Get-Item\b\s+HKLM:|HKCU:'
+      - '(?i)Get-ChildItem\s+HKLM:|HKCU:'
+      - '(?i)Get-ItemPropertyValue\b'
+      - '(?i)Get-ItemPropertyValue\s+-Path'
+      - '(?i)Get-ItemProperty\s+-Path'
+  selection_powershell_wmi_stdregprov:
+    EventID: 1
+    Image|re:
+      - '(?i)\\powershell\.exe$'
+      - '(?i)\\pwsh\.exe$'
+    CommandLine|re:
+      - '(?i)StdRegProv'
+      - '(?i)Get-WmiObject\s+.*StdRegProv'
+      - '(?i)Get-CimInstance\s+.*StdRegProv'
+      - '(?i)Invoke-WmiMethod\s+.*StdRegProv'
+  selection_wmic_reg:
+    EventID: 1
+    Image|re:
+      - '(?i)\\wmic\.exe$'
+    CommandLine|re:
+      - '(?i)reg(istry)?'
+  selection_encoded_hklm_hkcu:
+    EventID: 1
+    CommandLine|re:
+      - '(?i)-EncodedCommand\s+[A-Za-z0-9+/=]{80,}'
+      - '(?i)(HKLM:|HKCU:|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)'
+  selection_suspicious_parent:
+    EventID: 1
+    ParentImage|re:
+      - '(?i)\\(winword|excel|powerpnt|outlook|msedge|chrome|firefox|svchost|explorer)\.exe$'
+  selection_high_frequency:
+    EventID: 1
+    CommandLine|re:
+      - '(?i)(HKLM:|HKCU:|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)'
+    CountByProcessImage: ">10"
+    Timeframe: "5m"
+  condition: (selection_reg_query or selection_powershell_registry_cmdlets or selection_powershell_wmi_stdregprov or selection_wmic_reg or selection_encoded_hklm_hkcu) and (selection_suspicious_parent or selection_high_frequency)
+fields:
+  - timestamp
+  - ComputerName
+  - SubjectUserName
+  - Image
+  - ParentImage
+  - CommandLine
+  - ProcessId
+  - CountByProcessImage
+falsepositives:
+  - Legitimate administrative scripts, inventory/asset management tools, or endpoint management agents that query registry keys (whitelist known management accounts and hosts).
+  - Backup or configuration management tasks that enumerate registry state as part of normal operations.
+level: medium
+tags:
+  - attack.discovery
+  - attack.T1012
+  - discovery.registry
+  - detection.windows.sysmon
+notes: |
+  - Tuning: whitelist known automation and management tooling; restrict detection to non-admin users, unusual parent processes, or unexpected hosts to reduce noise.
+  - Investigation: collect full command line, parent/child process tree, account context, and correlate with other discovery activity (network scans, file system enumeration). Search for subsequent persistence or credential-access attempts after registry enumeration.
+  - Mitigation: limit unnecessary registry read access for non-privileged accounts, monitor and alert on high-frequency registry enumeration, and enforce application control for scripting hosts.
+

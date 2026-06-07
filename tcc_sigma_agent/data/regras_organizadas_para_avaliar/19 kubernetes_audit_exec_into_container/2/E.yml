@@ -1,0 +1,27 @@
+title: Kubernetes Pod Exec Command Execution
+id: c4d5e6f7-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+status: experimental
+description: Detects remote command execution inside a Kubernetes pod container via kubectl exec or equivalent, indicating potential attacker access to the API server and container runtime.
+references:
+    - https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Exec%20into%20container/
+author: Senior Threat Detection Engineer
+date: 2026-06-03
+logsource:
+    product: kubernetes
+    category: application
+    service: audit
+detection:
+    selection:
+        verb: 'create'
+        objectRef.resource: 'pods'
+        objectRef.subresource: 'exec'
+    condition: selection
+falsepositives:
+    - Legitimate administrative debugging or maintenance tasks using kubectl exec.
+    - CI/CD pipelines or automation tools that require exec access.
+level: medium
+tags:
+    - attack.execution
+    - attack.lateral_movement
+    - attack.t1059
+    - attack.t1610

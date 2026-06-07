@@ -25,7 +25,7 @@ def criar_banco_chroma():
     print(f" -> {len(documentos)} arquivos carregados com sucesso.")
 
     print("ii) iniciando embeddings:")  #modelo de vetorização
-    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")               #precisei usar esse modelo agora porque ele roda no meu notebook
+    embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")               #precisei usar esse modelo agora porque ele roda no meu notebook
 
     print("iii) convertendo textos em vetores e salvando no ChromaDB:")
     Chroma.from_documents(                  #cria o banco e salva na pasta física './chroma_db'

@@ -1,0 +1,98 @@
+title: Script Engine Launched from Startup Folder via Internet Shortcut - Storm-0408 Style Persistence
+id: a92f4b17-3de1-4c80-b37e-9e2d0f8a65c3
+status: experimental
+description: |
+    Detects wscript.exe or cscript.exe executing a script file (.js, .jse, .vbs, .vbe)
+    where the script path resolves inside a Windows Startup folder, indicative of an
+    internet shortcut (.url) or LNK-based persistence implant that survives user logon.
+
+    This pattern was observed in the Storm-0408 malvertising campaign (December 2024),
+    where a renamed AutoIT interpreter (.scr) was paired with a JavaScript file of the
+    same name, and a .url internet shortcut placed in the user Startup folder pointed
+    to that JavaScript file. On logon, Explorer resolves the .url and launches the .js
+    via wscript.exe, which in turn executes the AutoIT payload for C2, browser credential
+    theft, and DPAPI decryption.
+
+    This technique is also covered by:
+    - PersistenceSniper (Find-AllPersistence: detects script files in Startup folders
+      as a persistence anomaly indicator).
+    - Atomic Red Team T1547.001 tests #4 (vbs), #5 (jse), and #6 (bat): placing and
+      executing script files from the Startup folder to achieve logon persistence.
+
+    The combination of a script engine (wscript.exe) launched by explorer.exe where
+    the command line points into AppData\Roaming\Microsoft\Windows\Start Menu\Programs\
+    Startup or ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp is highly
+    anomalous. Legitimate startup items are nearly always executables (.exe), shortcuts
+    to executables (.lnk), or vendor-supplied scripts — not ad-hoc .js/.vbs/.jse files.
+
+references:
+    - https://www.microsoft.com/en-us/security/blog/2025/03/06/malvertising-campaign-leads-to-info-stealers-hosted-on-github/
+    - https://github.com/last-byte/PersistenceSniper
+    - https://github.com/redcanaryco/atomic-red-team/blob/5ede8f21e42ebe37e0a6eff757dba60bcfa85859/atomics/T1547.001/T1547.001.md
+author: Generated from Microsoft Storm-0408 blog, PersistenceSniper, and Atomic Red Team T1547.001
+date: 2025-03-06
+tags:
+    - attack.persistence
+    - attack.t1547.001   # Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder
+    - attack.execution
+    - attack.t1059.005   # Command and Scripting Interpreter: Visual Basic (VBScript)
+    - attack.t1059.007   # Command and Scripting Interpreter: JavaScript
+    - attack.defense_evasion
+    - attack.t1036.005   # Masquerading: Match Legitimate Name or Location
+    - tlp:white
+logsource:
+    product: windows
+    category: process_creation
+    # Requires Sysmon Event ID 1 or equivalent EDR process-create telemetry.
+detection:
+    # Script engine is the initiating process
+    selection_script_engine:
+        Image|endswith:
+            - '\wscript.exe'
+            - '\cscript.exe'
+
+    # The script being executed lives inside a Startup folder
+    # Covers both per-user (APPDATA) and all-users (ProgramData) paths
+    selection_startup_path:
+        CommandLine|contains:
+            - '\Microsoft\Windows\Start Menu\Programs\Startup\'
+            - '\Microsoft\Windows\Start Menu\Programs\StartUp\'
+
+    # The script has a suspicious extension — these are not normal Startup items
+    selection_script_extension:
+        CommandLine|endswith:
+            - '.js'
+            - '.jse'
+            - '.vbs'
+            - '.vbe'
+            - '.wsf'
+
+    # Optionally tighten by parent: Explorer launches .url shortcuts on logon,
+    # but an attacker's scheduled task or another process may also invoke these.
+    # Commented out to avoid missing cases where the parent is cmd/powershell
+    # calling the script explicitly post-installation.
+    # filter_legitimate_parent:
+    #     ParentImage|endswith: '\explorer.exe'
+
+    # Exclude known vendor paths that legitimately use scripted startup items
+    # (e.g. some AV products and management agents). Tune per environment.
+    filter_known_legitimate:
+        CommandLine|contains:
+            - '\CyberArk\'
+            - '\ManageEngine\'
+            - '\Citrix\'
+
+    condition: selection_script_engine and selection_startup_path and selection_script_extension and not filter_known_legitimate
+
+falsepositives:
+    - Legacy enterprise software that genuinely deploys VBScript or JScript files to
+      the Startup folder as part of a managed configuration (uncommon post-2015).
+    - IT automation frameworks (e.g. PDQ Deploy, Ansible Windows) that temporarily
+      stage scripts in Startup during provisioning. These should be baseline-excluded
+      by path or ParentImage (e.g. ParentImage ending in 'pdqdeploy.exe').
+    - Developer workstations running Node or Deno toolchains that register .js helpers
+      in Startup — validate CommandLine content against known tool signatures.
+    # Recommended tuning: whitelist by CommandLine content for any known-good scripts
+    # after reviewing your environment's baseline with PersistenceSniper.
+
+level: high

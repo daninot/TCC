@@ -1,0 +1,45 @@
+title: Suspicious SQL Injection Attempt in Web Request
+id: sql-injection-web-request-detection
+status: experimental
+description: Detects common SQL injection payloads in HTTP query strings or request bodies, indicative of exploitation attempts as seen in various SQLi examples and payload lists. Focuses on patterns like union selects, order/group by probes, and time-based delays.
+author: Grok (xAI)
+date: 2025/10/07
+tags:
+  - attack.initial_access
+  - attack.execution
+  - attack.t1505
+references:
+  - https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/
+  - https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/
+  - https://brightsec.com/blog/sql-injection-payloads/
+  - https://github.com/payloadbox/sql-injection-payload-list
+  - https://book.hacktricks.xyz/pentesting-web/sql-injection/mysql-injection
+logsource:
+  category: webserver
+detection:
+  selection:
+    cs-method:
+      - 'GET'
+      - 'POST'
+  keywords:
+    cs-uri-query|contains:
+      - "' OR "
+      - '" OR '
+      - ' OR 1=1'
+      - 'UNION SELECT'
+      - 'UNION ALL SELECT'
+      - 'ORDER BY 1--'
+      - 'GROUP BY 1--'
+      - 'information_schema.'
+      - 'CONCAT('
+      - 'FLOOR(RAND'
+      - 'SUBSTR('
+      - 'sleep('
+      - 'pg_sleep('
+      - 'WAITFOR DELAY'
+      - 'DBMS_PIPE.RECEIVE_MESSAGE'
+      - '0x7171787671'  # Common hex obfuscation
+  condition: selection and keywords
+falsepositives:
+  - Legitimate application queries containing similar SQL-like strings in parameters.
+level: medium

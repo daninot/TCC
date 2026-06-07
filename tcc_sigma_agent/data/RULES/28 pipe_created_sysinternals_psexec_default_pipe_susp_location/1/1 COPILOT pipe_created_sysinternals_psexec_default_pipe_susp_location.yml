@@ -1,0 +1,66 @@
+title: Execution of Potentially Malicious Tooling Identified by JP-CERT Tool Analysis Patterns
+id: 3b9f2d1e-2026-jpcert-tool-analysis
+status: experimental
+description: Detects execution patterns consistent with suspicious or malicious tooling as described in JP-CERT research and the Tool Analysis Result Sheet (unexpected binaries executed from user/temp paths, unsigned or packed installers, common offensive tool names or reconnaissance flags, and unusual parent processes). Useful for catching commodity offensive tools, one-off tool drops, and attacker toolchains that match analysis-sheet indicators.
+author: Detection Engineer
+date: 2026-06-05
+references:
+  - https://www.jpcert.or.jp/english/pub/sr/ir_research.html
+  - https://jpcertcc.github.io/ToolAnalysisResultSheet
+logsource:
+  product: windows
+  service: sysmon
+  category: process_creation
+detection:
+  selection_temp_execution:
+    EventID: 1
+    Image|contains:
+      - "\\AppData\\Local\\Temp\\"
+      - "\\AppData\\Roaming\\"
+      - "\\Temp\\"
+      - "\\Downloads\\"
+      - "\\Users\\"
+  selection_suspicious_names:
+    EventID: 1
+    Image|re:
+      - '(?i)\\(nmap|masscan|mimikatz|procdump|cobaltstrike|c2|beacon|sharp|socks|impacket|psexec|bloodhound|responder|crackmapexec|evil-winrm|rclone|rclone.exe)$'
+  selection_command_recon:
+    EventID: 1
+    CommandLine|re:
+      - '(?i)\b(nmap|masscan|netstat|ipconfig|ifconfig|arp|route|whoami|net user|net localgroup|Get-LocalGroup|Get-LocalUser|Invoke-Command|Invoke-Expression|IEX)\b'
+  selection_parent_unusual:
+    EventID: 1
+    ParentImage|re:
+      - '(?i)\\(winword|excel|powerpnt|outlook|chrome|firefox|edge|svchost|explorer)\.exe$'
+  selection_unsigned_indicator:
+    EventID: 1
+    Image|endswith:
+      - ".exe"
+    Signed: "false"
+  condition: (selection_temp_execution and (selection_suspicious_names or selection_command_recon or selection_unsigned_indicator)) or (selection_suspicious_names and selection_parent_unusual)
+fields:
+  - timestamp
+  - EventID
+  - ComputerName
+  - SubjectUserName
+  - Image
+  - ParentImage
+  - CommandLine
+  - ProcessId
+  - Signed
+falsepositives:
+  - Legitimate developer, pentest, or red-team tooling used by authorized staff
+  - Enterprise installers or updater tools that temporarily run from Downloads or Temp (whitelist known vendor installers)
+  - Administrative troubleshooting tools executed from user contexts
+level: high
+tags:
+  - attack.execution
+  - attack.discovery
+  - detection.endpoint
+  - jpcert
+  - tool-analysis
+notes: |
+  - Tune by whitelisting known automation, developer, and security testing accounts and hosts.
+  - Enrich alerts with file hash, digital signature details, and telemetry from EDR (file creation, parent/child trees, network connections).
+  - Investigate by collecting the binary, computing hashes, checking reputation, reviewing parent/child processes, and searching the environment for other instances or related IOCs.
+

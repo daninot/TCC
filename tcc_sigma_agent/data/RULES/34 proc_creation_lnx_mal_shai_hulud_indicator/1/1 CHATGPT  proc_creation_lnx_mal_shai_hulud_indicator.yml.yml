@@ -1,0 +1,48 @@
+title: Shai-Hulud 2.0 npm Worm Script Execution
+id: 9f2c6d1a-0b4c-4a7d-8e1a-8f2f9b6a4b71
+status: experimental
+description: Detects execution patterns associated with the Shai-Hulud 2.0 npm supply-chain worm, including the setup_bun.js staging script and bun_environment.js payload execution.
+references:
+  - https://www.wiz.io/blog/shai-hulud-npm-supply-chain-attack
+  - https://www.aikido.dev/blog/shai-hulud-strikes-again-hitting-zapier-ensdomains
+  - https://semgrep.dev/blog/2025/digging-for-secrets-sha1-hulud-the-second-coming-of-the-npm-worm
+  - https://www.elastic.co/blog/shai-hulud-worm-2-0-updated-response
+  - https://www.microsoft.com/en-us/security/blog/2025/12/09/shai-hulud-2-0-guidance-for-detecting-investigating-and-defending-against-the-supply-chain-attack/
+author: OpenAI
+date: 2026-06-06
+tags:
+  - attack.execution
+  - attack.credential_access
+  - attack.t1059
+  - attack.supply_chain
+logsource:
+  category: process_creation
+detection:
+  selection_setup_bun:
+    CommandLine|contains:
+      - 'setup_bun.js'
+      - 'preinstall'
+      - 'node setup_bun.js'
+  selection_bun_environment:
+    CommandLine|contains:
+      - 'bun_environment.js'
+      - 'bun '
+  selection_bun_invocation:
+    Image|endswith:
+      - '\bun.exe'
+      - '/bun'
+    CommandLine|contains:
+      - 'bun_environment.js'
+  condition: selection_setup_bun or (selection_bun_environment and selection_bun_invocation)
+fields:
+  - Image
+  - ParentImage
+  - CommandLine
+  - CurrentDirectory
+  - User
+  - Computer
+falsepositives:
+  - Legitimate package installation scripts using similarly named files
+  - Internal development and testing environments
+  - Build pipelines that intentionally execute npm lifecycle hooks
+level: high

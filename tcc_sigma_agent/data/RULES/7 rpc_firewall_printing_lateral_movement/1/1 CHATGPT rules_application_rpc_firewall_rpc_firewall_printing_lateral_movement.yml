@@ -1,0 +1,53 @@
+title: Potential PrintNightmare Exploitation Via Remote Printer Driver Installation
+id: 5b2e9d31-3d2a-4d8d-bfa4-7c9e2f11a6d4
+status: experimental
+description: >
+  Detects suspicious remote printer driver installation activity associated
+  with the PrintNightmare vulnerability (CVE-2021-34527) via the MS-RPRN
+  and MS-PAR print spooler RPC interfaces. Adversaries may abuse RpcAddPrinterDriverEx
+  to load arbitrary DLLs for remote code execution and lateral movement.
+references:
+  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527
+  - https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rprn/d42db7d5-f141-4466-8f47-0a4be14e2fc1
+  - https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-pan/e44d984c-07d3-414c-8ffc-f8c8ad8512a8
+  - https://github.com/jsecurity101/MSRPC-to-ATTACK/blob/ddd4608fe8684fcf2fcf9b48c5f0b3c28097f8a3/documents/MS-RPRN-PAR.md
+  - https://github.com/zeronetworks/rpcfirewall
+  - https://zeronetworks.com/blog/stopping-lateral-movement-via-the-rpc-firewall/
+author: OpenAI
+date: 2026-05-26
+tags:
+  - attack.execution
+  - attack.lateral_movement
+  - attack.t1210
+  - attack.t1570
+  - cve.2021.34527
+logsource:
+  product: windows
+  service: security
+detection:
+  selection_event:
+    EventID:
+      - 316
+      - 808
+  selection_spooler:
+    Provider_Name:
+      - 'Microsoft-Windows-PrintService'
+      - 'PrintService'
+  selection_driver_activity:
+    Param1|contains:
+      - '.dll'
+      - 'UNIDRV.DLL'
+      - '\\\\'
+  condition: all of selection_*
+fields:
+  - EventID
+  - Computer
+  - User
+  - Param1
+  - Param2
+  - Provider_Name
+falsepositives:
+  - Legitimate printer driver deployment
+  - Enterprise print server management
+  - Authorized remote printer administration
+level: high

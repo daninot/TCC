@@ -1,0 +1,37 @@
+title: Ruby on Rails ActionController Exception Classes
+id: 7c1d5e4a-0d5e-4f2b-b8c8-8ad7a3a2c9d1
+status: experimental
+description: Detects suspicious Ruby on Rails ActionController exception classes in application logs that may indicate exploitation attempts such as CSRF token abuse, invalid HTTP methods, malformed requests, or missing required parameters.
+references:
+
+* [http://edgeguides.rubyonrails.org/security.html](http://edgeguides.rubyonrails.org/security.html)
+* [http://guides.rubyonrails.org/action_controller_overview.html](http://guides.rubyonrails.org/action_controller_overview.html)
+* [https://stackoverflow.com/questions/25892194/does-rails-come-with-a-not-authorized-exception](https://stackoverflow.com/questions/25892194/does-rails-come-with-a-not-authorized-exception)
+* [https://github.com/rails/rails/blob/cd08e6bcc4cd8948fe01e0be1ea0c7ca60373a25/actionpack/lib/action_dispatch/middleware/exception_wrapper.rb](https://github.com/rails/rails/blob/cd08e6bcc4cd8948fe01e0be1ea0c7ca60373a25/actionpack/lib/action_dispatch/middleware/exception_wrapper.rb)
+  author: OpenAI
+  date: 2026-06-05
+  tags:
+* attack.credential_access
+* attack.t1190
+  logsource:
+  product: ruby_on_rails
+  category: application
+  detection:
+  selection:
+  message|contains:
+
+  * 'ActionController::InvalidAuthenticityToken'
+  * 'ActionController::InvalidCrossOriginRequest'
+  * 'ActionController::UnknownHttpMethod'
+  * 'ActionController::MethodNotAllowed'
+  * 'ActionController::ParameterMissing'
+  * 'ActionController::BadRequest'
+  * 'ActionController::UnknownFormat'
+  * 'ActionController::MissingExactTemplate'
+  * 'ActionController::RoutingError'
+    condition: selection
+    falsepositives:
+* Malformed client requests
+* Legitimate application errors during testing or development
+  level: medium
+

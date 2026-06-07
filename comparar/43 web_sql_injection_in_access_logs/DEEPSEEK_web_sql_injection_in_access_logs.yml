@@ -1,0 +1,223 @@
+title: SQL Injection Attack Detection
+id: w2x3y4z5-a6b7-4c89-d012-e345678901fw
+status: experimental
+description: Detects SQL injection attacks including union-based, error-based, boolean-based, and time-based techniques as documented in Acunetix, BrightSec, and HackTricks research
+author: Generated based on SQL injection research and payload lists
+date: 2024-01-20
+modified: 2024-01-20
+tags:
+    - attack.initial_access
+    - attack.credential_access
+    - attack.t1190
+    - attack.t1110
+    - web.sqli
+logsource:
+    category: web_access
+    product: web
+detection:
+    selection_union_based:
+        # Union-based SQL injection patterns
+        c-uri-query|contains|any:
+            - "' UNION SELECT"
+            - '" UNION SELECT'
+            - "' UNION ALL SELECT"
+            - "' union select null--"
+            - "' union select 1,2,3--"
+            - "union select version()"
+            - "union select database()"
+        c-uri-query|re: ".*union.*select.*"
+        
+    selection_error_based:
+        # Error-based SQL injection patterns
+        c-uri-query|contains|any:
+            - "' AND 1=1--"
+            - "' AND 1=2--"
+            - "' OR 1=1--"
+            - "' OR '1'='1'--"
+            - "extractvalue("
+            - "updatexml("
+            - "floor(rand()*2)"
+            - "exp(~(select*from(select user())a))"
+        c-uri-query|re: ".*['\"].*AND.*1=.*--.*"
+        
+    selection_boolean_based:
+        # Boolean-based blind SQL injection
+        c-uri-query|contains|any:
+            - "' AND '1'='1"
+            - "' AND '1'='2"
+            - "' OR EXISTS("
+            - "' AND SUBSTRING("
+            - "' AND ASCII("
+            - "' AND LENGTH("
+            - "' AND SLEEP("
+            - "' AND IF("
+        c-uri-query|re: ".*['\"].*AND.*[()].*"
+        
+    selection_time_based:
+        # Time-based blind SQL injection
+        c-uri-query|contains|any:
+            - "' AND SLEEP(5)--"
+            - "' AND BENCHMARK(1000000,MD5('A'))--"
+            - "' AND WAITFOR DELAY '0:0:5'--"
+            - "' AND pg_sleep(5)--"
+            - "' AND dbms_pipe.receive_message(('a'),5)--"
+            - "' ;WAITFOR DELAY '0:0:5'--"
+        c-uri-query|re: ".*(SLEEP|DELAY|BENCHMARK|pg_sleep).*"
+        
+    selection_stacked_queries:
+        # Stacked queries and multiple statements
+        c-uri-query|contains|any:
+            - "'; DROP TABLE"
+            - "'; DELETE FROM"
+            - "'; UPDATE "
+            - "'; INSERT INTO"
+            - "'; EXEC xp_cmdshell"
+            - "'; EXEC master..xp_"
+            - "'; SHOW TABLES--"
+            - "'; SELECT * FROM"
+        c-uri-query|re: ".*;.*(DROP|DELETE|UPDATE|INSERT|EXEC).*"
+        
+    selection_database_specific:
+        # Database-specific payloads
+        c-uri-query|contains|any:
+            - "@@version"
+            - "version()"
+            - "user()"
+            - "database()"
+            - "current_user"
+            - "@@hostname"
+            - "LOAD_FILE("
+            - "INTO OUTFILE"
+            - "INTO DUMPFILE"
+        c-uri-query|contains|any:
+            - "mysql"
+            - "mssql"
+            - "oracle"
+            - "postgres"
+            - "sqlite"
+            
+    selection_comment_evasion:
+        # Comment-based evasion techniques
+        c-uri-query|contains|any:
+            - "'--"
+            - "'#"
+            - "'/*"
+            - "'*/"
+            - "'%00"
+            - "'%20"
+            - "'%09"
+            - "'%0a"
+            - "'%0d"
+        c-uri-query|re: ".*['\"].*--.*"
+        
+    selection_encoding_evasion:
+        # Encoding and obfuscation techniques
+        c-uri-query|contains|any:
+            - "%27UNION%20SELECT"
+            - "%22UNION%20SELECT"
+            - "%20OR%201=1"
+            - "%27AND%201=1"
+            - "%27%20ORDER%20BY"
+            - "%27%20GROUP%20BY"
+        c-uri-query|re: ".*%27.*%20.*"
+        
+    selection_parameter_pollution:
+        # HTTP parameter pollution
+        c-uri-query|contains|any:
+            - "&id=1&id=2"
+            - "&user=admin&user=test"
+            - "&param=value&param=value'"
+            - "?id=1&id=2'"
+        c-uri-query|re: ".*&.*=.*&.*=.*"
+        
+    selection_waf_bypass:
+        # WAF bypass techniques
+        c-uri-query|contains|any:
+            - "' /*!50000UNION*/ SELECT"
+            - "' UniOn SeLeCt"
+            - "'/**/UNION/**/SELECT"
+            - "'\tUNION\tSELECT"
+            - "'\nUNION\nSELECT"
+            - "'\rUNION\rSELECT"
+            - "'\bUNION\bSELECT"
+        c-uri-query|re: ".*UNION.*SELECT.*"
+        
+    selection_information_schema:
+        # Database schema enumeration
+        c-uri-query|contains|any:
+            - "information_schema.tables"
+            - "information_schema.columns"
+            - "sys.tables"
+            - "sys.columns"
+            - "all_tables"
+            - "user_tables"
+            - "pg_tables"
+            - "sqlite_master"
+        c-uri-query|contains|any:
+            - "table_name"
+            - "column_name"
+            - "TABLE_SCHEMA"
+            
+    selection_authentication_bypass:
+        # Authentication bypass attempts
+        c-uri-query|contains|any:
+            - "admin'--"
+            - "admin'#"
+            - "' or 1=1--"
+            - "' or 'a'='a"
+            - "') or ('1'='1--"
+            - "' or username like '%"
+            - "' or password like '%"
+        c-uri-query|re: ".*(admin|user|username|password).*['\"].*or.*"
+        
+    selection_file_operations:
+        # File system operations through SQL
+        c-uri-query|contains|any:
+            - "INTO OUTFILE"
+            - "INTO DUMPFILE"
+            - "LOAD_FILE("
+            - "LOAD DATA INFILE"
+            - "bcp"
+            - "BULK INSERT"
+            - "UTL_FILE"
+        c-uri-query|contains|any:
+            - "/etc/passwd"
+            - "/etc/shadow"
+            - "C:\\Windows\\"
+            - ".ssh"
+            
+    selection_command_execution:
+        # Command execution through SQL
+        c-uri-query|contains|any:
+            - "xp_cmdshell"
+            - "EXEC master..xp_"
+            - "sys_exec"
+            - "sys_eval"
+            - "DBMS_SCHEDULER"
+            - "JAVA"
+            - "\\x63\\x6d\\x64"  # hex encoded cmd
+        c-uri-query|contains|any:
+            - "whoami"
+            - "ipconfig"
+            - "dir"
+            - "ls"
+            - "cat "
+            
+    selection_heavy_payloads:
+        # Heavy and complex payloads
+        http_content_length|gt: 1000
+        c-uri-query|contains|any:
+            - "UNION"
+            - "SELECT"
+            - "FROM"
+            - "WHERE"
+        count() by (SourceIp) > 5
+        timeframe: 1m
+        
+    condition: 1 of selection*
+falsepositives:
+    - Legitimate application testing and development
+    - Security scanning with authorization
+    - Search engine crawlers with unusual queries
+    - Application functionality that uses similar patterns
+level: high

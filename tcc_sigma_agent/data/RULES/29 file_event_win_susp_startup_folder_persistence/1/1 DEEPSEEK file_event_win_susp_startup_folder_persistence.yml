@@ -1,0 +1,31 @@
+title: Suspicious Registry Run Key Modification
+id: 8f7b6c5d-4e3f-4a2b-9c1d-0e1f2a3b4c5d
+status: test
+description: Detects the addition of an entry to a Registry Run key, a common method for establishing persistence on Windows systems. This technique is often used by malware and attackers to ensure their code runs automatically during user logon.
+references:
+  - https://github.com/last-byte/PersistenceSniper
+  - https://www.microsoft.com/en-us/security/blog/2025/03/06/malvertising-campaign-leads-to-info-stealers-hosted-on-github/
+  - https://github.com/redcanaryco/atomic-red-team/blob/5ede8f21e42ebe37e0a6eff757dba60bcfa85859/atomics/T1547.001/T1547.001.md
+author: Sigma Rule Generator (based on research by Last-byte, Microsoft, and Red Canary)
+date: 2026-06-04
+tags:
+  - attack.persistence
+  - attack.t1547.001
+  - attack.privilege-escalation
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '\reg.exe'
+    CommandLine|contains:
+      - 'add'
+    CommandLine|contains|all:
+      - 'CurrentVersion\Run'
+      - 'HKEY_CURRENT_USER\Software\Microsoft\Windows'
+      - '/v'
+  condition: selection
+falsepositives:
+  - Legitimate software installations or updates that automatically add entries to the Run key for proper functionality.
+  - System administrators configuring startup applications.
+level: medium

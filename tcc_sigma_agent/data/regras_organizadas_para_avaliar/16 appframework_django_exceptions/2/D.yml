@@ -1,0 +1,33 @@
+title: Django Security Exceptions Indicating Potential Exploitation
+id: 1be45cb9-00f7-4952-b892-2dc09d949d97
+status: stable
+description: Detects Django web framework security exceptions in application logs, such as SuspiciousOperation and its subclasses or PermissionDenied. These exceptions often serve as indicators of exploitation attempts like path traversal, session tampering, redirect abuse, or oversized request payloads.
+references:
+
+* [https://docs.djangoproject.com/en/1.11/ref/exceptions/](https://docs.djangoproject.com/en/1.11/ref/exceptions/)
+* [https://docs.djangoproject.com/en/1.11/topics/logging/#django-security](https://docs.djangoproject.com/en/1.11/topics/logging/#django-security)
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+tags:
+* attack.initial_access
+* attack.t1190
+logsource:
+product: django
+category: application
+detection:
+keywords:
+* 'SuspiciousOperation'
+* 'DisallowedHost'
+* 'DisallowedRedirect'
+* 'InvalidSessionKey'
+* 'RequestDataTooBig'
+* 'TooManyFieldsSent'
+* 'SuspiciousMultipartForm'
+* 'SuspiciousFileOperation'
+* 'PermissionDenied'
+condition: keywords
+falsepositives:
+
+
+* Legitimate application errors caused by misconfigurations, malformed web crawler requests, or automated internal vulnerability scanning.
+level: medium

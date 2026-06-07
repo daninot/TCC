@@ -1,0 +1,45 @@
+title: Suspicious Print Spooler RPC Activity (CVE-2021-34527 / PrintNightmare)
+id: 8d4a2f6e-4d1e-11ef-9a2d-0242ac120002
+status: experimental
+description: Detects potential exploitation of CVE-2021-34527 (PrintNightmare) via MS-RPRN or MS-PAR RPC calls to the Print Spooler service.
+author: Copilot
+date: 2026/05/26
+references:
+  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527
+  - https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rprn/d42db7d5-f141-4466-8f47-0a4be14e2fc1
+  - https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-pan/e44d984c-07d3-414c-8ffc-f8c8ad8512a8
+  - https://github.com/jsecurity101/MSRPC-to-ATTACK/blob/ddd4608fe8684fcf2fcf9b48c5f0b3c28097f8a3/documents/MS-RPRN-PAR.md
+  - https://github.com/zeronetworks/rpcfirewall
+  - https://zeronetworks.com/blog/stopping-lateral-movement-via-the-rpc-firewall/
+logsource:
+  product: windows
+  service: security
+  category: rpc
+detection:
+  selection_printnightmare:
+    EventID:
+      - 5156   # Windows Filtering Platform permitted connection
+      - 5157   # Windows Filtering Platform blocked connection
+    DestinationPort: 135
+    DestinationService|contains:
+      - "spoolss"
+      - "MS-RPRN"
+      - "MS-PAR"
+  condition: selection_printnightmare
+fields:
+  - timestamp
+  - EventID
+  - SourceIp
+  - DestinationIp
+  - DestinationPort
+  - DestinationService
+  - User
+falsepositives:
+  - Legitimate administrative use of Print Spooler RPC interfaces
+  - Enterprise print server operations
+level: critical
+tags:
+  - attack.privilege_escalation
+  - attack.t1068
+  - cve.2021-34527
+

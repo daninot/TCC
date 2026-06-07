@@ -1,0 +1,49 @@
+title: Microsoft Entra - Successful Sign-in via ROPC Authentication Flow
+id: 8f4c2b1e-9a73-4d85-b062-e317f95c4831
+status: test
+description: |
+    Detects a successful sign-in using the Resource Owner Password
+    Credentials (ROPC) OAuth 2.0 flow against Microsoft Entra ID.
+    In this flow the application receives the user's plaintext password
+    and submits it directly to the identity provider, bypassing MFA
+    and Conditional Access policies. Microsoft explicitly discourages
+    ROPC outside of automated integration testing. Presence in
+    production may indicate a misconfigured or malicious application
+    harvesting user credentials or performing password spraying.
+references:
+    - https://learn.microsoft.com/en-us/entra/architecture/security-operations-applications#application-authentication-flows
+    - https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth-ropc
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.credential_access
+    - attack.t1078.004   # Valid Accounts: Cloud Accounts
+    - attack.t1110.003   # Brute Force: Password Spraying
+    - attack.t1556.006   # Modify Auth Process: MFA bypass vector
+logsource:
+    product: azure
+    service: signinlogs
+detection:
+    selection:
+        AuthenticationProtocol|contains: 'ropc'
+        ResultType: 0
+    filter_testing:
+        # Suppress known CI/CD service accounts used for automated testing
+        UserPrincipalName|endswith:
+            - '@testing.yourdomain.com'
+    condition: selection and not filter_testing
+fields:
+    - UserPrincipalName
+    - AppDisplayName
+    - AppId
+    - IPAddress
+    - Location
+    - AuthenticationProtocol
+    - ResultType
+    - DeviceDetail
+    - ConditionalAccessStatus
+falsepositives:
+    - Automated integration testing pipelines (only valid ROPC use case)
+    - Legacy applications not yet migrated to auth code flow with PKCE
+    - CI/CD service accounts performing non-interactive authentication
+level: medium

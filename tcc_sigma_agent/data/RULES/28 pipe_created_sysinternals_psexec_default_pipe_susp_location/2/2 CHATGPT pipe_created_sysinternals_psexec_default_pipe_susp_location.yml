@@ -1,0 +1,25 @@
+title: PsExec Default Named Pipe Creation
+id: 4c6c4d68-7f8f-4f0f-9b12-9e4dd7a6c3f1
+status: experimental
+description: Detects creation of the default PsExec named pipe on a Windows host, which may indicate PsExec service execution used for lateral movement or remote command execution.
+references:
+
+* [https://www.jpcert.or.jp/english/pub/sr/ir_research.html](https://www.jpcert.or.jp/english/pub/sr/ir_research.html)
+* [https://jpcertcc.github.io/ToolAnalysisResultSheet](https://jpcertcc.github.io/ToolAnalysisResultSheet)
+  author: OpenAI
+  date: 2026-06-05
+  tags:
+* attack.lateral_movement
+* attack.t1569.002
+  logsource:
+  product: windows
+  category: pipe_created
+  detection:
+  selection:
+  PipeName|endswith: '\PSEXESVC'
+  condition: selection
+  falsepositives:
+* Legitimate administrative use of PsExec
+  notes: Requires Sysmon named pipe event logging (Event ID 17/18) to be enabled.
+  level: medium
+

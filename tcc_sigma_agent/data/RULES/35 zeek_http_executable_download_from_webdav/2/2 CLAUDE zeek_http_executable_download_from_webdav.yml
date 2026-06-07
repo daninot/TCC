@@ -1,0 +1,40 @@
+title: Executable File Download via WebDAV
+id: 8a3f1c2e-9b4d-4e7a-b6f8-2d5c9a1e3f7b
+status: experimental
+description: |
+    Detects executable file downloads over WebDAV channels, a technique
+    observed in APT29 campaigns to deliver malicious binaries while blending
+    with legitimate file-sharing traffic.
+references:
+    - http://carnal0wnage.attackresearch.com/2012/06/webdav-server-to-download-custom.html
+    - https://github.com/OTRF/detection-hackathon-apt29
+author: Senior Threat Detection Engineer
+date: 2025-11-25
+tags:
+    - attack.command-and-control
+    - attack.t1105
+    - attack.lateral-movement
+    - attack.t1021.002
+logsource:
+    category: http
+    product: zeek
+detection:
+    selection_webdav:
+        - cs-user-agent|contains: 'WebDAV'
+        - cs-uri-stem|contains: 'webdav'
+    selection_executable:
+        - mime_type|contains: 'x-dosexec'
+        - cs-uri-stem|endswith:
+            - '.exe'
+            - '.dll'
+            - '.bat'
+            - '.cmd'
+            - '.msi'
+            - '.ps1'
+            - '.vbs'
+            - '.hta'
+    condition: selection_webdav and selection_executable
+falsepositives:
+    - Legitimate WebDAV file-sharing operations involving executable transfers
+    - Software deployment via WebDAV in enterprise environments
+level: high

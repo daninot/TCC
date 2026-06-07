@@ -1,0 +1,45 @@
+title: Linux doas.conf File Creation
+id: 61059783-574b-40d2-ac2f-69b898afd6b4
+status: experimental
+description: Detects creation of the Linux doas configuration file. doas.conf controls privilege delegation and its creation or replacement may indicate an attempt to gain elevated privileges or establish persistence.
+references:
+  - https://research.splunk.com/endpoint/f6343e86-6e09-11ec-9376-acde48001122/
+  - https://research.splunk.com/endpoint/61059783-574b-40d2-ac2f-69b898afd6b4/
+  - https://www.makeuseof.com/how-to-install-and-use-doas/
+  - https://man.openbsd.org/doas.conf.5
+author: OpenAI
+date: 2026-06-04
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1548.003
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection_linux_path:
+    TargetFilename|endswith:
+      - '/etc/doas.conf'
+      - '/usr/local/etc/doas.conf'
+  selection_linux_path_alt:
+    file.path|endswith:
+      - '/etc/doas.conf'
+      - '/usr/local/etc/doas.conf'
+  selection_linux_name:
+    TargetFilename|endswith: 'doas.conf'
+  selection_linux_name_alt:
+    file.name: 'doas.conf'
+  condition: 1 of selection_linux_path* or 1 of selection_linux_name*
+fields:
+  - TargetFilename
+  - file.path
+  - file.name
+  - Image
+  - ProcessName
+  - User
+  - Computer
+falsepositives:
+  - Legitimate doas installation or configuration
+  - Administrator-managed privilege configuration changes
+  - Configuration management or provisioning tooling
+level: medium

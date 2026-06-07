@@ -1,0 +1,99 @@
+title: GitHub - Codespaces Permission Escalation or Org Security Control Degradation
+id: 6f8a3d21-c475-4b90-a1e5-9d2c7b4e8f36
+status: test
+description: |
+    Detects two related threat patterns across the GitHub Organization Audit Log
+    and per-user Codespaces Security Log, both accessible via GitHub Audit Log
+    Streaming or the GitHub Audit Log REST API:
+
+    1. codespaces.allow_permissions (HIGH) — A codespace was launched with
+       elevated permissions declared in devcontainer.json. An attacker with
+       write access to a single repository can plant a devcontainer.json
+       requesting org-wide read/write/admin access. When any developer opens
+       a codespace, the token is scoped to those elevated permissions, enabling
+       lateral movement across all org repositories from within the container.
+       The devcontainer_path field reveals the exact file responsible.
+
+    2. codespaces.export_environment (HIGH) — The codespace environment was
+       exported to a branch. Environment variables in a codespace include
+       repository secrets, user secrets, and Codespaces secrets; exporting
+       to a branch may expose these secrets in version control history.
+
+    3. org.disable_two_factor_requirement (CRITICAL) — Two-factor authentication
+       was disabled as an org requirement, removing the primary account
+       compromise protection for all members and outside collaborators.
+
+    4. codespaces.trusted_repositories_access_update (MEDIUM) — The access
+       and security setting controlling which repos a codespace can access
+       was modified, potentially expanding the blast radius of any future
+       codespace compromise.
+
+    The action field format is category.event. GitHub Audit Log Streaming
+    delivers events as newline-delimited JSON to S3, Azure Blob, Splunk HEC,
+    or Google Cloud Storage.
+references:
+    - https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions
+    - https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/security-log-events#codespaces
+    - https://docs.github.com/en/codespaces/managing-your-codespaces/managing-repository-access-for-your-codespaces
+    - https://attack.mitre.org/techniques/T1098/
+    - https://attack.mitre.org/techniques/T1562/001/
+    - https://attack.mitre.org/techniques/T1552/
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.persistence
+    - attack.t1098       # Account Manipulation
+    - attack.defense_evasion
+    - attack.t1562.001   # Impair Defenses: Disable or Modify Tools (2FA disabled)
+    - attack.credential_access
+    - attack.t1552       # Unsecured Credentials (env vars/secrets in exported codespace)
+logsource:
+    product: github
+    service: audit_log
+    definition: |
+        Enable GitHub Audit Log Streaming in org Settings → Audit Log → Log streaming.
+        Supports S3, Azure Blob, Splunk HEC, and Google Cloud Storage.
+        Alternatively, poll the Audit Log API: GET /orgs/{org}/audit-log.
+        Key field: action (category.event format). All events include actor, org,
+        repo, created_at. Codespace events add: devcontainer_path, machine_type,
+        public_repo, operation_type.
+detection:
+    selection_codespaces_perms:
+        # Primary: devcontainer.json requested elevated org permissions — supply-chain pivot
+        # Inspect devcontainer_path field to identify the specific file granting permissions
+        action: 'codespaces.allow_permissions'
+    selection_codespaces_export:
+        # Environment export to branch — potential secret/credential exfiltration path
+        action: 'codespaces.export_environment'
+    selection_org_2fa_disabled:
+        # Critical: org-wide 2FA requirement removed — account takeover risk for all members
+        action: 'org.disable_two_factor_requirement'
+    selection_codespaces_trust:
+        # Trusted repository access settings changed — expands potential blast radius
+        action: 'codespaces.trusted_repositories_access_update'
+    filter_bot_actors:
+        # Suppress GitHub-internal automation and known bot accounts
+        # Populate with your org's known bot/service account names:
+        # actor|endswith: '[bot]'
+        # actor:
+        #     - 'github-actions[bot]'
+        #     - 'dependabot[bot]'
+        actor: null   # placeholder — replace with known bot accounts
+    condition: (1 of selection_*) and not filter_bot_actors
+fields:
+    - action
+    - actor
+    - org
+    - repo
+    - devcontainer_path
+    - public_repo
+    - machine_type
+    - operation_type
+    - created_at
+falsepositives:
+    - Developers legitimately using devcontainer.json with cross-repo access
+      for multi-repo monorepo workflows (triage via devcontainer_path + actor)
+    - Organization admins exporting codespaces for archival or migration purposes
+    - Security team disabling and re-enabling 2FA requirement during policy migration
+    - Automated onboarding workflows that modify codespace trust settings
+level: high

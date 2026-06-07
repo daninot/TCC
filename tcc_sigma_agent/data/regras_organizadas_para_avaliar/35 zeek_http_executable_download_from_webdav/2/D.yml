@@ -1,0 +1,48 @@
+title: WebDAV Executable Download via HTTP (Zeek)
+id: 1f3b9a6c-2d4e-4b7f-8a1c-9e0d2b3f4a5c
+status: experimental
+description: Detects HTTP responses served over WebDAV channels that deliver executable files. APT actors have used WebDAV to host and deliver malicious binaries while blending with legitimate file-sharing traffic. This rule flags requests where either the User-Agent or URI indicates WebDAV and the response MIME type or URI indicates an executable.
+author: Senior Threat Detection Engineer
+date: 2026/06/09
+references:
+  - [http://carnal0wnage.attackresearch.com/2012/06/webdav-server-to-download-custom.html](http://carnal0wnage.attackresearch.com/2012/06/webdav-server-to-download-custom.html)
+  - [https://github.com/OTRF/detection-hackathon-apt29](https://github.com/OTRF/detection-hackathon-apt29)
+tags:
+  - attack.delivery
+  - attack.initial_access
+  - web
+  - zeek
+logsource:
+  product: zeek
+  service: http
+  category: network_traffic
+  description: Zeek HTTP logs (http.log) containing fields such as id.orig_h, id.resp_h, method, host, uri, user_agent, resp_mime_types, and status_code.
+detection:
+  selection_webdav_useragent:
+    UserAgent|contains:
+      - 'WebDAV'
+      - 'webdav'
+  selection_webdav_uri:
+    URI|contains:
+      - 'webdav'
+  selection_exe_mime:
+    resp_mime_types|contains:
+      - 'application/x-dosexec'
+      - 'application/x-msdownload'
+      - 'application/octet-stream'
+  selection_exe_ext:
+    URI|endswith:
+      - '.exe'
+      - '.dll'
+      - '.msi'
+      - '.scr'
+      - '.com'
+      - '.bat'
+      - '.cmd'
+      - '.pif'
+      - '.jar'
+  condition: (1 of selection_webdav_useragent selection_webdav_uri) and (1 of selection_exe_mime selection_exe_ext)
+falsepositives:
+  - Legitimate file sharing or software distribution over WebDAV that serves installers or binaries.
+  - Internal developer or CI/CD artifact repositories using WebDAV or similar URIs to host build artifacts.
+level: high

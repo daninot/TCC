@@ -1,0 +1,31 @@
+title: Domain Added to Internet Explorer Trusted Sites Zone
+id: 84faa70c-1f7a-4b6a-8af0-9e2f5c7b3a1d
+status: experimental
+description: |
+  Detects the addition of a domain to the Internet Explorer Trusted Sites zone via registry modifications.
+  Attackers may abuse this technique to lower security restrictions for malicious domains,
+  aiding in credential harvesting, drive‑by downloads, or stealthy C2 communication (e.g., over Office 365).
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone
+  - https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries
+  - https://attack.mitre.org/techniques/T1112/
+author: Security Analyst (Generated based on Atomic Red Team test)
+date: 2026-05-26
+tags:
+  - attack.defense-evasion
+  - attack.persistence
+  - attack.t1112
+logsource:
+  product: windows
+  category: registry_set
+detection:
+  selection_path:
+    TargetObject|contains: '\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains\'
+  selection_values:
+    - Details: 'DWORD (0x00000002)'
+    - Details: 'DWORD (0x2)'
+  condition: selection_path and selection_values
+falsepositives:
+  - Legitimate administrative addition of trusted sites (e.g., via Group Policy or manual configuration).
+  - Software installers that automatically add required domains to the Trusted Sites zone.
+level: medium

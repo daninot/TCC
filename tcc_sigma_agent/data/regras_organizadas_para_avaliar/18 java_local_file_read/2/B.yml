@@ -1,0 +1,25 @@
+title: JVM Application FileNotFoundException With Path Traversal
+id: 9f6c0d7a-4c8f-4b91-9f2a-7f2ce4b8f8b7
+status: experimental
+description: Detects JVM application error logs where a file-not-found exception occurs together with path traversal sequences, which may indicate exploitation of a local file read vulnerability.
+references:
+
+* [https://www.wix.engineering/post/threat-and-vulnerability-hunting-with-application-server-error-logs](https://www.wix.engineering/post/threat-and-vulnerability-hunting-with-application-server-error-logs)
+  author: OpenAI
+  date: 2026-06-03
+  logsource:
+  product: jvm
+  category: application
+  detection:
+  selection:
+  message|contains|all:
+
+  * 'FileNotFoundException'
+  * '../'
+    condition: selection
+    falsepositives:
+* Application bugs that legitimately log FileNotFoundException with user-supplied relative paths
+* Development or testing activity involving malformed file paths
+  level: medium
+  notes: This rule assumes application error logs are collected at LOG_LEVEL ERROR or above.
+

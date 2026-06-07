@@ -1,0 +1,43 @@
+title: Linux doas Configuration File Created
+id: 7a4e2f1b-9c3d-4b8e-a5f2-3d1c7e4b9f26
+status: experimental
+description: >
+  Detects the creation of the doas configuration file on a Linux host. doas
+  is a minimal privilege-escalation utility that allows specified users to
+  execute commands as another user, functionally equivalent to sudo but with
+  a simpler codebase. Its configuration file at /etc/doas.conf (or the
+  alternative /usr/local/etc/doas.conf path on some distributions) defines
+  which users are permitted to escalate privileges and under what conditions.
+  An adversary who has obtained a foothold on a Linux host may create or
+  replace this file to grant themselves or a backdoor account unrestricted
+  root access, enabling persistent privilege escalation that survives reboots
+  and is not visible in the sudoers file typically monitored by security
+  tooling. The file is rarely created outside of intentional system
+  administration tasks, making any creation event noteworthy in environments
+  that do not use doas as their standard privilege escalation tool.
+references:
+  - https://research.splunk.com/endpoint/linux_doas_conf_file_creation/
+  - https://www.makeuseof.com/how-to-install-and-use-doas/
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.privilege_escalation
+  - attack.persistence
+  - attack.t1548.003
+logsource:
+  category: file_event
+  product: linux
+detection:
+  selection:
+    TargetFilename|endswith:
+      - '/etc/doas.conf'
+      - '/usr/local/etc/doas.conf'
+  condition: selection
+falsepositives:
+  - System administrators intentionally installing and configuring doas
+    as an approved sudo replacement on hosts where it is part of the
+    standard platform baseline.
+  - Automated configuration management tooling such as Ansible, Chef,
+    or Puppet that deploys a sanctioned doas.conf as part of a documented
+    privilege management policy.
+level: medium

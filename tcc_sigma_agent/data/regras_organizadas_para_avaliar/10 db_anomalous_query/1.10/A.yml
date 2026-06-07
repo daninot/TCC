@@ -1,0 +1,57 @@
+title: Potential SQLMap Tool Usage
+id: bf2a1c3d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+status: experimental
+description: Detects HTTP requests containing patterns indicative of the SQLMap automated SQL injection tool.
+references:
+  - https://github.com/sqlmapproject/sqlmap
+  - https://github.com/SigmaHQ/sigma/tree/master/rules/web/webserver_generic/web_sql_injection_in_access_logs.yml
+author: Sigma Rule Generator
+date: 2026-05-29
+tags:
+  - attack.initial-access
+  - attack.t1190
+  - attack.t1048
+logsource:
+  category: webserver
+  product: generic
+detection:
+  selection:
+    http_method: 'GET'
+    http_user_agent|contains: 'sqlmap'
+  keywords:
+    - '@@version'
+    - '%271%27%3D%271'
+    - '=select '
+    - '=select('
+    - '=select%20'
+    - 'concat_ws('
+    - 'CONCAT(0x'
+    - 'from mysql.innodb_table_stats'
+    - 'from%20mysql.innodb_table_stats'
+    - 'group_concat('
+    - 'information_schema.tables'
+    - 'json_arrayagg('
+    - 'or 1=1#'
+    - 'or%201=1#'
+    - 'order by '
+    - 'order%20by%20'
+    - 'select * '
+    - 'select database()'
+    - 'select version()'
+    - 'select%20*%20'
+    - 'select%20database()'
+    - 'select%20version()'
+    - 'select%28sleep%2810%29'
+    - 'SELECTCHAR('
+    - 'table_schema'
+    - 'UNION ALL SELECT'
+    - 'UNION SELECT'
+    - 'UNION%20ALL%20SELECT'
+    - 'UNION%20SELECT'
+    - "'1'='1"
+  condition: selection or keywords
+falsepositives:
+  - Authorized penetration testing activities
+  - Legitimate web applications that may inadvertently generate similar patterns
+  - Use of the --random-agent flag in sqlmap may change the user agent
+level: high

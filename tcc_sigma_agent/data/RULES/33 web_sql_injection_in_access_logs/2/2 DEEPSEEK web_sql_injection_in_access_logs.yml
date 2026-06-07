@@ -1,0 +1,60 @@
+title: SQL Injection Attempts in Web Server Access Logs
+id: a7b8c9d0-e1f2-43a4-85b6-7c8d9e0f1a2b
+status: experimental
+description: Detects GET requests containing SQL injection payloads such as schema enumeration, UNION-based extraction, blind injection, and URL-encoded variants, excluding 404 responses to reduce noise.
+references:
+    - https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/
+    - https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/
+    - https://brightsec.com/blog/sql-injection-payloads/
+    - https://github.com/payloadbox/sql-injection-payload-list
+    - https://book.hacktricks.xyz/pentesting-web/sql-injection/mysql-injection
+author: Senior Threat Detection Engineer
+date: 2026-06-06
+logsource:
+    category: webserver
+detection:
+    selection_method:
+        cs-method: GET
+    selection_payload:
+        cs-uri-query|contains|all:
+            # UNION-based
+            - 'UNION'
+            - 'SELECT'
+            # information_schema
+            - 'information_schema'
+            # Version/database fingerprinting
+            - '@@version'
+            - 'database()'
+            - 'user()'
+            - 'version()'
+            # Boolean-based and generic SQLi
+            - "' OR '1'='1"
+            - "' OR 1=1--"
+            - "' OR '1'='1'--"
+            - "\" OR \"1\"=\"1"
+            - "'; DROP TABLE"
+            - "' UNION SELECT"
+            - "1=1;--"
+            # URL-encoded variants
+            - '%27%20OR%20%271%27%3D%271'
+            - '%27%20OR%201%3D1--'
+            - '%22%20OR%20%221%22%3D%221'
+            - '%27%20UNION%20SELECT'
+            - 'information_schema%2Etables'
+            - '%40%40version'
+            - 'database%28%29'
+            - 'user%28%29'
+            - 'version%28%29'
+            - '%3B%20DROP%20TABLE'
+    filter_main_404:
+        sc-status: 404
+    condition: selection_method and selection_payload and not filter_main_404
+falsepositives:
+    - Legitimate requests containing these strings in non-SQL contexts (e.g., search queries, user input)
+    - Security scanners or crawlers without proper evasion
+level: high
+tags:
+    - attack.initial_access
+    - attack.t1190
+    - attack.t1505.003
+    - attack.t1590.005

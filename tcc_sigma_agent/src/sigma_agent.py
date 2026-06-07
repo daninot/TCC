@@ -5,6 +5,7 @@ import uuid
 import requests     #biblioteca pra conversar com a internet (pip3 install requests)
 from typing import TypedDict
 from langchain_huggingface import HuggingFaceEmbeddings
+from sentence_transformers import CrossEncoder
 # from langchain_community.vectorstores import Chroma       #deprecated
 from langchain_chroma import Chroma
 from langchain_ollama import ChatOllama
@@ -16,7 +17,8 @@ from urllib.parse import urlparse
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CHROMA_DIR = os.path.join(BASE_DIR, "..", "data", "chroma_db")
-EMBEDDINGS_MODEL = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+EMBEDDINGS_MODEL = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+RERANKER_MODEL = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-12-v2")
 
 # >>>>>>>> máquina de estados <<<<<<<<<<
 # nó 1 = classificador determinístico de entrada (Entendimento)
@@ -146,7 +148,7 @@ def no_1_classificador(state: GraphState) -> GraphState: #recebe um state como a
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # i)primeiro crio o banco (chromadb) para transformar as regras em vetores matemáticos (embeddings) e os salvar no chromadb;
 # ii) depois o agente lê o banco e busca no RAG as regras mais parecidas com a entrada;
-# agora no laptop vou usar o modelo all-MiniLM-L6-v2 de embeddings
+# agora no laptop vou usar o modelo bge-small-en-v1.5 de embeddings
 # então:    o nó 2 vai acessar o chromadb e buscar as regras Sigma que são mais parecidas com a entrada;
 #           essas regras servirão de molde pra LLM (few-shot prompting)
 def no_2_rag(state: GraphState) -> GraphState:
@@ -159,7 +161,7 @@ def no_2_rag(state: GraphState) -> GraphState:
     print(f" -> Pesquisando no banco vetorial por: {termo_pesquisa}\n")
 
     # Carregamos o modelo leve de embeddings e o banco criado
-    #embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    #embeddings = HuggingFaceEmbeddings(model_name="bge-small-en-v1.5")
     vector_store = Chroma(
         persist_directory=CHROMA_DIR, 
         embedding_function=EMBEDDINGS_MODEL
@@ -493,74 +495,81 @@ def criar_agente():
 # EXECUÇÃO DO AGENTE
 # ==========================================
 if __name__ == '__main__':
-    print("\nBem vindo ao Agente_Sigma!\n")
+    print("\nBem vindo ao Agente_Sigma!\nCarregando modelos...\n")
     agente_sigma = criar_agente()       #chama a função e guarda o resultado
-    print("Type your prompt and end it with word 'END' in the last line. Type 'q' alone to quit.\n")    
-    linhas = []
-    while True:
-        linha = input()
-        if linha.strip() == "END":
-            break
-        linhas.append(linha)
-    entrada_terminal = "\n".join(linhas)
-    if entrada_terminal.strip().lower() == 'q' or not entrada_terminal.strip():
-        print("Encerrando o agente. Até logo.\n")
-        exit()
-
-    estado_inicial = {
-        "input_usuario": entrada_terminal,
-        "tipo_input": "",
-        "termo_busca": "",
-        "url_fornecida": "",
-        "contexto_rag": "",
-        "contexto_api": "",
-        "regra_gerada": "",
-        "erro_validacao": "",
-        "tentativas": 0
-    }
-    resultado_final = agente_sigma.invoke(estado_inicial)       #.invoke() liga a máquina de estados e faz tudo acontecer
     
-    if resultado_final["erro_validacao"] == "APROVADO":
-        print("\n\tDeu certo.  \,,/\n")
-    else:
-        print("\n\tA execução falhou.\n")
-    #print(resultado_final["regra_gerada"])
+    while True:     #loop externo p permitir múltiplas execuções sem precisar rodar o programa de novo
+    
+        print("Type your prompt and end it with word 'END' in the last line. Type 'q' alone to quit.\n")    
+        linhas = []
+        while True:
+            linha = input()
+            if linha.strip().upper() == "END":
+                break
+            if linha.strip().lower() == "q":
+                print("Encerrando o agente.\n")
+                exit() 
+            linhas.append(linha)
+        
+        entrada_terminal = "\n".join(linhas)
+        if not entrada_terminal.strip():
+            continue  #se o usuário só apertar enter, volta pro início do loop sem rodar o agente
 
-    # ==========================================
-    # SALVANDO A REGRA EM ARQUIVO
-    # ==========================================
-    regra = resultado_final["regra_gerada"]
-    if regra:
-        #extrai o title via regex p usar como nome do arquivo:
-        match = re.search(r'^title:\s*(.+)$', regra, re.MULTILINE)
-
-        if match:
-            #limpa o título p ser um nome de arquivo válido e remove aspas se tiver:
-            title = match.group(1).strip().strip('"\'')
-            #substitui caracteres inválidos por underline:
-            base = re.sub(r'[^a-zA-Z0-9_-]', '_', title).strip('_') 
-            
-            if not base:        
-                filename = "regra_sem_nome.yml"
-            else:
-                filename = base + ".yml"
+        estado_inicial = {
+            "input_usuario": entrada_terminal,
+            "tipo_input": "",
+            "termo_busca": "",
+            "url_fornecida": "",
+            "contexto_rag": "",
+            "contexto_api": "",
+            "regra_gerada": "",
+            "erro_validacao": "",
+            "tentativas": 0
+        }
+        
+        resultado_final = agente_sigma.invoke(estado_inicial)       #.invoke() liga a máquina de estados e faz tudo acontecer
+    
+        if resultado_final["erro_validacao"] == "APROVADO":
+            print("\n\tDeu certo.  \,,/\n")
         else:
-            filename = "regra_sigma_gerada.yml"     #fallback
+            print("\n\tA execução falhou.\n")
+        #print(resultado_final["regra_gerada"])
 
-        pasta_destino = os.path.join(BASE_DIR, "..", "data", "regras_geradas")
-        os.makedirs(pasta_destino, exist_ok=True)
+        # ==========================================
+        # SALVANDO A REGRA EM ARQUIVO
+        # ==========================================
+        regra = resultado_final["regra_gerada"]
+        if regra:
+            #extrai o title via regex p usar como nome do arquivo:
+            match = re.search(r'^title:\s*(.+)$', regra, re.MULTILINE)
 
-        caminho_arquivo = os.path.join(pasta_destino, filename)
-        
-        #contador para adicionar no nome do arquivo caso rode mais de uma vez para a mesma regra:
-        cont = 1    
-        while os.path.exists(caminho_arquivo):
-            nome_base = filename.replace(".yml", "")
-            caminho_arquivo = os.path.join(pasta_destino, f"{nome_base}_{cont}.yml")
-            cont += 1
-        
-        #salva o arquivo em modo escrita (write):
-        with open(caminho_arquivo, "w", encoding="utf-8") as file:
-            file.write(regra)
-        
-        print(f"\n\tRegra salva em: {caminho_arquivo}\n")
+            if match:
+                #limpa o título p ser um nome de arquivo válido e remove aspas se tiver:
+                title = match.group(1).strip().strip('"\'')
+                #substitui caracteres inválidos por underline:
+                base = re.sub(r'[^a-zA-Z0-9_-]', '_', title).strip('_') 
+                
+                if not base:        
+                    filename = "regra_sem_nome.yml"
+                else:
+                    filename = base + ".yml"
+            else:
+                filename = "regra_sigma_gerada.yml"     #fallback
+
+            pasta_destino = os.path.join(BASE_DIR, "..", "data", "regras_geradas")
+            os.makedirs(pasta_destino, exist_ok=True)
+
+            caminho_arquivo = os.path.join(pasta_destino, filename)
+            
+            #contador para adicionar no nome do arquivo caso rode mais de uma vez para a mesma regra:
+            cont = 1    
+            while os.path.exists(caminho_arquivo):
+                nome_base = filename.replace(".yml", "")
+                caminho_arquivo = os.path.join(pasta_destino, f"{nome_base}_{cont}.yml")
+                cont += 1
+            
+            #salva o arquivo em modo escrita (write):
+            with open(caminho_arquivo, "w", encoding="utf-8") as file:
+                file.write(regra)
+            
+            print(f"\n\tRegra salva em: {caminho_arquivo}\n")

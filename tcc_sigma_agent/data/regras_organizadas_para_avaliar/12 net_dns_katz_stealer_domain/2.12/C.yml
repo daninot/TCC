@@ -1,0 +1,47 @@
+title: DNS Query to Known Katz Stealer C2 or Panel Infrastructure
+id: 7e3b1f9d-4c2a-4e8b-a7f1-9d5c3b2e6a48
+status: experimental
+description: >
+  Detects DNS queries resolving domain names associated with Katz Stealer
+  command-and-control and panel infrastructure. Katz Stealer is a
+  Malware-as-a-Service information stealer active since mid-2025 that
+  exfiltrates browser credentials, session cookies, cryptocurrency wallet
+  files, Discord and Telegram tokens, VPN and FTP credentials, clipboard
+  contents, and screenshots from Windows hosts. Exfiltrated data is
+  transmitted directly to an operator-controlled panel hosted on attacker
+  infrastructure. DNS queries to the base domains listed below are a
+  high-confidence indicator of active infection or ongoing C2 communication.
+  Because the same base domains may be reached via operator-assigned
+  subdomains, the |contains modifier is used to provide coverage across
+  the full observed namespace beneath each domain. Detection requires DNS
+  query logging to be enabled and forwarded to the SIEM via Windows DNS
+  debug logging, Sysmon Event ID 22, or a network-level passive DNS sensor.
+  The domain list reflects infrastructure observed as of mid-2025 and should
+  be supplemented as new Katz Stealer affiliate infrastructure is identified
+  through threat intelligence feeds.
+references:
+  - Internal research
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.command_and_control
+  - attack.t1071.004
+  - detection.emerging_threats
+logsource:
+  category: dns
+detection:
+  selection:
+    dns.question.name|contains:
+      - 'katz-stealer.com'
+      - 'katzstealer.net'
+      - 'katz-panel.com'
+      - 'katzpanel.ru'
+      - 'katzstealer.ru'
+  condition: selection
+falsepositives:
+  - None expected. The listed domains have no known legitimate use and are
+    exclusively associated with Katz Stealer MaaS infrastructure. Any match
+    in a production environment should be treated as a confirmed indicator
+    of compromise requiring immediate host isolation and incident response
+    triage.
+level: high

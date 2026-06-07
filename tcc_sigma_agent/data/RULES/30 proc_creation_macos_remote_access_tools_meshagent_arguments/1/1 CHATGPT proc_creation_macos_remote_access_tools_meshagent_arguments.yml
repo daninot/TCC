@@ -1,0 +1,54 @@
+title: MeshAgent Service Registry Creation
+id: 4f0f3f3d-5f7d-4f2f-9c7a-2e7adfb4b2a1
+status: experimental
+description: Detects creation or modification of registry keys associated with MeshAgent service installation and safe boot persistence.
+references:
+
+* [https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access](https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access)
+* [https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/](https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/)
+* [https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/](https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/)
+* [https://www.security.com/threat-intelligence/medusa-ransomware-attacks](https://www.security.com/threat-intelligence/medusa-ransomware-attacks)
+  author: OpenAI
+  date: 2026-06-05
+  tags:
+* attack.persistence
+* attack.defense_evasion
+* attack.t1112
+* attack.t1543.003
+  logsource:
+  product: windows
+  category: registry_set
+  detection:
+  selection_service_key:
+  TargetObject|contains:
+
+  * '\System\CurrentControlSet\Services\Mesh Agent'
+  * '\System\CurrentControlSet\Services\MeshAgent'
+    selection_safeboot_key:
+    TargetObject|contains:
+  * '\System\CurrentControlSet\Control\SafeBoot\Network\MeshAgent'
+  * '\System\CurrentControlSet\Control\SafeBoot\Network\Mesh Agent'
+    selection_firewall_key:
+    TargetObject|contains:
+  * '\System\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\FirewallRules'
+    Details|contains:
+  * 'MeshAgent.exe'
+  * 'Action=Allow'
+    condition: 1 of selection_*
+    fields:
+* TargetObject
+* Details
+* Image
+* User
+* Computer
+  falsepositives:
+* Legitimate MeshCentral/MeshAgent administration
+* Authorized remote support tooling
+* Lab or training environments
+  level: high
+
+```
+```
+
+[1]: https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/ "How to detect MeshAgent with Wazuh"
+

@@ -1,0 +1,40 @@
+title: Bitbucket Secret Scanning Detection Event
+id: 8d0d91d7-9a24-4d87-8d7e-4c1d5c6c9e2a
+status: experimental
+description: >
+  Detects Bitbucket Data Center audit log events generated when the
+  built-in secret scanning feature identifies a leaked secret in a commit
+  or repository file. This may indicate credential exposure, accidental
+  secret disclosure, or malicious activity involving hardcoded secrets.
+references:
+  - https://confluence.atlassian.com/bitbucketserver/audit-log-events-776640423.html
+  - https://confluence.atlassian.com/bitbucketserver/secret-scanning-1157471613.html
+author: OpenAI
+date: 2026-05-25
+tags:
+  - attack.credential_access
+  - attack.t1552
+  - attack.t1552.001
+  - attack.exfiltration
+  - attack.t1567
+logsource:
+  product: bitbucket
+  service: audit
+detection:
+  selection_action:
+    auditType.action: "Secret detected"
+  selection_i18n:
+    auditType.actionI18nKey: "bitbucket.secretscanning.audit.action.secretdetected"
+  condition: selection_action or selection_i18n
+fields:
+  - auditType.action
+  - auditType.actionI18nKey
+  - initiatingUser
+  - commitId
+  - path
+  - ruleId
+  - nodeId
+falsepositives:
+  - Developers accidentally committing credentials or secrets
+  - Internal testing repositories containing mock secrets
+level: high

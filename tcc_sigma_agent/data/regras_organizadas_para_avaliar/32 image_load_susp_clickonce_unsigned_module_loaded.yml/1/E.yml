@@ -1,0 +1,33 @@
+title: Suspicious Child Process from ClickOnce Deployment (dfsvc.exe)
+id: e9f7c3b5-1a4b-49f7-9eb2-c5e2a1f8b9d0
+status: test
+description: Detects when the ClickOnce deployment service (dfsvc.exe) spawns a suspicious child process, which may indicate abuse of ClickOnce for trusted code execution and initial access. This technique is often used to bypass application whitelisting and SmartScreen protections.
+references:
+  - https://posts.specterops.io/less-smartscreen-more-caffeine-ab-using-clickonce-for-trusted-code-execution-1446ea8051c5
+  - https://github.com/SigmaHQ/sigma/blob/master/rules/windows/registry/registry_set/registry_set_clickonce_trust_prompt.yml
+author: '@SerkinValery'
+date: 2026-06-05
+tags:
+  - attack.defense-evasion
+  - attack.persistence
+  - attack.privilege-escalation
+  - attack.t1127.002
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    ParentImage|endswith: '\dfsvc.exe'
+    Image|endswith:
+      - '\cmd.exe'
+      - '\cscript.exe'
+      - '\mshta.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+      - '\regsvr32.exe'
+      - '\rundll32.exe'
+      - '\wscript.exe'
+  condition: selection
+falsepositives:
+  - Legitimate ClickOnce applications that require additional scripts or binaries.
+level: medium

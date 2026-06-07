@@ -1,0 +1,67 @@
+title: Suspicious SQL Keywords Indicating Injection Reconnaissance or Destructive Activity
+id: b7d3e9f2-4a1c-4d6e-b8f4-3c5a2d7e1b96
+status: experimental
+description: >
+  Detects SQL keywords in database query logs that are characteristic of
+  SQL injection reconnaissance, schema enumeration, data exfiltration, or
+  destructive operations as executed by tools such as sqlmap. Coverage spans
+  four attack categories: schema enumeration via information_schema and
+  equivalent system catalog objects across major database engines; UNION-based
+  data extraction; file-read and file-write primitives; and destructive DDL
+  operations including DROP and TRUNCATE. Any single keyword match against
+  a logged query is sufficient to trigger the rule, as each item in the list
+  has minimal legitimate presence in application-generated query streams and
+  represents a high-signal indicator of adversarial activity when observed
+  in production database logs. Requires SQL query logging to be enabled on
+  the monitored database engine and the resulting query log stream to be
+  forwarded to the SIEM. For MySQL, enable general_log. For SQL Server,
+  enable Extended Events or SQL Server Audit. For Oracle, enable Unified
+  Auditing. For PostgreSQL, set log_statement to all or ddl in
+  postgresql.conf. Environments with query logging disabled will not surface
+  the events this rule depends on.
+references:
+  - https://github.com/sqlmapproject/sqlmap
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.initial_access
+  - attack.collection
+  - attack.impact
+  - attack.t1190
+  - attack.t1213
+  - attack.t1485
+logsource:
+  category: database
+  definition: >
+    Requirements: SQL query logging must be enabled on the monitored database
+    instance and logs forwarded to the SIEM. Environments without query-level
+    logging will not surface the events this rule depends on.
+detection:
+  keywords:
+    - 'information_schema'
+    - 'sysobjects'
+    - 'sqlite_master'
+    - 'all_tables'
+    - 'UNION SELECT'
+    - 'UNION ALL SELECT'
+    - 'INTO OUTFILE'
+    - 'INTO DUMPFILE'
+    - 'LOAD_FILE('
+    - 'xp_cmdshell'
+    - 'WAITFOR DELAY'
+    - 'SLEEP('
+    - 'BENCHMARK('
+    - 'DROP TABLE'
+    - 'DROP DATABASE'
+    - 'TRUNCATE TABLE'
+  condition: keywords
+falsepositives:
+  - Database administrators running legitimate schema inspection queries
+    against information_schema or system catalog objects during maintenance
+    or migration work.
+  - ORM frameworks and schema migration tooling that issue DROP TABLE or
+    TRUNCATE TABLE statements as part of test-fixture teardown or versioned
+    schema rollback operations in non-production environments.
+  - Authorized penetration tests or red-team exercises operating under
+    documented rules of engagement.
+level: medium

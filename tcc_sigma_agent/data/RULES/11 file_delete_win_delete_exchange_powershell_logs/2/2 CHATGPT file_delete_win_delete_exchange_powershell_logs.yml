@@ -1,0 +1,27 @@
+title: Exchange PowerShell Cmdlet History Log File Deletion
+id: 2c9c2d4a-8b6d-4d74-9b13-5f3b9c0e7a61
+status: experimental
+description: Detects deletion of Exchange PowerShell cmdlet history log files from the Exchange logging directory, which may indicate an attempt to evade detection by removing evidence of administrative or malicious cmdlet execution.
+references:
+
+* [https://m365internals.com/2022/10/07/hunting-in-on-premises-exchange-server-logs/](https://m365internals.com/2022/10/07/hunting-in-on-premises-exchange-server-logs/)
+  author: OpenAI
+  date: 2026-06-02
+  tags:
+* attack.defense-evasion
+* attack.t1070
+  logsource:
+  product: windows
+  category: file_delete
+  detection:
+  selection_path:
+  TargetFilename|startswith: 'C:\Program Files\Microsoft\Exchange Server\V15\Logging\CmdletInfra'
+  selection_file:
+  TargetFilename|contains: 'Cmdlet'
+  condition: selection_path and selection_file
+  falsepositives:
+* Exchange maintenance activities
+* Log retention and cleanup jobs
+* Administrator-initiated log management
+  level: medium
+

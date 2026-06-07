@@ -1,0 +1,37 @@
+title: SQL Injection Error Message Detected
+id: c7f9a2d4-4d1e-11ef-9a2d-0242ac120002
+status: experimental
+description: Detects SQL error messages in application logs that may indicate SQL Injection attempts.
+author: Copilot
+date: 2026/05/29
+references:
+  - http://www.sqlinjection.net/errors
+logsource:
+  category: webserver
+  product: apache
+detection:
+  selection_sql_errors:
+    message|contains:
+      - "ODBC SQL Server Driver"
+      - "Unclosed quotation mark"
+      - "Microsoft OLE DB Provider for SQL Server"
+      - "ORA-00933"
+      - "ORA-01756"
+      - "You have an error in your SQL syntax"
+      - "mysql_fetch_array()"
+      - "Warning: pg_connect()"
+  condition: selection_sql_errors
+fields:
+  - timestamp
+  - source_ip
+  - url
+  - message
+falsepositives:
+  - Misconfigured applications producing verbose SQL errors
+  - Legitimate debugging environments
+level: high
+tags:
+  - attack.initial_access
+  - attack.t1190
+  - attack.t1505.003
+

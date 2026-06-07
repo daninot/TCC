@@ -1,0 +1,26 @@
+title: Potential MeshAgent Execution on macOS
+id: 4c0f1d9b-7b93-4f34-9e4c-8f3b8d8c7f2a
+status: experimental
+description: Detects potential MeshAgent execution on macOS by matching the characteristic --meshServiceName command-line argument, which may persist even when the binary is renamed.
+references:
+
+* [https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access](https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access)
+* [https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/](https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/)
+* [https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/](https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/)
+* [https://www.security.com/threat-intelligence/medusa-ransomware-attacks](https://www.security.com/threat-intelligence/medusa-ransomware-attacks)
+  author: OpenAI
+  date: 2026-06-05
+  tags:
+* attack.command_and_control
+* attack.t1219.002
+  logsource:
+  product: macos
+  category: process_creation
+  detection:
+  selection:
+  CommandLine|contains: '--meshServiceName'
+  condition: selection
+  falsepositives:
+* Legitimate MeshCentral administrative activity
+  level: high
+

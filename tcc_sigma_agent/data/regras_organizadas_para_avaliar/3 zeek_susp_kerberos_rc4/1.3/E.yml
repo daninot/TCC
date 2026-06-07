@@ -1,0 +1,25 @@
+title: Potential Kerberoasting Activity via RC4 Ticket Requests
+id: d13b91fa-40f2-4b21-8278-656faef6934c
+status: experimental
+description: Detects when a user requests a Kerberos Ticket Granting Service (TGS) ticket using legacy RC4 encryption (0x17). This behavior is heavily leveraged in Kerberoasting attacks to extract service account ticket hashes for offline password cracking.
+references:
+    - https://adsecurity.org/?p=3458
+author: Security Operations Center
+date: 2026/05/25
+tags:
+    - attack.credential_access
+    - attack.t1558.003 # Steal or Forge Kerberos Tickets: Kerberoasting
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4769 # A Kerberos service ticket was requested
+        TicketEncryptionType: '0x17' # RC4-HMAC
+        Status: '0x0' # Audit Success
+    filter_computers:
+        ServiceName|endswith: '$' # Filter out default machine/trust accounts
+    condition: selection and not filter_computers
+falsepositives:
+    - Legacy corporate applications or older non-Windows systems (e.g., legacy NAS appliances or outdated Samba versions) that fail to support AES-128/AES-256 and fallback to RC4.
+level: medium

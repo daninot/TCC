@@ -1,0 +1,42 @@
+title: Katz Stealer DNS Query to Known Related Domains
+id: 7c6c6c4f-8c6a-4f4c-9b0f-2b6d5f2a9d7d
+status: experimental
+description: Detects DNS queries for domains associated with Katz Stealer malware, which may indicate malware activity or compromise.
+references:
+  - https://github.com/NextronSystems/iocs/blob/master/reports/katz_stealer/readme.md
+  - https://www.nextron-systems.com/2025/05/23/katz-stealer-threat-analysis/
+author: OpenAI
+date: 2026-05-30
+tags:
+  - attack.command_and_control
+  - attack.t1071.004
+  - attack.credential_access
+logsource:
+  category: dns_query
+detection:
+  selection_queryname:
+    QueryName|endswith:
+      - 'katz-stealer.com'
+      - 'katzstealer.com'
+      - 'twist2katz.com'
+      - 'pub-ce02802067934e0eb072f69bf6427bf6.r2.dev'
+  selection_question_name:
+    dns.question.name|endswith:
+      - 'katz-stealer.com'
+      - 'katzstealer.com'
+      - 'twist2katz.com'
+      - 'pub-ce02802067934e0eb072f69bf6427bf6.r2.dev'
+  condition: 1 of selection_*
+fields:
+  - QueryName
+  - dns.question.name
+  - src_ip
+  - src_hostname
+  - user
+  - process_name
+  - query_type
+falsepositives:
+  - Threat intelligence lookups
+  - Security research or sandbox analysis
+  - Internal testing of detection content
+level: high

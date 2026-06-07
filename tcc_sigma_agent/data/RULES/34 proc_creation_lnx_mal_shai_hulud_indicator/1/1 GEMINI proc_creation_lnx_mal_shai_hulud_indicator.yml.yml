@@ -1,0 +1,45 @@
+title: Shai-Hulud Supply Chain Malware File Indicators
+id: 5e638b9d-bc11-4217-ba5d-ee8146e2f114
+status: experimental
+description: Detects file creation or modifications associated with the Shai-Hulud (including Shai-Hulud 2.0 and Mini Shai-Hulud) supply chain malware family. The worm target npm/PyPI environments to steal cloud, CI/CD, and local developer credentials, creates malicious GitHub backdoor workflows, and plants persistence mechanisms like the "kitty-monitor" daemon.
+references:
+    - https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack
+    - https://www.aikido.dev/blog/shai-hulud-strikes-again-hitting-zapier-ensdomains
+    - https://semgrep.dev/blog/2025/digging-for-secrets-sha1-hulud-the-second-coming-of-the-npm-worm/
+    - https://snyk.io/blog/mini-shai-hulud-antv-npm-supply-chain-attack/
+author: Security Operations Center
+date: 2026/06/06
+tags:
+    - attack.initial_access
+    - attack.persistence
+    - attack.credential_access
+    - attack.t1195.002 # Supply Chain Compromise: Compromise Software Dependencies
+    - attack.t1053.006 # Scheduled Task/Job: Systemd Timers
+    - attack.t1543.001 # Create or Modify System Process: Launch Agent
+logsource:
+    category: file_event
+detection:
+    selection:
+        TargetFilename|endswith:
+            # Malware components and exfiltration dumps
+            - '/truffleSecrets.json'
+            - '\truffleSecrets.json'
+            - '/setup_bun.js'
+            - '\setup_bun.js'
+            - '/bun_environment.js'
+            - '\bun_environment.js'
+            # Persistence scripts and configurations (TeamPCP variants)
+            - '/gh-token-monitor.sh'
+            - '\gh-token-monitor.sh'
+            - '/kitty-monitor.service'
+            - '/com.user.kitty-monitor.plist'
+            - '\com.user.kitty-monitor.plist'
+            # Injected backdoor workflows
+            - '/.github/workflows/discussion.yaml'
+            - '/.github/workflows/discussion.yml'
+            - '\.github\workflows\discussion.yaml'
+            - '\.github\workflows\discussion.yml'
+    condition: selection
+falsepositives:
+    - Security research or authorized penetration testing replicating open-source Shai-Hulud worm indicators in a staging environment.
+level: critical

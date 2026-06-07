@@ -1,0 +1,26 @@
+title: Apache Velocity Server-Side Template Injection (SSTI) Indicators
+id: 5792949f-cb1c-4b68-80f4-52d3080c326d
+status: test
+description: Detects specific Apache Velocity template engine exceptions within web or application server logs. These exceptions frequently surface when an adversary attempts Server-Side Template Injection (SSTI) by feeding malformed input fields parsed by an unvalidated template engine.
+references:
+    - https://www.wix.engineering/post/threat-and-vulnerability-hunting-with-application-server-error-logs
+    - https://antgarsil.github.io/posts/velocity/
+author: Moti Harmats, Security Operations Center
+date: 2023/02/11
+modified: 2026/06/03
+tags:
+    - attack.initial_access
+    - attack.t1190 # Exploit Public-Facing Application
+logsource:
+    category: application
+    product: velocity
+detection:
+    keywords:
+        - 'ParseErrorException'
+        - 'VelocityException'
+        - 'TemplateInitException'
+    condition: keywords
+falsepositives:
+    - Legitimate application runtime bugs where dynamic code mistyped key variables or loaded broken template path syntax.
+    - Missing or misconfigured internal `.vm` reference files.
+level: high

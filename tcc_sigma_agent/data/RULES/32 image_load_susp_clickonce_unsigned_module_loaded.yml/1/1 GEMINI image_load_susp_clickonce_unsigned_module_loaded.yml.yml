@@ -1,0 +1,32 @@
+title: ClickOnce Deployment Execution via dfshim.dll
+id: 54bfa329-87a1-4322-a6f2-fa7a57a16df3
+status: experimental
+description: Detects the abuse of the Microsoft ClickOnce deployment engine (dfshim.dll) to download, install, or execute applications from remote or untrusted locations. Adversaries can bypass application whitelisting and SmartScreen controls by proxying execution through rundll32.exe using the ShOpenRegFileW API.
+references:
+    - https://posts.specterops.io/less-smartscreen-more-caffeine-ab-using-clickonce-for-trusted-code-execution-1446ea8051c5
+author: Security Operations Center
+date: 2026/06/06
+tags:
+    - attack.defense_evasion
+    - attack.execution
+    - attack.t1218.011 # Signed Binary Proxy Execution: Rundll32
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    selection_rundll:
+        Image|endswith: '\rundll32.exe'
+        CommandLine|contains: 'dfshim'
+    selection_api:
+        CommandLine|contains:
+            - 'ShOpenRegFileW'
+            - 'ShOpenRegFile'
+    selection_extension_or_url:
+        CommandLine|contains:
+            - '.application'
+            - 'http://'
+            - 'https://'
+    condition: selection_rundll and selection_api and selection_extension_or_url
+falsepositives:
+    - Legitimate enterprise software provisioning installations or updates using ClickOnce deployment technology (e.g., specific banking apps, custom line-of-business tools).
+level: high

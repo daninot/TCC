@@ -1,0 +1,48 @@
+title: Suspicious BGP Neighbor Configuration Modification
+id: 91d7f0e2-4f95-4d1d-9d17-6e9b4c0c2f55
+status: experimental
+description: >
+  Detects suspicious modifications to BGP neighbor or peering configurations
+  on network infrastructure devices. Unauthorized BGP changes may indicate
+  route hijacking attempts, traffic interception, denial of service activity,
+  or persistence by an attacker targeting core routing infrastructure.
+references:
+  - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+  - https://www.blackhat.com/html/bh-media-archives/bh-archives-2003.html
+author: OpenAI
+date: 2026-05-26
+tags:
+  - attack.persistence
+  - attack.network
+  - attack.impact
+  - attack.t1498
+  - attack.t1565
+logsource:
+  product: network
+  service: syslog
+detection:
+  selection_bgp_change:
+    message|contains:
+      - 'neighbor'
+      - 'remote-as'
+      - 'router bgp'
+      - 'BGP neighbor added'
+      - 'BGP peer changed'
+      - 'BGP configuration changed'
+  selection_config_activity:
+    message|contains:
+      - 'configured from'
+      - 'commit complete'
+      - 'configuration update'
+      - 'write memory'
+  condition: selection_bgp_change and selection_config_activity
+fields:
+  - hostname
+  - src_ip
+  - username
+  - message
+falsepositives:
+  - Authorized network maintenance
+  - ISP or datacenter routing changes
+  - Automated infrastructure deployments
+level: high

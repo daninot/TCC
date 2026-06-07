@@ -1,0 +1,27 @@
+title: Suspicious Kerberos RC4 Ticket Encryption
+id: 0e7f5a8b-9c1d-4e3f-8a2b-3c4d5e6f7a8b
+status: test
+description: Detects service ticket requests using RC4 encryption type, which may indicate Kerberoasting activity.
+references:
+  - https://adsecurity.org/?p=3458
+author: Florian Roth (Nextron Systems)
+date: 2017-02-06
+modified: 2022-06-19
+tags:
+  - attack.credential-access
+  - attack.t1558.003
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: '4769'
+    TicketOptions: '0x40810000'
+    TicketEncryptionType: '0x17'
+  reduction:
+    ServiceName|endswith: '$'
+  condition: selection and not reduction
+falsepositives:
+  - Service accounts used on legacy systems (e.g., NetApp)
+  - Windows domains with DFL 2003 and legacy systems
+level: medium

@@ -1,0 +1,68 @@
+title: Kubernetes Audit - Suspicious Access to Secrets
+id: 4b2f9d6e-8c3a-4f1b-9d2e-0a1b2c3d4e7f
+status: experimental
+description: Detects suspicious Kubernetes API server audit events that access or modify Secrets (reads, lists, watches, creates, updates, patches, deletes). Flags activity by unusual principals or high-frequency access which may indicate exfiltration, credential harvesting, or misuse of privileges.
+author: Daniela
+date: 2026-06-03
+references:
+  - https://kubernetes.io/docs/reference/config-api/apiserver-audit.v1/
+  - https://commandk.dev/blog/guide-to-audit-k8s-secrets-for-compliance/
+logsource:
+  product: kubernetes
+  service: apiserver
+  category: audit
+detection:
+  selection_secrets_resource:
+    requestURI|contains:
+      - "/secrets"
+    objectRef.resource: "secrets"
+  selection_sensitive_verbs:
+    verb:
+      - "get"
+      - "list"
+      - "watch"
+      - "create"
+      - "update"
+      - "patch"
+      - "delete"
+  selection_unusual_principal:
+    user.username|not_in:
+      - "system:serviceaccount:kube-system:default"
+      - "system:serviceaccount:kube-system:metrics-server"
+      - "system:serviceaccount:kube-system:heapster"
+      - "system:serviceaccount:kube-system:prometheus"
+      - "system:serviceaccount:default:default"
+      - "system:admin"
+      - "kube-admin"
+  selection_high_frequency:
+    CountByUser: ">5"
+    Timeframe: "5m"
+  selection_failed_reads:
+    responseStatus.code:
+      - 401
+      - 403
+  condition: selection_secrets_resource and selection_sensitive_verbs and (selection_unusual_principal or selection_high_frequency or selection_failed_reads)
+fields:
+  - timestamp
+  - verb
+  - requestURI
+  - user.username
+  - user.groups
+  - sourceIPs
+  - objectRef.namespace
+  - objectRef.name
+  - responseStatus.code
+falsepositives:
+  - Legitimate administrative or automation activity by newly deployed controllers or CI/CD service accounts (whitelist known service accounts)
+  - Compliance scans or backup tools that enumerate secrets on schedule
+level: high
+tags:
+  - k8s.audit
+  - attack.credential_access
+  - attack.exfiltration
+  - detection.audit
+notes: |
+  - Tune by whitelisting known service accounts and automation principals.
+  - Correlate with abnormal source IPs, unexpected namespaces, large numbers of secret reads, or subsequent lateral activity.
+  - Capture full audit records and, if possible, correlate with kube-apiserver requestBody for create/update/patch events to inspect suspicious payloads.
+

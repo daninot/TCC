@@ -1,0 +1,79 @@
+title: Suspicious Creation of Common Windows Autostart Persistence Mechanisms
+id: 6e2f9b1a-2026-persistence-sniper-detect
+status: experimental
+description: Detects creation or modification of common Windows autostart persistence mechanisms (registry Run keys, services, scheduled tasks, Startup folder LNKs/executables, AppInit_DLLs, Winlogon Shell) and use of common installer/utility binaries to create them. Useful for detecting commodity persistence frameworks and attacker tooling such as PersistenceSniper and malvertising-delivered droppers that establish autostart. Tune allowlists for legitimate deployment and management tooling.
+author: Detection Engineer
+date: 2026-06-05
+references:
+  - https://github.com/last-byte/PersistenceSniper
+  - https://www.microsoft.com/en-us/security/blog/2025/03/06/malvertising-campaign-leads-to-info-stealers-hosted-on-github/
+  - https://github.com/redcanaryco/atomic-red-team/blob/5ede8f21e42ebe37e0a6eff757dba60bcfa85859/atomics/T1547.001/T1547.001.md
+logsource:
+  product: windows
+  service: sysmon
+  category: persistence
+detection:
+  selection_registry_run_create:
+    EventID: 13
+    TargetObject|re:
+      - '(?i)\\Software\\Microsoft\\Windows\\CurrentVersion\\Run(Once)?\\'
+      - '(?i)\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServices(Once)?\\'
+      - '(?i)\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Run\\'
+      - '(?i)\\SYSTEM\\CurrentControlSet\\Services\\.*'
+      - '(?i)\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\AppInit_DLLs'
+      - '(?i)\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\Shell'
+  selection_startup_file_create:
+    EventID: 11
+    TargetFilename|re:
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\'
+      - '(?i)\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\'
+    TargetFilename|re_any:
+      - '\.lnk$'
+      - '\.exe$'
+      - '\.ps1$'
+      - '\.bat$'
+  selection_service_install:
+    EventID: 7045
+  selection_schtasks_create:
+    EventID: 4698
+  selection_common_tools:
+    EventID: 1
+    Image|re:
+      - '(?i)\\(reg\.exe|regsvr32\.exe|schtasks\.exe|sc\.exe|powershell\.exe|pwsh\.exe|cmd\.exe|mshta\.exe|rundll32\.exe)$'
+    CommandLine|re:
+      - '(?i)\b(create|create\s+service|/create|/create\s+service|/register|/create:|/s create|/create /tn|/create /sc)\b'
+  selection_download_from_github:
+    EventID: 1
+    CommandLine|re:
+      - '(?i)(curl|wget|bitsadmin|certutil|Invoke-WebRequest|Invoke-RestMethod).*github\.com'
+  condition: (selection_registry_run_create or selection_startup_file_create or selection_service_install or selection_schtasks_create) and (selection_common_tools or selection_download_from_github or selection_registry_run_create)
+fields:
+  - timestamp
+  - EventID
+  - ComputerName
+  - SubjectUserName
+  - Image
+  - ParentImage
+  - CommandLine
+  - TargetObject
+  - TargetFilename
+  - ProcessId
+falsepositives:
+  - Legitimate software deployment, patching, or management tools creating services, scheduled tasks, or registry run keys (whitelist known management servers and service accounts).
+  - User-installed applications that register autostart entries intentionally.
+level: high
+tags:
+  - attack.persistence
+  - attack.t1547
+  - attack.t1547.001
+  - malware.persistence
+  - detection.windows.sysmon
+notes: |
+  - Tuning: add allowlists for known deployment/orchestration tools (SCCM, Intune, vendor installers, CI/CD runners) and known admin accounts.
+  - Investigation: collect full command lines, parent/child process trees, file hashes of created binaries/LNKs, scheduled task XML, service binary paths, registry value contents, and any download URLs; search for other hosts with similar indicators.
+  - Response: remove unauthorized autostart entries, revoke credentials if abuse is confirmed, and perform a broader hunt for related tooling or lateral movement.
+

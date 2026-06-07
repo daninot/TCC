@@ -1,0 +1,52 @@
+title: SQL Injection Exploitation Attempt
+id: 34c5d6e7-6d2f-11ee-bc3c-0242ac120002
+description: Detects HTTP requests containing SQL injection payloads commonly used to manipulate or extract data from backend databases.
+status: experimental
+author: Copilot
+date: 2025/10/07
+logsource:
+  product: webserver
+  service: apache
+detection:
+  selection:
+    Request|contains:
+      - "' OR '1'='1"
+      - "' OR 1=1--"
+      - "' UNION SELECT"
+      - "'; DROP TABLE"
+      - "' AND SLEEP("
+      - "' OR EXISTS("
+      - "' OR NOT EXISTS("
+      - "' OR updatexml("
+      - "' OR extractvalue("
+      - "' OR benchmark("
+      - "' OR load_file("
+      - "' OR infile"
+      - "' OR @@version"
+      - "' OR user()"
+      - "' OR database()"
+      - "' OR schema_name"
+      - "' OR information_schema"
+  condition: selection
+fields:
+  - Request
+  - SourceIp
+  - Url
+  - UserAgent
+falsepositives:
+  - Security scanners
+  - Penetration testing tools
+  - Misconfigured input validation tests
+level: high
+tags:
+  - attack.initial_access
+  - attack.t1190
+  - attack.t1505
+  - sql_injection
+  - web_application
+references:
+  - https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/
+  - https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/
+  - https://brightsec.com/blog/sql-injection-payloads/
+  - https://github.com/payloadbox/sql-injection-payload-list
+  - https://book.hacktricks.xyz/pentesting-web/sql-injection/mysql-injection

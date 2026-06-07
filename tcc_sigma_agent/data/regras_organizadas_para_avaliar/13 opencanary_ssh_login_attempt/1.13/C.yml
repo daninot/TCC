@@ -1,0 +1,47 @@
+title: DNS Queries to Katz Stealer Associated Domains
+id: 6f2b9e1a-3c7d-4a8b-9f2e-1a2b3c4d5e6f
+status: experimental
+description: Detects DNS queries to domains associated with Katz Stealer malware. Matches known Katz-related domain patterns and repeated queries from a single host to reduce noise. Replace or augment pattern list with current threat intelligence IoCs.
+author: Daniela
+date: 2026-05-30
+references:
+  - Katz Stealer threat intelligence feeds
+  - Enterprise DNS monitoring best practices
+logsource:
+  product: dns
+  service: dns
+  category: network
+detection:
+  selection_katz_pattern:
+    QueryName|contains:
+      - "katz"
+      - "katzstealer"
+      - "katzpanel"
+      - "katz-c2"
+      - "katz-update"
+  # Optional: populate this list with confirmed IoC domains from your threat intel feed
+  selection_known_iocs:
+    QueryName|in:
+      - "REPLACE_WITH_KATZ_IOC_1"
+      - "REPLACE_WITH_KATZ_IOC_2"
+      - "REPLACE_WITH_KATZ_IOC_3"
+  # Threshold to reduce noise: multiple queries from same client within short window
+  selection_threshold:
+    CountByClientIP: ">3"
+    Timeframe: "5m"
+  condition: (selection_known_iocs) or (selection_katz_pattern and selection_threshold)
+fields:
+  - timestamp
+  - QueryName
+  - ClientIP
+  - ResponseCode
+  - QueryType
+falsepositives:
+  - Security researchers or analysts intentionally resolving Katz-related domains
+  - Internal testing or sandbox environments
+level: high
+tags:
+  - attack.exfiltration
+  - attack.t1071.004
+  - malware.katzstealer
+

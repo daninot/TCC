@@ -1,0 +1,48 @@
+title: Potentially Malicious File Created in Windows Startup Folder
+id: d5e6f7a8-b9c0-1234-defa-234567890123
+status: experimental
+description: Detects creation of potentially malicious script or executable files in the Windows Startup folder, a common persistence technique where files are automatically executed at user login. Frequently observed in malvertising campaigns and info-stealer distribution.
+references:
+    - https://github.com/last-byte/PersistenceSniper
+    - https://www.microsoft.com/en-us/security/blog/2025/03/06/malvertising-campaign-leads-to-info-stealers-hosted-on-github/
+    - https://github.com/redcanaryco/atomic-red-team/blob/5ede8f21e42ebe37e0a6eff757dba60bcfa85859/atomics/T1547.001/T1547.001.md
+author: Senior Threat Detection Engineer
+date: 2024-01-01
+tags:
+    - attack.persistence
+    - attack.t1547.001
+logsource:
+    product: windows
+    category: file_event
+detection:
+    selection:
+        TargetFilename|contains:
+            - '\Microsoft\Windows\Start Menu\Programs\Startup\'
+            - '\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\'
+        TargetFilename|endswith:
+            - '.ps1'
+            - '.psm1'
+            - '.psd1'
+            - '.vbs'
+            - '.vbe'
+            - '.js'
+            - '.jse'
+            - '.bat'
+            - '.cmd'
+            - '.hta'
+            - '.dll'
+            - '.jar'
+            - '.wsf'
+            - '.wsh'
+            - '.scf'
+            - '.lnk'
+            - '.exe'
+            - '.com'
+            - '.scr'
+            - '.msi'
+            - '.msp'
+    condition: selection
+falsepositives:
+    - Legitimate software installers placing shortcuts or scripts in the Startup folder during installation
+    - Administrative deployment tools managing startup items via group policy or configuration management
+level: high

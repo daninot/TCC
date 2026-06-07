@@ -1,0 +1,64 @@
+title: Webserver SQL Injection Attempt In GET URI
+id: 7d9db8d2-34f8-4d2e-8f6d-2d7b6d8f0e55
+status: experimental
+description: Detects HTTP GET requests with URI patterns commonly associated with SQL injection attempts, including UNION-based extraction, information schema enumeration, blind injection, and URL-encoded variants. Excludes 404 responses to reduce noise from generic scanners.
+references:
+
+* [https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/](https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/)
+* [https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/](https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/)
+* [https://brightsec.com/blog/sql-injection-payloads/](https://brightsec.com/blog/sql-injection-payloads/)
+* [https://github.com/payloadbox/sql-injection-payload-list](https://github.com/payloadbox/sql-injection-payload-list)
+* [https://book.hacktricks.xyz/pentesting-web/sql-injection/mysql-injection](https://book.hacktricks.xyz/pentesting-web/sql-injection/mysql-injection)
+  author: OpenAI
+  date: 2026-06-06
+  tags:
+* attack.initial_access
+* attack.t1190
+  logsource:
+  category: webserver
+  detection:
+  selection:
+  cs-method: GET
+  keywords:
+  cs-uri|contains:
+
+  * 'union select'
+  * 'union%20select'
+  * 'union+select'
+  * 'information_schema'
+  * 'information%5fschema'
+  * 'database()'
+  * 'database%28%29'
+  * '@@version'
+  * '%40%40version'
+  * 'version()'
+  * 'version%28%29'
+  * 'or 1=1'
+  * 'or%201%3D1'
+  * 'and 1=1'
+  * 'and%201%3D1'
+  * '1=1'
+  * '1%3D1'
+  * 'sleep('
+  * 'sleep%28'
+  * 'benchmark('
+  * 'benchmark%28'
+  * 'extractvalue('
+  * 'extractvalue%28'
+  * 'updatexml('
+  * 'updatexml%28'
+  * 'group_concat('
+  * 'group_concat%28'
+  * 'load_file('
+  * 'load_file%28'
+  * 'concat_ws('
+  * 'concat_ws%28'
+    filter_main_404:
+    status: 404
+    condition: selection and keywords and not 1 of filter_main_*
+    falsepositives:
+* Security testing and vulnerability scanning
+* Development or troubleshooting activity
+* Legitimate requests containing SQL-like text in query parameters
+  level: high
+

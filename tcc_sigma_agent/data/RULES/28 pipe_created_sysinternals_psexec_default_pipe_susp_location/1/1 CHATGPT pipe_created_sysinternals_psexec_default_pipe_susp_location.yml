@@ -1,0 +1,33 @@
+title: PsExec Service Installation
+id: 2d0f3f7e-5b9e-4d3a-a4df-3c7fb8d9b7c1
+status: experimental
+description: Detects Windows service installation events consistent with PsExec creating the PSEXESVC service on a remote host.
+references:
+  - https://www.jpcert.or.jp/english/pub/sr/ir_research.html
+  - https://jpcertcc.github.io/ToolAnalysisResultSheet/details/PsExec.htm
+author: OpenAI
+date: 2026-06-05
+tags:
+  - attack.lateral_movement
+  - attack.t1021
+  - attack.t1569.002
+logsource:
+  product: windows
+  service: system
+detection:
+  selection:
+    EventID: 7045
+    ServiceName: PSEXESVC
+  condition: selection
+fields:
+  - EventID
+  - ServiceName
+  - ServiceFileName
+  - ImagePath
+  - Computer
+  - User
+falsepositives:
+  - Authorized remote administration
+  - Endpoint management tools that mimic service-based remote execution
+  - Administrative software deployment
+level: high

@@ -1,0 +1,27 @@
+title: PowerShell Remote Thread Creation
+id: e5f6a7b8-c9d0-41e2-83f4-5a6b7c8d9e0f
+status: experimental
+description: Detects remote thread creation from a PowerShell process into another process, indicating code injection or process migration techniques often used to evade detection.
+references:
+    - https://speakerdeck.com/heirhabarov/hunting-for-powershell-abuse
+author: Senior Threat Detection Engineer
+date: 2026-06-05
+logsource:
+    product: windows
+    category: create_remote_thread
+detection:
+    selection:
+        SourceImage|endswith:
+            - '\powershell.exe'
+            - '\pwsh.exe'
+    filter_main_compatibility:
+        SourceImage|endswith: '\powershell.exe'
+        ParentImage|endswith: '\CompatTelRunner.exe'
+    condition: selection and not filter_main_compatibility
+falsepositives:
+    - Legitimate PowerShell automation tools that create remote threads for debugging or inter-process communication
+level: high
+tags:
+    - attack.defense_evasion
+    - attack.t1055
+    - attack.t1055.003

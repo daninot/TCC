@@ -1,0 +1,22 @@
+title: Azure AD OAuth Device Code Flow Authentication
+id: 4e9c7d23-fb68-4a53-bc2a-89a14dfcb347
+status: stable
+description: Detects authentication attempts using the OAuth 2.0 Device Code flow within Azure/Entra ID sign-in logs. This flow is designed for input-constrained devices, but can be abused by attackers for device-code phishing to hijack user sessions.
+references:
+
+* [https://learn.microsoft.com/en-us/entra/architecture/security-operations-applications#application-authentication-flows](https://learn.microsoft.com/en-us/entra/architecture/security-operations-applications#application-authentication-flows)
+author: Senior Threat Detection Engineer
+date: 2026/05/25
+tags:
+* attack.credential_access
+* attack.t1528
+logsource:
+product: azure
+service: signinlogs
+detection:
+selection:
+authenticationProtocol: 'deviceCode'
+condition: selection
+falsepositives:
+* Legitimate authentication from input-constrained devices, such as smart TVs, gaming consoles, printers, or command-line interface (CLI) tools.
+level: medium

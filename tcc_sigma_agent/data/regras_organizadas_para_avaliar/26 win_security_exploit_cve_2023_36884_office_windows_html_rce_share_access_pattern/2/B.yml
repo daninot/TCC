@@ -1,0 +1,22 @@
+title: Obfuscated PowerShell Execution via Invoke-Obfuscation STDIN+ Launcher
+id: a1b2c3d4-e5f6-47a8-9b0c-1d2e3f4a5b6c
+status: experimental
+description: Detects obfuscated PowerShell execution using the Invoke-Obfuscation STDIN+ launcher technique, where cmd.exe pipes input into PowerShell via stdin to evade script-based detections.
+references:
+    - https://github.com/SigmaHQ/sigma/issues/1009
+author: Senior Threat Detection Engineer
+date: 2026-06-04
+logsource:
+    product: windows
+    category: ps_module
+detection:
+    selection:
+        Payload|re: '(?i)cmd\.exe\s+(?:/c|/r)\s+powershell(?:\.exe)?\s+(?:-[^\s]*\s+)?(?:(?:-NoExit|-[EN]{2})\s+)?(?:-Command\s+)?(?:\$\([^\)]*\)|\{[^\}]*\})?\s*[|-]?\s*&?\s*\{\s*\$input\s*\}'
+    condition: selection
+falsepositives:
+    - Legitimate administration scripts that use stdin piping to PowerShell
+level: high
+tags:
+    - attack.defense_evasion
+    - attack.t1027
+    - attack.t1059.001

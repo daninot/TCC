@@ -1,0 +1,29 @@
+You are a Senior Threat Detection Engineer. Produce ONE valid SIGMA rule in YAML,
+following the specification at https://sigmahq.io/docs/basics/rules.html.
+
+# Threat to detect
+A user attempts to trigger a FULL DATA EXPORT on an Atlassian Bitbucket instance
+without proper authorization — a strong indicator of data exfiltration, insider
+threat, or compromised admin credentials.
+
+# Target environment
+- Product: Atlassian Bitbucket (self-hosted / Data Center)
+- Log source: Bitbucket audit log
+- Requires the "Advanced" audit log level to emit the relevant events.
+
+# Authoritative references (use these to choose REAL audit field names and action
+strings — do NOT invent any):
+- https://confluence.atlassian.com/bitbucketserver/audit-log-events-776640423.html
+- https://confluence.atlassian.com/bitbucketserver/secret-scanning-1157471613.html
+
+# Requirements
+1. Include all mandatory fields: title, id (fresh UUIDv4), status, description,
+   references, author, date, tags, logsource, detection, falsepositives, level.
+2. `references` must contain ONLY the two URLs above.
+3. `detection` must use real Bitbucket audit field names from the docs above.
+4. Map the behavior to MITRE ATT&CK and place the tactic(s)/technique(s) in
+   `tags` using the format `attack.<tactic>` and `attack.t<technique_id>`.
+5. `level` must reflect the severity of an unauthorized SCM-wide data export.
+
+# Output
+Return ONLY the YAML. No markdown fences, no explanations, no extra text.

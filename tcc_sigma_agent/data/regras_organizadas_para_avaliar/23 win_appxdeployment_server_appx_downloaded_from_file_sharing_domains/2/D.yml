@@ -1,0 +1,35 @@
+title: AppX Package Installation From File Sharing or CDN Domain
+id: 8f2d5a10-23b4-4b5f-a492-c11f7c5e2195
+status: stable
+description: Detects an AppX package queued for installation that was downloaded directly from a file sharing, paste, or CDN domain. This technique is commonly abused by malware campaigns (such as BazarLoader) to deliver malicious Windows applications via trusted app installers.
+references:
+
+* [https://www.sentinelone.com/labs/inside-malicious-windows-apps-for-malware-deployment/](https://www.sentinelone.com/labs/inside-malicious-windows-apps-for-malware-deployment/)
+* [https://learn.microsoft.com/en-us/windows/win32/appxpkg/troubleshooting](https://learn.microsoft.com/en-us/windows/win32/appxpkg/troubleshooting)
+* [https://news.sophos.com/en-us/2021/11/11/bazarloader-call-me-back-attack-abuses-windows-10-apps-mechanism/](https://news.sophos.com/en-us/2021/11/11/bazarloader-call-me-back-attack-abuses-windows-10-apps-mechanism/)
+author: Senior Threat Detection Engineer
+date: 2026/06/04
+tags:
+* attack.defense_evasion
+* attack.execution
+* attack.t1218
+logsource:
+product: windows
+service: appxdeployment-server
+detection:
+selection:
+EventID: 10
+Path|contains:
+* 'raw.githubusercontent.com'
+* 'cdn.discordapp.com'
+* 'mediafire.com'
+* 'mega.nz'
+* 'dropbox.com'
+* 'pastebin.com'
+* 'drive.google.com'
+condition: selection
+falsepositives:
+
+
+* Legitimate enterprise or developer AppX/MSIX packages hosted on public code repositories or corporate cloud storage.
+level: high

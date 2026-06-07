@@ -1,0 +1,28 @@
+title: DNS Queries to Known Katz Stealer Domains
+id: 7c2a9f4e-3b6d-4a1f-9e2b-5d8f0a1c2b3e
+status: experimental
+description: Detects DNS queries for domains associated with Katz Stealer C2 or panel infrastructure. Any lookup to these domains in an enterprise environment strongly indicates possible Katz compromise or active DNS-based C2 communication. Use of DNS logging that captures full queried names is required.
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+references:
+  - 'Internal research'
+tags:
+  - attack.command_and_control.T1071.004
+  - emerging-threat
+logsource:
+  product: dns
+  category: dns
+  description: DNS query logging must be enabled and capture full queried domain names (e.g., dns.question.name, QueryName).
+detection:
+  selection:
+    Query|contains:
+      - 'katz'
+      - 'katzpanel'
+      - 'katz-stealer'
+      - 'katzc2'
+      - 'katzpanelpanel'
+  condition: selection
+falsepositives:
+  - Internal testing or research systems intentionally contacting Katz-related domains.
+  - Mis-typed or coincidentally matching benign domains containing the substring 'katz'.
+level: high

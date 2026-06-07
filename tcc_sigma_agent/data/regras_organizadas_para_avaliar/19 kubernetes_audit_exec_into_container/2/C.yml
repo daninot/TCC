@@ -1,0 +1,28 @@
+title: Kubernetes Pod Exec Subresource Invocation
+id: 7a7f6e0d-6f3a-4e6a-8f7d-5f4d0d3d9b21
+status: experimental
+description: Detects Kubernetes audit log events where the exec subresource is invoked on a pod object, which may indicate remote command execution inside a running container.
+references:
+
+* [https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Exec%20into%20container/](https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Exec%20into%20container/)
+  author: OpenAI
+  date: 2026-06-03
+  tags:
+* attack.execution
+* attack.t1610
+  logsource:
+  product: kubernetes
+  category: application
+  service: audit
+  detection:
+  selection:
+  verb: create
+  objectRef.resource: pods
+  objectRef.subresource: exec
+  condition: selection
+  falsepositives:
+* Legitimate administrative access and troubleshooting using kubectl exec
+* Automated operations tooling that executes commands in containers
+  level: high
+  notes: Requires Kubernetes audit logging to be enabled.
+

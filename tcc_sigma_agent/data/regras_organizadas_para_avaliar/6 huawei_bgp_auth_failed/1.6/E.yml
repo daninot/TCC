@@ -1,0 +1,35 @@
+title: Potential BGP Session Exploitation and Fuzzing Attacks
+id: ed6b88b7-4c07-4e63-95fa-bb2b17a1a2f6
+status: experimental
+description: Detects Border Gateway Protocol (BGP) authentication failures, bad MD5 digests, or unexpected session terminations due to malformed packets (e.g., OPEN or UPDATE message parsing errors). This pattern is highly indicative of blind TCP injection, denial-of-service attempts, or routing protocol fuzzing as detailed in the Convery-Franz Black Hat research.
+references:
+    - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+author: Security Operations Center
+date: 2026/05/26
+tags:
+    - attack.impact
+    - attack.t1498.001 # Network Denial of Service: Direct Robustness Attack
+logsource:
+    product: generic
+    service: syslog
+detection:
+    selection_vendor_logs:
+        Message|contains:
+            - '%TCP-6-BADAUTH'      # Cisco IOS MD5 authentication failure
+            - '%BGP-3-NOTIFICATION' # Cisco IOS BGP error notification sent/received
+            - 'BGP_AUTH_FAIL'       # Huawei BGP authentication failure flag
+            - 'bgp_auth_failed'     # Juniper/generic BGP daemon alert
+    selection_keywords:
+        Message|contains|all:
+            - 'BGP'
+        Message|contains:
+            - 'MD5 authentication failed'
+            - 'invalid MD5 digest'
+            - 'malformed packet'
+            - 'OPEN message error'
+            - 'UPDATE message error'
+    condition: 1 of selection_*
+falsepositives:
+    - Network administrators configuring new BGP peers or rotating MD5 keys with mismatched passwords.
+    - Bad physical layer links or flaky MTU configurations causing intermittent packet corruption or checksum failures.
+level: high

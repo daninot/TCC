@@ -1,0 +1,28 @@
+title: Windows Firewall Modification via New-NetFirewallRule
+id: a89694e4-ecde-4841-ba7e-bb89ad5d92e8
+status: experimental
+description: Detects the creation of new Windows firewall rules via PowerShell's 'New-NetFirewallRule' cmdlet. Adversaries, such as Rhysida ransomware operators, leverage this capability to facilitate command and control (C2) traffic relaying (by masquerading the rule name as 'Windows Update') or to open non-standard ports (e.g., port 4000) for lateral movement via RDP, as simulated in Atomic Red Team testing.
+references:
+    - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule
+    - https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170
+    - https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/
+author: Security Operations Center
+date: 2026/05/26
+tags:
+    - attack.defense_evasion
+    - attack.t1562.004 # Impair Defenses: Disable or Modify System Firewall
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    selection_cmdlet:
+        CommandLine|contains: 'New-NetFirewallRule'
+    selection_indicators:
+        CommandLine|contains:
+            - 'Windows Update'   # Rhysida specific masquerading for SystemBC traffic relaying
+            - 'AtomicTest'       # Atomic Red Team default configuration value
+            - '4000'             # Non-standard RDP port used by Rhysida actors
+    condition: selection_cmdlet and selection_indicators
+falsepositives:
+    - Legitimate administration scripts or system software installers configuring customized local firewall parameters (though explicitly using 'Windows Update' as a custom display name inside a manual script is highly anomalous).
+level: high

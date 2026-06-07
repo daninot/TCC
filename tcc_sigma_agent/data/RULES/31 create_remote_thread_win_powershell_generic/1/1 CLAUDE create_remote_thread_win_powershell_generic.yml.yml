@@ -1,0 +1,115 @@
+title: Fileless .NET Assembly Loaded from Registry Key via Reflection
+id: e51b3c92-f784-4d0a-b16e-2a9f7c08e4d3
+status: experimental
+description: |
+    Detects a PowerShell technique where a .NET assembly (DLL) is stored as a
+    base64-encoded value inside a registry key and subsequently loaded into the
+    current PowerShell process via [Reflection.Assembly]::Load() after being
+    retrieved with Get-ItemProperty.
+
+    This technique achieves fully fileless execution: no DLL is ever written to
+    disk. The assembly lives in the registry (typically under an obscure
+    HKCU:\Software\Classes\<random> key), is read into a byte array via
+    [System.Convert]::FromBase64String(), and loaded directly into memory.
+    Arbitrary exported methods are then invoked via [Namespace.Class]::Method().
+
+    Example payload (from Kheirkhabarov OffZone 2019, slide 47):
+        powershell -command "
+          [Reflection.Assembly]::Load(
+            [System.Convert]::FromBase64String(
+              (Get-ItemProperty 'HKCU:\Software\Classes\UBZZXDJZAOGD').b64encAssembly
+            )
+          );
+          [CMD_exec.Class1]::RunCMD()"
+
+    A variant without base64 reads the raw bytes directly:
+        [Reflection.Assembly]::Load(
+          [System.IO.File]::ReadAllBytes(
+            (Get-ItemProperty 'HKCU:\Software\Classes\<key>').binAssembly
+          )
+        )
+
+    Detection relies on observing the co-occurrence of:
+      1. Reflection.Assembly / Assembly::Load  — loads arbitrary .NET code
+      2. Get-ItemProperty / gp                  — reads the payload from registry
+    in the same PowerShell command line or Script Block text.
+    This triple is documented as empirically unique to malicious usage; no
+    legitimate framework combines registry property reads with runtime
+    assembly loading in this way.
+
+    The same command-line pattern surfaces across five event types documented
+    by Kheirkhabarov as unified command-line sources:
+      - Sysmon EID 1  (process creation, CommandLine field)
+      - WEL EID 4688  (process creation with command-line audit)
+      - WEL EID 7045  (service installation, ImagePath field)
+      - WEL EID 4698  (scheduled task creation, task action field)
+      - Sysmon EID 13 (registry value set, Details field — when persisted as ASEP)
+      - PS  EID 4104  (Script Block Logging, ScriptBlockText field)
+
+references:
+    - https://speakerdeck.com/heirhabarov/hunting-for-powershell-abuse
+    - https://files.speakerdeck.com/presentations/a000f3919abd489096050e22f60d2ccd/Kheirkhabarov_OffZone2019_final.pdf
+author: Generated from Teymur Kheirkhabarov — "Hunting for PowerShell Abuse", OffZone 2019 (BI.ZONE)
+date: 2019-06-17
+tags:
+    - attack.execution
+    - attack.t1059.001   # Command and Scripting Interpreter: PowerShell
+    - attack.defense_evasion
+    - attack.t1027       # Obfuscated Files or Information
+    - attack.t1620       # Reflective Code Loading
+    - attack.persistence
+    - attack.t1547.001   # Boot or Logon Autostart Execution: Registry Run Keys (payload staging)
+    - tlp:white
+logsource:
+    product: windows
+    category: ps_script
+    # Primary source: PowerShell Script Block Logging (EID 4104).
+    # Covers deobfuscated, runtime-decoded content that command-line matching misses.
+    # A companion rule targeting process_creation (EID 1 / 4688) should be created
+    # to cover cases where Script Block Logging is absent or disabled.
+detection:
+    # The payload is retrieved from the registry
+    selection_registry_read:
+        ScriptBlockText|contains:
+            - 'Get-ItemProperty'
+            - ' gp '                 # Built-in alias for Get-ItemProperty
+
+    # The retrieved bytes are loaded as a .NET assembly at runtime
+    selection_assembly_load:
+        ScriptBlockText|contains:
+            - 'Reflection.Assembly'
+            - '[System.Reflection.Assembly]'
+
+    selection_load_method:
+        ScriptBlockText|contains:
+            - '::Load('
+            - '::LoadFrom('
+            - '::LoadFile('
+
+    # Tighten to avoid hitting legitimate admin scripts that happen to combine
+    # registry reads with assembly loads for unrelated reasons (very rare).
+    # Require at least one base64 or byte-conversion indicator to confirm
+    # the registry value is holding encoded binary data.
+    selection_encoded_payload:
+        ScriptBlockText|contains:
+            - 'FromBase64String'
+            - 'ReadAllBytes'
+            - 'Convert]::From'
+
+    condition: >
+        selection_registry_read
+        and selection_assembly_load
+        and selection_load_method
+        and selection_encoded_payload
+
+falsepositives:
+    - Highly unlikely in this exact combination. No known legitimate software
+      reads a registry property, base64-decodes it, and loads the result as a
+      .NET assembly at runtime.
+    - Theoretically possible in advanced self-updating software that uses the
+      registry as a byte store — validate by inspecting the specific registry
+      key path and the loaded assembly's metadata in the Script Block log.
+    - Custom internal tooling in software development environments that
+      experiments with reflection-based plugin loading from non-standard stores.
+      Exclude by ParentImage (e.g. Visual Studio devenv.exe) if needed.
+level: critical

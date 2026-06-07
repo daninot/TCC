@@ -1,0 +1,25 @@
+title: DNS Query To Katz Stealer Domains
+id: 8f2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+status: experimental
+description: Detects DNS queries to domains associated with Katz Stealer malware, which is known for stealing sensitive information from compromised systems.
+references:
+  - https://www.nextron-systems.com/2025/05/23/katz-stealer-threat-analysis/
+  - https://github.com/SigmaHQ/sigma/tree/master/rules-emerging-threats/2025/Malware/Katz-Stealer/net_dns_katz_stealer_domain.yml
+author: Senior Threat Detection Engineer
+date: 2026-05-29
+tags:
+  - attack.command-and-control
+  - attack.t1071.004
+logsource:
+  category: dns
+detection:
+  selection:
+    query|contains:
+      - 'katz-panel.com'
+      - 'katz-stealer.com'
+      - 'katzstealer.com'
+      - 'twist2katz.com'
+  condition: selection
+falsepositives:
+  - Unlikely, as these domains are not associated with legitimate services.
+level: high

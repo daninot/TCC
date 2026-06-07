@@ -1,0 +1,77 @@
+title: Suspicious PowerShell Abuse Indicators
+id: 7a3f2d9e-1b6c-4f2a-9d8e-0c1b2a3d4e5f
+status: experimental
+description: Detects common PowerShell abuse patterns used by attackers (encoded commands, IEX/Invoke-Expression stagers, execution policy bypass, download cradles, obfuscation patterns, and suspicious parent processes). Based on hunting guidance for PowerShell abuse.
+author: Detection Engineer
+date: 2026-06-06
+references:
+  - https://speakerdeck.com/heirhabarov/hunting-for-powershell-abuse
+logsource:
+  product: windows
+  service: sysmon
+  category: process_creation
+detection:
+  selection_powershell_process:
+    Image|endswith:
+      - "\\powershell.exe"
+      - "\\pwsh.exe"
+      - "\\powershell_ise.exe"
+    EventID: 1
+  selection_encoded_command:
+    CommandLine|re:
+      - '(?i)-EncodedCommand\s+[A-Za-z0-9+/=]{80,}'
+      - '(?i)-enc\s+[A-Za-z0-9+/=]{80,}'
+  selection_bypass_flags:
+    CommandLine|re:
+      - '(?i)(-NoProfile|-NonInteractive|-ExecutionPolicy\s+Bypass|-ExecutionPolicy\s+Unrestricted|-WindowStyle\s+Hidden)'
+  selection_iex_invoke:
+    CommandLine|re:
+      - '(?i)\b(IEX|Invoke-Expression)\b'
+      - '(?i)IEX\s*\(\s*\$\(.*\)\s*\)'
+  selection_download_cradle:
+    CommandLine|re:
+      - '(?i)(Invoke-WebRequest|Invoke-RestMethod|Start-BitsTransfer|bitsadmin|certutil|curl|wget).*http'
+      - '(?i)(New-Object\s+System\.Net\.WebClient|DownloadString|DownloadFile)\('
+  selection_obfuscation_patterns:
+    CommandLine|re:
+      - '(?i)(FromBase64String|ToCharArray\(\)|\$\w+
+
+\[\d+\]
+
+\s*\+\s*\$\w+
+
+\[\d+\]
+
+)'
+      - '(?i)(-join\s+\(.*\))'
+      - '(?i)(Invoke-Obfuscation|Invoke-ReflectivePEInjection|PowerSploit|Obfuscation)'
+  selection_suspicious_parent:
+    ParentImage|re:
+      - '(?i)\\(winword|excel|powerpnt|outlook|acrord32|wordpad|explorer)\.exe$'
+  selection_amsi_bypass_indicators:
+    CommandLine|re:
+      - '(?i)(amsi|AmsiScanBuffer|Patch|BypassAmsi|Disable-Amsi)'
+  condition: selection_powershell_process and (selection_encoded_command or selection_bypass_flags or selection_iex_invoke or selection_download_cradle or selection_obfuscation_patterns or selection_amsi_bypass_indicators or selection_suspicious_parent)
+fields:
+  - timestamp
+  - EventID
+  - ComputerName
+  - SubjectUserName
+  - Image
+  - ParentImage
+  - CommandLine
+  - ProcessId
+falsepositives:
+  - Legitimate administrative automation, scheduled tasks, or management scripts that use encoded commands or bypass flags (whitelist known automation accounts and servers).
+  - Security tooling and red-team exercises that intentionally use obfuscation or encoded payloads (maintain allowlist for test environments).
+level: high
+tags:
+  - attack.execution
+  - attack.defense_evasion
+  - attack.initial_access
+  - detection.powershell
+notes: |
+  - Tune by whitelisting known automation/service accounts and CI/CD runners.
+  - Investigate by collecting full command lines, parent/child process trees, any downloaded artifacts, network connections, and AMSI/ETW telemetry; search for similar command lines across the estate.
+  - Consider correlating with script block logging, module loads, and PowerShell transcription logs to increase fidelity.
+

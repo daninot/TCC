@@ -1,0 +1,87 @@
+title: O365/Azure AD - Federated Domain Added (AADBackdoor / Golden SAML Persistence)
+id: 9c4e7b21-3f85-4a68-d012-7a5f9c3e8d47
+status: test
+description: |
+    Detects the addition or modification of a federated domain in Office 365 /
+    Azure Active Directory, a critical persistence technique (T1136.003) that
+    creates a backdoor allowing authentication AS ANY USER without knowing their
+    password, bypassing MFA, and evading Conditional Access policies.
+
+    Technique (Dr. Nestori Syynimaa / o365blog AADBackdoor):
+      1. Attacker adds a custom domain to the tenant (any free domain will do).
+      2. Converts it to Federated authentication using Set-MsolDomainAuthentication
+         or Set-AADIntDomainAuthentication, providing a self-signed certificate
+         controlled by the attacker.
+      3. Azure AD now trusts SAML tokens signed by that certificate — issued by
+         an attacker-controlled IdP — for any user in the tenant.
+      4. Backdoor persists through password resets and MFA re-enrollment.
+
+    Threat actor attribution: NOBELIUM (UNC2452, SolarWinds attackers) used this
+    technique to maintain persistent access to compromised O365 tenants post-
+    SolarWinds. CISA Alert AA21-008A and FireEye UNC2452 report document this TTP.
+
+    Three selections cover the Exchange and Azure AD workload variants:
+      selection_exchange   — Add-FederatedDomain in Exchange workload (Splunk primary)
+      selection_aad_fed    — Set domain authentication / federation settings (AAD audit)
+      selection_new_domain — Domain addition as a precursor signal (high sensitivity)
+references:
+    - https://research.splunk.com/cloud/e155876a-6048-11eb-ae93-0242ac130002/
+    - https://o365blog.com/post/aadbackdoor/
+    - https://www.fireeye.com/content/dam/fireeye-www/blog/pdfs/wp-m-unc2452-2021-000343-01.pdf
+    - https://www.cisa.gov/uscert/ncas/alerts/aa21-008a
+    - https://attack.mitre.org/techniques/T1136/003/
+    - https://attack.mitre.org/techniques/T1484/002/
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.persistence
+    - attack.t1136.003  # Create Account: Cloud Account (Splunk mapping)
+    - attack.t1484.002  # Domain Policy Modification: Domain Trust Modification
+    - attack.t1550.001  # Use Alternate Authentication Material: App Access Token (forged SAML)
+logsource:
+    product: m365
+    service: audit_exchange
+    definition: |
+        O365 Management Activity API (sourcetype: o365:management:activity).
+        Enable both Exchange and AzureActiveDirectory workload logging.
+        Key fields: Operation, Workload, UserId, ClientIP, ModifiedProperties.
+detection:
+    selection_exchange:
+        # Primary: Exchange workload federation domain addition (Splunk detection source)
+        Workload: 'Exchange'
+        Operation: 'Add-FederatedDomain'
+    selection_aad_fed:
+        # Azure AD workload variants — setting authentication to Federated
+        # Triggered by Set-MsolDomainAuthentication / Set-AADIntDomainAuthentication
+        Workload: 'AzureActiveDirectory'
+        Operation|contains:
+            - 'Set domain authentication'
+            - 'Set federation settings on domain'
+    selection_new_domain:
+        # Precursor signal: new domain added to tenant before federation conversion
+        # Noisy on its own; combine with selection_aad_fed in correlation for high confidence
+        Workload: 'AzureActiveDirectory'
+        Operation: 'Add domain to company'
+    filter_verified_changes:
+        # Suppress planned changes during approved maintenance windows.
+        # Populate with known admin accounts authorized for federation changes:
+        # UserId:
+        #     - 'o365-admin@corp.com'
+        #     - 'svc-federation@corp.com'
+        UserId: null   # placeholder — replace with authorized admin UPNs
+    condition: (1 of selection_*) and not filter_verified_changes
+fields:
+    - Operation
+    - Workload
+    - UserId
+    - ClientIP
+    - ModifiedProperties
+    - OrganizationId
+    - ResultStatus
+falsepositives:
+    - Legitimate planned addition of a federated domain for ADFS or 3rd-party IdP
+      integration — these should be tracked in change management and suppressed
+      via filter_verified_changes with authorized admin account UPNs
+    - Migration from cloud-only to hybrid identity (first-time federation setup)
+    - Mergers and acquisitions adding new federated domains for acquired orgs
+level: high

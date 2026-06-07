@@ -1,0 +1,28 @@
+title: Potential Unauthorized Full Data Export from Bitbucket
+id: 0e7f5a8b-9c1d-4e3f-8a2b-3c4d5e6f7a8b
+status: experimental
+description: Detects attempts to perform a full data export (repository, project, or site export) from Atlassian Bitbucket, which may indicate unauthorized data exfiltration, insider threat, or compromised admin credentials.
+references:
+  - https://confluence.atlassian.com/bitbucketserver/audit-log-events-776640423.html
+  - https://confluence.atlassian.com/bitbucketserver/secret-scanning-1157471613.html
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.ta0010
+  - attack.t1048
+  - bitbucket
+  - data_exfiltration
+logsource:
+  product: bitbucket
+  category: audit
+  definition: Advanced audit log level must be enabled to emit these events.
+detection:
+  selection:
+    event:
+      - "Export repository"
+      - "Export project"
+      - "Export site data"
+  condition: selection
+falsepositives:
+  - Legitimate administrative exports for backup, migration, or compliance purposes.
+level: critical

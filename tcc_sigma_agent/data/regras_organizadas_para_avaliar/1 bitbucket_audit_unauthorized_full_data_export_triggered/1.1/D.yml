@@ -1,0 +1,39 @@
+title: Bitbucket - Secret Detected in Repository Push
+id: 7c3e1a9f-84b2-4d56-a031-fc29e8d50712
+status: experimental
+description: |
+    Detects when the Bitbucket secret scanning engine finds a leaked
+    secret (password, token, API key, private key, etc.) inside a
+    repository commit push. The event is recorded in the audit log
+    at Base coverage level (Security > Security category).
+    Any match should be treated as a potential credential exposure.
+references:
+    - https://confluence.atlassian.com/bitbucketserver/secret-scanning-1157471613.html
+    - https://confluence.atlassian.com/bitbucketserver/audit-log-events-776640423.html
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.credential_access
+    - attack.t1552
+    - attack.t1552.001
+logsource:
+    product: bitbucket
+    category: audit
+detection:
+    selection:
+        auditType.action: 'Secret detected'
+    selection_i18n:
+        auditType.actionI18nKey: 'bitbucket.secretscanning.audit.action.secretdetected'
+    condition: 1 of selection*
+fields:
+    - auditType.action
+    - initiatingUser
+    - commitId
+    - path
+    - line
+    - ruleId
+falsepositives:
+    - Test or sandbox repositories with intentional dummy secrets
+    - Overly permissive scanning regex causing false positives
+    - Migration of legacy repositories with known historical exposure
+level: high

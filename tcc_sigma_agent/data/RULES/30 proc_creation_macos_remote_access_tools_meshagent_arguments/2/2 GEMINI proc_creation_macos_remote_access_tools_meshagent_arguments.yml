@@ -1,0 +1,33 @@
+title: Potential Renamed MeshAgent Execution on macOS
+id: a5f2b801-4c1d-487a-b94f-21f7c5e219ba
+status: stable
+description: Detects the execution of MeshAgent on macOS by identifying its characteristic command-line arguments. Threat actors, including the Medusa ransomware group, frequently rename this legitimate remote administration binary to evade detection, while keeping its operational arguments intact.
+references:
+
+* [https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access](https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access)
+* [https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/](https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/)
+* [https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/](https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/)
+* [https://www.security.com/threat-intelligence/medusa-ransomware-attacks](https://www.security.com/threat-intelligence/medusa-ransomware-attacks)
+author: Senior Threat Detection Engineer
+date: 2026/06/05
+tags:
+* attack.command_and_control
+* attack.t1219
+* attack.defense_evasion
+* attack.t1036.005
+logsource:
+product: macos
+category: process_creation
+detection:
+selection:
+CommandLine|contains:
+* 'meshaction'
+* '-run'
+* 'connect'
+* 'nodeid'
+condition: selection
+falsepositives:
+
+
+* Authorized internal IT or security administration deploying or using MeshAgent for legitimate remote support.
+level: high

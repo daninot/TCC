@@ -1,0 +1,26 @@
+title: Katz Stealer Malware Infrastructure DNS Query
+id: 5cb2d9f3-a714-41fb-9b2c-639a06f477ef
+status: experimental
+description: Detects DNS queries to domains known to be associated with Katz Stealer infrastructure. This includes command and control (C2) domains and Cloudflare R2 bucket storage used during the loader phase of the infection chain to deliver additional payloads.
+references:
+    - https://github.com/NextronSystems/iocs/blob/master/reports/katz_stealer/readme.md
+    - https://www.nextron-systems.com/2025/05/23/katz-stealer-threat-analysis/
+    - https://unit42.paloaltonetworks.com/phantomvai-loader-delivers-infostealers/
+author: Security Operations Center
+date: 2026/05/30
+tags:
+    - attack.command_and_control
+    - attack.t1071.001 # Application Layer Protocol: Web Protocols
+logsource:
+    category: dns
+detection:
+    selection:
+        query|contains:
+            - 'twist2katz.com'
+            - 'katz-stealer.com'
+            - 'katzstealer.com'
+            - 'pub-ce02802067934e0eb072f69bf6427bf6.r2.dev'
+    condition: selection
+falsepositives:
+    - Sandbox execution environments, automated threat intelligence harvesting tools, or deliberate lookup activities conducted by internal security research teams.
+level: critical

@@ -1,0 +1,59 @@
+title: High-Confidence SQL Injection Attack Attempt
+id: <Placeholder-Generate-a-unique-UUID-for-deployment>
+status: stable
+description: |
+    Detects high-confidence patterns indicative of an attempted SQL Injection attack 
+    by identifying the combination of common SQL keywords, logic operators, and 
+    comment characters typically used to manipulate backend database queries.
+references:
+    - https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/
+    - https://brightsec.com/blog/sql-injection-payloads/
+    - https://attack.mitre.org/techniques/T1190/ # Exploit Public-Facing Application
+author: AI Generated / Acunetix / Community
+date: 2025/10/07
+logsource:
+    category: web # Requires Web Server Access Logs or WAF/Proxy logs
+    product: webserver
+detection:
+    # 1. Look for keywords used in UNION attacks
+    union_keywords:
+        c-uri|contains:
+            - 'union select'
+            - 'union+select'
+            - 'union/* */select'
+            
+    # 2. Look for keywords used in logic/blind attacks
+    logic_keywords:
+        c-uri|contains:
+            - ' or 1='1'
+            - ' and 1='1'
+            - ' and 1=1'
+            - ' having 1=1'
+            
+    # 3. Look for SQL functions often used for data retrieval or error messages
+    function_keywords:
+        c-uri|contains:
+            - 'user_name()'
+            - 'group_concat'
+            - '@@version'
+            - 'concat('
+            - 'load_file('
+            
+    # 4. Look for SQL comment characters (to bypass the rest of the original query)
+    comment_characters:
+        c-uri|contains:
+            - '-- '
+            - ' --'
+            - '/*'
+            - '#'
+            
+    condition: union_keywords or (logic_keywords and comment_characters) or function_keywords
+falsepositives:
+    - Extremely low. Legitimate user input rarely contains the precise combination of SQL keywords and syntax used in this rule. If noise occurs, tune specific user-agents or IPs.
+level: high
+tags:
+    - attack.initial_access
+    - attack.t1190
+    - attack.impact
+    - sqli
+    - cwe_89

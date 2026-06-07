@@ -1,0 +1,33 @@
+title: Remote MSIX/Appx Package Installation Via AppInstaller
+id: 9b8f0412-1f48-4e8c-85f2-9bc50f612015
+status: experimental
+description: Detects the execution of the Windows App Installer utility (AppInstaller.exe or DesktopAppInstaller.exe) processing a remote URL or utilizing the 'ms-appinstaller' protocol handler. Threat actors (such as BazarLoader and Emotet) abuse this mechanism to distribute malicious AppX or MSIX packages via phishing links, allowing them to bypass browser security warnings and deploy malware.
+references:
+    - https://www.sentinelone.com/labs/inside-malicious-windows-apps-for-malware-deployment/
+    - https://learn.microsoft.com/en-us/windows/win32/appxpkg/troubleshooting
+    - https://news.sophos.com/en-us/2021/11/11/bazarloader-call-me-back-attack-abuses-windows-10-apps-mechanism/
+author: Security Operations Center
+date: 2026/06/04
+tags:
+    - attack.initial_access
+    - attack.execution
+    - attack.t1566.002 # Phishing: Malicious Link
+    - attack.t1204.002 # User Execution: Malicious File
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    selection_image:
+        Image|endswith:
+            - '\AppInstaller.exe'
+            - '\DesktopAppInstaller.exe'
+    selection_indicators:
+        CommandLine|contains:
+            - 'http://'
+            - 'https://'
+            - 'ms-appinstaller'
+            - 'source='
+    condition: selection_image and selection_indicators
+falsepositives:
+    - Enterprise deployment of internal line-of-business applications hosted on corporate web servers or deep-linked cloud repositories (e.g., Azure Blob storage).
+level: high
