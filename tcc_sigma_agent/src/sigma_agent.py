@@ -18,7 +18,10 @@ from urllib.parse import urlparse
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CHROMA_DIR = os.path.join(BASE_DIR, "..", "data", "chroma_db")
 EMBEDDINGS_MODEL = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
-RERANKER_MODEL = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-12-v2")
+RERANKER_MODEL = CrossEncoder("cross-enco"der/ms-marco-MiniLM-L-12-v2")
+PROMPT_PATH = os.path.join(BASE_DIR, "..", "prompts", "sigma_system_prompt.md")
+with open(PROMPT_PATH, "r", encoding="utf-8") as f:
+    SIGMA_SYSTEM_PROMPT = f.read()
 
 # >>>>>>>> máquina de estados <<<<<<<<<<
 # nó 1 = classificador determinístico de entrada (Entendimento)
@@ -103,11 +106,11 @@ class GraphState(TypedDict):
 #vai analisar a entrada do usuário e definir qual será a estratégia de busca
 def no_1_classificador(state: GraphState) -> GraphState: #recebe um state como argumento; -> G.. avisa o langgraph q a função vai devolver um dicionário GraphState
     
-    print("\n||Nó 1|| Classificando input...")
+    print("\n[Nó 1] Classificando input...")
     texto = state.get("input_usuario", "")              
     
     urls_brutas = re.findall(r"https?://[^\s]+", texto)     #encontra TODAS as URLs (retorna uma lista de strings)
-    urls_limpas = [u.rstrip(".,;!?)\]}>'\"") for u in urls_brutas]      #limpa a pontuação do final de CADA URL encontrada
+    urls_limpas = [u.rstrip(r".,;!?)\]}>'\"") for u in urls_brutas]      #limpa a pontuação do final de CADA URL encontrada
 
     #remove TODAS as URLs do texto antes de buscar CVE/hash
     texto_sem_url = texto       
@@ -153,12 +156,12 @@ def no_1_classificador(state: GraphState) -> GraphState: #recebe um state como a
 #           essas regras servirão de molde pra LLM (few-shot prompting)
 def no_2_rag(state: GraphState) -> GraphState:
 
-    print("\n||Nó 2|| Buscando contexto no RAG...\n")
+    print("\n[Nó 2] Buscando contexto no RAG - com re-ranking\n")
     
     # Se o Nó 1 identificou um termo (ex: um CVE), usamos ele para buscar.
     # Se for texto livre, usamos a frase inteira do usuário.
     termo_pesquisa = state["termo_busca"] if state.get("termo_busca") else state["input_usuario"]
-    print(f" -> Pesquisando no banco vetorial por: {termo_pesquisa}\n")
+    print(f" -> Pesquisando no banco vetorial por: {termo_pesquisa[:80]}\n")
 
     # Carregamos o modelo leve de embeddings e o banco criado
     #embeddings = HuggingFaceEmbeddings(model_name="bge-small-en-v1.5")
@@ -167,23 +170,26 @@ def no_2_rag(state: GraphState) -> GraphState:
         embedding_function=EMBEDDINGS_MODEL
     )
 
-    # Buscamos as 2 regras que mais se aproximam do contexto pedido
-    # Usamos k=2 para não sobrecarregar a memória do nosso pequeno Qwen 2.5
-    #Usando k=5 porque condiz com o Llama 3.1
-    resultados = vector_store.similarity_search(termo_pesquisa, k=5)
+    #1a busca no RAG usando similaridade de cosseno; faz uma busca ampla, pega 20 candidados:
+    candidatos = vector_store.similarity_search(termo_pesquisa, k=20)
 
-    # Pegamos o conteúdo dos arquivos YAML encontrados e juntamos em uma string só
-    #contexto_formatado = "\n\n---\n\n".join([doc.page_content for doc in resultados])
-    if resultados:
-        contexto_formatado = "\n\n---\n\n".join([doc.page_content for doc in resultados])
-        print(f" -> {len(resultados)} regras de exemplo recuperadas com sucesso.")
-    else:
-        contexto_formatado = "Nenhuma regra de exemplo encontrada no banco."
-        print(" -> Aviso: nenhuma regra similar encontrada.")
+    if not candidatos:
+        print(" -> Aviso: nenhuma regra similar encontrada no banco.")
+        return {"contexto_rag": "Nenhuma exemplo recuperado."}
+    print(f" -> {len(candidatos)} regras candidatas recuperadas do ChromaDB.")
 
-    #print(f" -> {len(resultados)} regras de exemplo recuperadas com sucesso.")
-    
-    # Atualizamos o "caderno de anotações" com os exemplos
+    #re-ranking - cross-encoder avalia cada par (pergunta + candidato)
+    pares = [(termo_pesquisa, doc.page_content) for doc in candidatos]
+    scores = RERANKER_MODEL.predict(pares)
+
+    #ordena do maior score p menor e pega os 5 melhores:
+    candidatos_com_score = sorted(zip(scores, candidatos), key=lambda x: x[0], reverse=True)
+    top_5 = candidatos_com_score[:5]
+
+    print(f" -> re-ranking concluído.")
+    print(f" -> scores: {[round(float(s),3) for s, _ in top_5]}")
+
+    contexto_formatado = "\n\n---\n\n".join([doc.page_content for _, doc in top_5])
     return {"contexto_rag": contexto_formatado}
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -305,60 +311,52 @@ def no_3_api(state: GraphState) -> GraphState:
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 
 def no_4_gerador(state: GraphState) -> GraphState:
     tentativa_atual = state.get("tentativas", 0) + 1    #sinalizar quantas tentativas
-    print(f"\n||Nó 4|| Gerando a regra... Tentativa {tentativa_atual}")
+    print(f"\n[Nó 4] Gerando a regra... Tentativa {tentativa_atual}")
 
     #llm = ChatOllama(model="qwen2.5:1.5b", temperature=0.1)
     llm = ChatOllama(model="llama3.1", temperature=0.1)
 
-    prompt = f"""You are a Senior Threat Detection Engineer (Threat Hunter).
-    Your task is to create a valid Sigma rule based exclusively on the user's request.
-    The entire rule must be written in English, including all descriptive fields
-    (title, condition, description, detection, falsepositives, logsource, etc.).
+    #USER PROMPT:
+    user_prompt = f"""USER REQUEST:
+{state['input_usuario']}
 
-    CRITICAL INSTRUCTIONS FOR YAML/SIGMA SYNTAX:
-    1. Do NOT generate the 'related' block. The rule must not have relationships with other rules.
-    2. The 'condition' field MUST NOT contain raw log fields or colons (:). 
-    3. If you need to filter out false positives based on fields (e.g. Details: 'My Computer'), you MUST define a 'filter' block inside 'detection:' and then use the boolean logic in the 'condition' (e.g., 'condition: selection and not filter').
-    4. Inside the 'detection' section, field values MUST be simple strings or YAML lists. NEVER use nested dictionaries or comma-separated strings.
+FORMATTING TEMPLATE - base the YAML structure on these real Sigma rules: 
+{state['contexto_rag']}
 
-    USER REQUEST:
-    {state['input_usuario']}
+ADDITIONAL TECHNICAL CONTEXT - use to build detection logic if relevant:
+{state['contexto_api']}
 
-    FORMATTING TEMPLATE -- Base the structure of your YAML strictly on the following examples:
-    {state['contexto_rag']}
-
-    ADDITIONAL TECHNICAL CONTEXT -- Use this information to build the detection logic, if relevant:
-    {state['contexto_api']}
-    """
-
-    erro_anterior = state.get("erro_validacao","")
+OUTPUT REQUIREMENTS:
+1. Return ONLY the YAML code, no markdown fences, no explanations.
+2. If the USER REQUEST contains URLs, put them in 'references:'.
+3. Do NOT copy URLs from the FORMATTING TEMPLATE.
+4. Do NOT invent URLs that are not in the user request.
+"""
+    
+    #caso hajam novas tentativas:
+    erro_anterior = state.get("erro_validacao", "")
     if erro_anterior and erro_anterior != "APROVADO":
-        prompt+= f"""
-        ATTENTION! YOUR PREVIOUS ATTEMPT FAILED:
-        The YAML code you generated previously failed validation with the following error:
-        {erro_anterior}.
+        user_prompt += f"""
 
-        Rule generated with error:
-        {state.get('regra_gerada','')}
+ATTENTION - YOUR PREVIOUS ATTEMPT FAILED:
+Validation error:
+{erro_anterior}
 
-        Fix the error pointed out above and rewrite the YAML code perfectly.
-        """
-    prompt+= """
-    BUILDING INSTRUCTIONS:
-    1. Return ONLY the YAML code of the Sigma rule;
-    2. Do not add explanations, greetings, or markdown formatting outside the code block;
-    3. title, logsource, detection and condition are mandatory Sigma fields;
-    4. If the USER REQUEST contains URLs, you MUST insert these URLs in the 'references:' section; 
-    5. Do not copy URLs from the FORMATTING TEMPLATE -- those are structural examples only;
-    6. It is forbidden to invent or create URLs not present in the provided context.
-    7. Do not resume.
-    """
+Rule generated with error:
+{state.get('regra_gerada', '')}
 
-    print(" -> Enviando contexto para a GPU...")
-    resposta = llm.invoke(prompt)   #chama a LLM
+Fix the error and rewrite the YAML perfectly.
+"""
+
+    mensagens = [
+        SystemMessage(content=SIGMA_SYSTEM_PROMPT),
+        HumanMessage(content=user_prompt)
+    ]
+
+    print(" -> Enviando contexto para a GPU")
+    resposta = llm.invoke(mensagens)   #chama a LLM
     print(" -> Regra gerada.")
-    #print(f"\n--- REGRA GERADA (para debug) ---\n{resposta}\n--- FIM ---\n")
-    return {"regra_gerada": resposta.content}
+    return{"regra_gerada": resposta.content}
     
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 # >>>>>>>>> NÓ 5 (VALIDADOR SINTÁTICO) <<<<<<<<<< 
@@ -530,7 +528,7 @@ if __name__ == '__main__':
         resultado_final = agente_sigma.invoke(estado_inicial)       #.invoke() liga a máquina de estados e faz tudo acontecer
     
         if resultado_final["erro_validacao"] == "APROVADO":
-            print("\n\tDeu certo.  \,,/\n")
+            print("\n\tDeu certo.\n")
         else:
             print("\n\tA execução falhou.\n")
         #print(resultado_final["regra_gerada"])

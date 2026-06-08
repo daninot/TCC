@@ -1,0 +1,85 @@
+title: Spring Security Exceptions and Authentication/Authorization Failures
+id: 8d2f1a6b-2026-spring-security-exceptions
+status: experimental
+description: Detects application log entries and web responses that reveal Spring Security exceptions, authentication/authorization failures, CSRF token issues, or stack traces referencing Spring Security classes. Useful for hunting authentication bypass attempts, misconfigurations, and information exposure in Spring-based applications.
+author: Detection Engineer
+date: 2026-06-07
+references:
+  - https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html
+logsource:
+  product: webserver
+  service: application
+  category: application_logs
+detection:
+  selection_spring_exception_names:
+    Message|re:
+      - '(?i)\bAccessDeniedException\b'
+      - '(?i)\bAuthenticationException\b'
+      - '(?i)\bBadCredentialsException\b'
+      - '(?i)\bInsufficientAuthenticationException\b'
+      - '(?i)\bAccountExpiredException\b'
+      - '(?i)\bCredentialsExpiredException\b'
+      - '(?i)\bDisabledException\b'
+      - '(?i)\bLockedException\b'
+      - '(?i)\bRememberMeAuthenticationException\b'
+      - '(?i)\bInvalidCsrfTokenException\b'
+      - '(?i)\bMissingCsrfTokenException\b'
+      - '(?i)\bCsrfException\b'
+      - '(?i)\bSessionAuthenticationException\b'
+  selection_spring_stacktrace:
+    Message|re:
+      - '(?m)org\.springframework\.security\.[A-Za-z0-9_.\$]+\b'
+      - '(?m)at\s+org\.springframework\.security\.[A-Za-z0-9_\.]+\('
+  selection_http_status_authz:
+    Status:
+      - 401
+      - 403
+  selection_auth_endpoints:
+    RequestUri|re:
+      - '(?i)/login\b'
+      - '(?i)/logout\b'
+      - '(?i)/oauth/token\b'
+      - '(?i)/oauth/authorize\b'
+      - '(?i)/csrf\b'
+      - '(?i)/actuator/health\b'
+      - '(?i)/actuator/.*(env|configprops|mappings|beans)'
+  selection_repeated_failures:
+    CountByClientIP: ">5"
+    Timeframe: "5m"
+    Status:
+      - 401
+      - 403
+  selection_stacktrace_in_response:
+    ResponseBody|re:
+      - '(?i)org\.springframework\.security'
+      - '(?i)Traceback \(most recent call last\):'
+      - '(?i)Exception in thread "'
+  condition: (selection_spring_exception_names or selection_spring_stacktrace or selection_stacktrace_in_response) and (selection_http_status_authz or selection_auth_endpoints or selection_repeated_failures)
+fields:
+  - timestamp
+  - Host
+  - Service
+  - ClientIP
+  - HttpMethod
+  - Uri
+  - Status
+  - UserAgent
+  - Message
+  - ResponseBody
+  - Thread
+falsepositives:
+  - Normal application behavior where Spring Security intentionally logs authentication/authorization failures (e.g., legitimate failed login attempts).
+  - Development or staging environments with verbose error pages or stack traces enabled.
+  - Health checks or automated monitoring hitting auth-protected endpoints without credentials.
+level: medium
+tags:
+  - web.application
+  - spring
+  - authentication
+  - authorization
+  - detection.logging
+notes: |
+  - Tuning: suppress alerts from non-production environments, known monitoring/health-check IPs, and scheduled automated scans; adjust repeated-failure thresholds to match baseline traffic.
+  - Investigation: collect full request/response pairs, authentication context (username/account), recent deployment changes, stack traces, and correlate with other suspicious activity (credential stuffing, brute force, privilege escalation).
+  - Mitigation: avoid exposing stack traces or internal class names to end users, enforce strong authentication controls, enable account lockout/rate limiting, validate CSRF protection configuration, and review Spring Security configuration for overly permissive rules.
+

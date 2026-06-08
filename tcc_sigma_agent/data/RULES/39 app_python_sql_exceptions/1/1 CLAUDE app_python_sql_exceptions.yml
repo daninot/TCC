@@ -1,0 +1,171 @@
+title: Python PEP 249 DB-API Exception Leaked in HTTP Response Body
+id: c18b4e73-2f96-4a05-bd38-7d8e0a1f53b9
+status: experimental
+description: |
+    Detects Python DB-API 2.0 (PEP 249) exception class names and driver-specific
+    error strings appearing in HTTP response bodies or application error logs,
+    indicating that a database exception was not caught by the application and
+    propagated to the client.
+
+    PEP 249 mandates a standardised exception hierarchy for all compliant Python
+    database drivers. When any of these exceptions goes unhandled, the Python
+    traceback — containing the exception class name, the raw SQL query fragment,
+    and the database engine error message — is emitted in the HTTP response body
+    (typically a 500 Internal Server Error) or written to the application error log.
+
+    This is directly exploitable by an attacker:
+
+    1. RECONNAISSANCE — The leaked exception reveals the database driver in use
+       (psycopg2 → PostgreSQL, PyMySQL/MySQLdb → MySQL, cx_Oracle → Oracle,
+       pyodbc → MSSQL, sqlite3 → SQLite), the ORM layer (Django ORM, SQLAlchemy),
+       the raw SQL query template, and sometimes the schema (table/column names
+       in the error context).
+
+    2. SQL INJECTION CONFIRMATION — A ProgrammingError or OperationalError response
+       to a crafted input confirms that the injection point is live and that the
+       payload successfully broke the SQL query syntax. Attackers deliberately probe
+       with payloads such as a single quote (') or comment sequence (--) specifically
+       to elicit this error class before switching to blind or UNION-based extraction.
+
+    3. FRAMEWORK FINGERPRINTING — Django wraps PEP 249 exceptions in
+       django.db.utils.DatabaseError subclasses but re-raises with the original
+       driver message; Flask/SQLAlchemy surfaces sqlalchemy.exc.ProgrammingError.
+       Each wrapper string is distinctive and narrows the attack surface further.
+
+    PEP 249 exception classes detected (standardised names, driver-independent):
+      - ProgrammingError  — syntax errors, bad column/table names, wrong param count
+      - OperationalError  — connection issues, timeout, division by zero in query
+      - DatabaseError     — base class; appears in generic tracebacks
+      - IntegrityError    — constraint violations (useful for blind boolean inference)
+      - DataError         — value out of range, type mismatch (type-juggling probes)
+      - InternalError     — driver-internal failures under abnormal query load
+      - InterfaceError    — misuse of the DB-API itself (cursor already closed, etc.)
+
+    Driver-specific prefixes that concretise the PEP 249 class name in a traceback:
+      psycopg2.errors.*        psycopg2.ProgrammingError
+      pymysql.err.*            PyMySQL.err.ProgrammingError
+      MySQLdb.ProgrammingError
+      cx_Oracle.DatabaseError
+      pyodbc.ProgrammingError
+      sqlite3.OperationalError
+      django.db.utils.ProgrammingError
+      sqlalchemy.exc.ProgrammingError / OperationalError
+
+references:
+    - https://www.python.org/dev/peps/pep-0249/#exceptions
+    - https://peps.python.org/pep-0249/#exceptions
+    - https://owasp.org/www-community/attacks/SQL_Injection
+author: Generated from Python PEP 249 DB-API 2.0 exception specification
+date: 2024-01-01
+tags:
+    - attack.reconnaissance
+    - attack.t1595.002   # Active Scanning: Vulnerability Scanning
+    - attack.initial_access
+    - attack.t1190       # Exploit Public-Facing Application
+    - attack.discovery
+    - attack.t1082       # System Information Discovery (framework/DB fingerprinting)
+    - tlp:white
+logsource:
+    category: webserver
+    # PRIMARY: Application error log (stderr / gunicorn error log / uwsgi log)
+    # with response body capture enabled.
+    # SECONDARY: WAF or reverse-proxy access log with response body logging
+    # (nginx with lua-resty-logger, ModSecurity with response body inspection,
+    # or an inline proxy such as Burp Collaborator / mitmproxy in the pipeline).
+    # HTTP response body capture must be enabled — default access logs do NOT
+    # include response bodies. Configure nginx with:
+    #   log_format combined_body ... '$resp_body';
+    # or enable ModSecurity rule engine in DetectionOnly mode with response scanning.
+    product: generic
+detection:
+    # ── Arm 1: PEP 249 standardised exception class name strings ─────────────
+    # These names are mandated by the spec and appear identically across all
+    # compliant drivers. They only appear in HTTP responses as part of a Python
+    # traceback — no legitimate application output contains these strings.
+    selection_pep249_classnames:
+        response_body|contains:
+            - 'ProgrammingError'
+            - 'OperationalError'
+            - 'DatabaseError'
+            - 'IntegrityError'
+            - 'DataError'
+            - 'InternalError'
+            - 'InterfaceError'
+
+    # ── Arm 2: Driver-qualified exception strings (higher specificity) ────────
+    # The driver module prefix combined with the PEP 249 class name is unique
+    # to Python tracebacks and appears in no benign HTTP response.
+    selection_driver_qualified:
+        response_body|contains:
+            - 'psycopg2.'
+            - 'pymysql.err.'
+            - 'MySQLdb.'
+            - 'cx_Oracle.'
+            - 'pyodbc.'
+            - 'sqlite3.'
+            - 'django.db.utils.'
+            - 'sqlalchemy.exc.'
+
+    # ── Arm 3: Python traceback frame containing SQL keyword fragments ─────────
+    # A traceback that exposes the raw SQL query template confirms both the
+    # exception origin and the schema/query structure visible to the attacker.
+    selection_traceback_with_sql:
+        response_body|contains|all:
+            - 'Traceback (most recent call last)'
+            - 'cursor.execute('
+
+    # ── Arm 4: HTTP 500 responses to requests containing SQL probe characters ──
+    # Correlates the response code with a probe payload in the request URI.
+    # This arm specifically catches the "single quote elicits 500" pattern
+    # that is step 1 of manual SQL injection validation.
+    selection_500_with_probe:
+        sc-status: 500
+        cs-uri-query|contains:
+            - "'"
+            - '--'
+            - '/*'
+            - '%27'    # URL-encoded single quote
+            - '%2D%2D' # URL-encoded --
+
+    # ── Exclude internal health-check and monitoring endpoints ───────────────
+    filter_healthcheck:
+        cs-uri-stem|contains:
+            - '/health'
+            - '/ping'
+            - '/metrics'
+            - '/status'
+
+    # ── Exclude known load-balancer and monitoring source IPs ────────────────
+    filter_internal_probes:
+        c-ip|cidr:
+            - '127.0.0.0/8'
+            - '::1/128'
+
+    condition: >
+        (
+          selection_pep249_classnames or
+          selection_driver_qualified or
+          selection_traceback_with_sql or
+          selection_500_with_probe
+        )
+        and not filter_healthcheck
+        and not filter_internal_probes
+
+falsepositives:
+    - A development or staging environment with DEBUG=True (Django) or equivalent
+      framework debug mode enabled — these intentionally render full tracebacks in
+      the browser. Scope the rule to production environments only, or exclude by
+      hostname/vhost.
+    - An application that deliberately exposes a /debug or /error endpoint for
+      internal diagnostics — exclude the specific URI stem.
+    - Automated integration test suites that deliberately trigger DB exceptions
+      to verify error handling — exclude the CI runner source IP range.
+    - A search form that legitimately accepts apostrophes in user names (e.g.
+      "O'Brien") without proper parameterisation, generating OperationalError
+      on every such input (this is itself a vulnerability and should be remediated,
+      not whitelisted).
+    # Recommended tuning for Arm 4: raise confidence by additionally requiring
+    # the same c-ip to have generated 3+ HTTP 500 responses in a 60-second window
+    # (threshold aggregation in your SIEM), separating systematic probing from
+    # accidental single-character input triggering an existing bug.
+level: high

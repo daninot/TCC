@@ -1,0 +1,26 @@
+title: Suspicious Spring Security Exceptions
+id: fb9b8e23-722a-4a25-9c92-d9223e7dc112
+status: experimental
+description: Detects suspicious Spring framework security exception classes in application logs, which may indicate exploitation attempts including unauthorized access, CSRF token abuse, cookie tampering, and rejected malformed requests.
+references:
+- [https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html](https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html)
+author: Senior Threat Detection Engineer
+date: 2026/06/07
+tags:
+- attack.initial_access
+- attack.t1190
+logsource:
+product: spring
+category: application
+detection:
+selection:
+- 'InvalidCsrfTokenException'
+- 'MissingCsrfTokenException'
+- 'CookieTheftException'
+- 'RequestRejectedException'
+- 'AccessDeniedException'
+condition: selection
+falsepositives:
+- Application misconfigurations resulting in broken CSRF tokens or malformed requests
+- Vulnerability scanning or automated testing
+level: medium

@@ -1,0 +1,26 @@
+title: Okta Policy Rule Modification or Deletion
+id: e7f8a9b0-c1d2-43e4-95f6-a7b8c9d0e1f2
+status: experimental
+description: Detects modification or deletion of an Okta policy rule, which may indicate an attacker weakening security policies (MFA enforcement, sign-on rules, access controls) for persistence or privilege escalation.
+references:
+    - https://developer.okta.com/docs/reference/api/system-log/
+    - https://developer.okta.com/docs/reference/api/event-types/
+author: Senior Threat Detection Engineer
+date: 2026-06-06
+logsource:
+    product: okta
+    service: okta
+detection:
+    selection:
+        eventType|contains:
+            - 'policy.rule.update'
+            - 'policy.rule.delete'
+    condition: selection
+falsepositives:
+    - Legitimate administrative changes to policies
+level: high
+tags:
+    - attack.persistence
+    - attack.t1098
+    - attack.t1484
+    - attack.t1556

@@ -1,0 +1,30 @@
+title: Python DB-API Database Exception Detected
+id: 7c91c1f3-3f0d-4a2e-bd7e-6f4b7d5b6e21
+status: experimental
+description: Detects Python DB-API 2.0 database exceptions in application logs.
+references:
+  - https://peps.python.org/pep-0249/
+author: OpenAI
+date: 2026-06-07
+tags:
+  - attack.discovery
+  - attack.persistence
+  - application.database
+logsource:
+  category: application
+detection:
+  selection:
+    Message|contains:
+      - "InterfaceError"
+      - "DatabaseError"
+      - "DataError"
+      - "OperationalError"
+      - "IntegrityError"
+      - "InternalError"
+      - "ProgrammingError"
+      - "NotSupportedError"
+  condition: selection
+falsepositives:
+  - Expected application error handling
+  - Development and testing environments
+level: medium

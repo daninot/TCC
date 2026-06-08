@@ -1,0 +1,27 @@
+title: CVE-2024-3400 Exploitation - UPSTYLE Backdoor Deployment
+id: 6f1e2a3b-4c5d-6e7f-8a9b-0c1d2e3f4a5b
+status: experimental
+description: Detects the deployment of the UPSTYLE backdoor via CVE-2024-3400, a critical command injection vulnerability in Palo Alto Networks PAN-OS GlobalProtect feature. The backdoor is typically placed in /usr/lib/python3.6/site-packages/system.pth, and the exploit modifies /var/appweb/sslvpndocs/global-protect/portal/css/bootstrap.min.css.
+references:
+  - https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/
+  - https://www.virustotal.com/gui/file/3de2a4392b8715bad070b2ae12243f166ead37830f7c6d24e778985927f9caac
+  - https://docs.python.org/3/library/site.html
+author: Sigma Rule Generator
+date: 2026-06-06
+tags:
+  - attack.initial-access
+  - attack.t1190
+  - cve.2024-3400
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection_pth:
+    TargetFilename|endswith: '/usr/lib/python3.6/site-packages/system.pth'
+  selection_css:
+    TargetFilename|endswith: '/var/appweb/sslvpndocs/global-protect/portal/css/bootstrap.min.css'
+  condition: 1 of selection_*
+falsepositives:
+  - Legitimate Python package installations may create .pth files, but the specific path /usr/lib/python3.6/site-packages/system.pth is unusual.
+  - Legitimate system updates may modify the CSS file, but the location and context of this modification should be investigated.
+level: critical

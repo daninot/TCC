@@ -1,0 +1,39 @@
+This rule focuses on the Python persistence mechanism Volexity observed in the CVE-2024-3400 intrusions: a malicious `.pth` file placed under `site-packages`, which Python processes at startup, making it a useful detection point for the UPSTYLE-style backdoor. 
+title: Python Site-Packages Persistence via .pth or Customize File Creation
+id: 6d7a8f1c-7f21-4e4e-9c6a-1f7e0a4b6e4f
+status: experimental
+description: Detects suspicious creation or modification of Python site-packages persistence files such as .pth, sitecustomize.py, or usercustomize.py, which can be used to execute attacker-controlled code at interpreter startup.
+references:
+
+* [https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/](https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/)
+* [https://docs.python.org/3/library/site.html](https://docs.python.org/3/library/site.html)
+  author: OpenAI
+  date: 2026-06-07
+  logsource:
+  category: file_event
+  detection:
+  selection_sitepack:
+  TargetFilename|contains:
+
+  * 'site-packages'
+    selection_persistence_file:
+    TargetFilename|endswith:
+  * 'system.pth'
+  * 'sitecustomize.py'
+  * 'usercustomize.py'
+  * '.pth'
+    condition: selection_sitepack and selection_persistence_file
+    falsepositives:
+* Legitimate Python package installation or virtual environment setup
+* Administrator-created site customization files
+* Software deployment tooling that writes to site-packages
+  level: high
+  tags:
+* attack.persistence
+* attack.t1037
+
+```
+```
+
+[1]: https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/ "Zero-Day Exploitation of Unauthenticated Remote Code Execution Vulnerability in GlobalProtect (CVE-2024-3400) | Volexity"
+

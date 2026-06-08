@@ -1,0 +1,226 @@
+title: Okta Admin Privilege Escalation and Persistence Activity
+id: 2e94b7f3-0d61-4c8a-a395-7f1e3d80b52c
+status: experimental
+description: |
+    Detects high-risk Okta System Log events consistent with an attacker who has
+    obtained administrative access to an Okta tenant and is establishing persistence
+    or escalating privileges. This pattern was observed in Scattered Spider (UNC3944),
+    LAPSUS$, and other threat actors that target identity providers as a pivot point
+    into downstream SaaS applications.
+
+    The rule covers five abuse chains, each represented as a detection branch:
+
+    1. SUPER-ADMIN GRANT — Direct assignment of Super Administrator or Org Administrator
+       roles to a user or group (iam.role.*, user.account.privilege.grant). Super-admin
+       grants are rare legitimate events; any grant outside a change-management window
+       should be investigated.
+
+    2. OAUTH CLIENT PRIVILEGE ESCALATION — Granting admin privileges to an OAuth 2.0
+       client application (app.oauth2.client.privilege.grant) gives that client the
+       ability to call Okta management APIs without user interaction, making it a
+       persistent, credential-free backdoor. Combined with client creation events,
+       this is a classic attacker move.
+
+    3. MFA / SIGN-ON POLICY WEAKENING — Updating or deleting app sign-on policies
+       (application.policy.sign_on.update, app.policy.sign_on.update) or global
+       sign-on policies to remove MFA requirements for admin-accessible apps.
+
+    4. IDENTITY PROVIDER MANIPULATION — Adding, activating, or updating an external
+       IdP (user.idp.*) allows an attacker to federate authentication to an
+       attacker-controlled IdP and bypass all Okta-native controls, including MFA.
+
+    5. ADMIN ROLE BINDING TO ATTACKER-CONTROLLED RESOURCE SET — Creating or modifying
+       resource set bindings (iam.resourceset.bindings.add) that include attacker-
+       controlled users/groups grants scoped admin access without touching global roles.
+
+    Okta System Log fields used:
+      eventType        — Okta event type string (dotted namespace)
+      outcome.result   — SUCCESS | FAILURE | SKIPPED
+      actor.type       — User | SystemPrincipal | Client
+      actor.alternateId — Actor email / client ID
+      target[].type    — Type of the object being acted upon
+      target[].displayName — Human-readable name of the target
+      debugContext.debugData.privilegeGranted — Role/privilege name (super admin grants)
+      client.ipAddress — IP of the actor
+      client.geographicalContext.country — Country (useful for impossible travel filter)
+
+    This rule is designed for SIEM platforms that ingest Okta System Log via the
+    Okta API or an official connector (Splunk Add-on for Okta, Elastic Okta integration,
+    Microsoft Sentinel Okta connector, etc.). Map `eventType` to your field name:
+      Splunk:    eventType
+      Elastic:   okta.event_type  (or event.action in ECS-mapped pipelines)
+      Sentinel:  EventType
+      Chronicle: metadata.event_type (after UDM mapping; prefer raw field)
+
+    References:
+      - https://developer.okta.com/docs/reference/api/system-log/
+      - https://developer.okta.com/docs/reference/api/event-types/
+      - https://sec.okta.com/hardeningazuread (Okta hardening guidance)
+      - https://attack.mitre.org/techniques/T1098/003/ (Account Manipulation: Add roles)
+
+author: Claude (based on Okta developer documentation and threat actor reporting)
+date: 2026-06-06
+modified: 2026-06-06
+tags:
+    - attack.persistence
+    - attack.t1098.003           # Account Manipulation: Additional Cloud Roles
+    - attack.privilege-escalation
+    - attack.t1078.004           # Valid Accounts: Cloud Accounts
+    - attack.defense-evasion
+    - attack.t1556.006           # Modify Authentication Process: Multi-Factor Authentication
+    - attack.t1136.003           # Create Account: Cloud Account (OAuth client as backdoor)
+    - tlp:white
+
+logsource:
+    product: okta
+    service: system_log
+    # Field name for the Okta event type; adjust per your SIEM's Okta integration:
+    #   Splunk (Okta Add-on v3+):    eventType
+    #   Elastic (okta filebeat):     okta.event_type
+    #   Sentinel (Okta connector):   EventType
+    # All branches filter on outcome.result: SUCCESS to suppress failed attempts
+    # (which are high-volume and low-signal). Add a separate low-severity rule
+    # for repeated failures if you want coverage of enumeration attempts.
+
+detection:
+
+    # ── Branch 1: Super-admin or org-admin role granted ───────────────────────
+    # iam.resourceset.bindings.add covers custom role bindings.
+    # user.account.privilege.grant covers legacy direct role grants.
+    # Both fire on SUCCESS for legitimate grants AND attacker grants.
+    selection_admin_grant:
+        eventType:
+            - 'iam.resourceset.bindings.add'
+            - 'user.account.privilege.grant'
+            - 'group.privilege.grant'
+        outcome.result: 'SUCCESS'
+
+    # Narrow to super-admin / org-admin assignments specifically.
+    # The privilegeGranted debug field is populated for super-admin events.
+    # For resource set bindings (custom roles), the role displayName appears in target[].
+    selection_admin_grant_scope:
+        debugContext.debugData.privilegeGranted|contains:
+            - 'SUPER_ADMIN'
+            - 'ORG_ADMIN'
+            - 'Super Administrator'
+            - 'Org Administrator'
+            - 'Read Only Administrator'   # can still exfiltrate all user data
+            - 'Application Administrator'
+
+    # ── Branch 2: OAuth client granted admin privileges ───────────────────────
+    # app.oauth2.client.privilege.grant fires whenever an OAuth app is elevated.
+    # Any occurrence on a SUCCESS outcome is high confidence — this is almost
+    # never done legitimately without a formal change request.
+    selection_oauth_admin_grant:
+        eventType: 'app.oauth2.client.privilege.grant'
+        outcome.result: 'SUCCESS'
+
+    # ── Branch 3: New OAuth client created immediately followed by admin grant ─
+    # Catch the create-then-escalate pattern in a single rule via the create event.
+    # Correlate with Branch 2 over a short time window in your SIEM if desired.
+    selection_oauth_client_create:
+        eventType: 'app.oauth2.client.lifecycle.create'
+        outcome.result: 'SUCCESS'
+
+    # ── Branch 4: Sign-on / MFA policy weakened ───────────────────────────────
+    # Both event types cover policy modification. A SUCCESS here means the
+    # policy change took effect. Pair with changeDetails in the raw event to
+    # confirm MFA was downgraded (requireMfa: true → false or similar).
+    selection_policy_weaken:
+        eventType:
+            - 'application.policy.sign_on.update'
+            - 'app.policy.sign_on.update'
+            - 'policy.lifecycle.update'
+            - 'policy.rule.update'
+            - 'policy.rule.delete'
+        outcome.result: 'SUCCESS'
+
+    # Gate: only alert when the actor is a human (not an Okta system process)
+    # to suppress automated policy evaluations that write their own events.
+    selection_policy_weaken_actor:
+        actor.type: 'User'
+
+    # ── Branch 5: External IdP added or activated ─────────────────────────────
+    # Adding a SAML or OIDC IdP gives the attacker a backdoor authentication path.
+    # user.idp.lifecycle.create / .activate cover the two most dangerous moments.
+    selection_idp_add:
+        eventType:
+            - 'user.idp.lifecycle.create'
+            - 'user.idp.lifecycle.activate'
+            - 'user.idp.lifecycle.update'
+        outcome.result: 'SUCCESS'
+
+    # ── Branch 6: Admin role binding to new resource set ─────────────────────
+    # iam.role.create: attacker creates a custom role with dangerous permissions.
+    # Combined with iam.resourceset.bindings.add (Branch 1), forms full picture.
+    selection_custom_role_create:
+        eventType: 'iam.role.create'
+        outcome.result: 'SUCCESS'
+
+    # ── Noise suppression ─────────────────────────────────────────────────────
+    # Suppress Okta system/service accounts performing automated operations.
+    filter_system_actor:
+        actor.type: 'SystemPrincipal'
+        actor.alternateId|startswith:
+            - 'system@'
+            - 'okta-'
+
+    # Suppress known provisioning service accounts (tune to your environment).
+    # Add your SCIM provisioning app client IDs or service account emails here.
+    filter_provisioning_accounts:
+        actor.alternateId|endswith:
+            - '@okta-provisioning.yourcompany.com'   # EXAMPLE — tune to your domain
+
+    condition: >
+        (
+          ( selection_admin_grant and selection_admin_grant_scope )
+          or selection_oauth_admin_grant
+          or ( selection_policy_weaken and selection_policy_weaken_actor )
+          or selection_idp_add
+          or selection_custom_role_create
+        )
+        and not filter_system_actor
+        and not filter_provisioning_accounts
+
+falsepositives:
+    - Legitimate IT/IAM team admin role grants during onboarding or role transitions
+      (mitigate by correlating with a change-management ticket system or time-of-day filter)
+    - Automated IdP configuration by Okta-certified integrations during initial setup
+    - Policy updates during planned maintenance windows
+    - Branch 3 (OAuth client create) will fire on any new app registration —
+      use it as a supporting signal correlated with Branch 2, not a standalone alert
+
+level: high   # Branch 2 (OAuth admin grant) and Branch 5 (IdP add) alone warrant critical
+
+fields:
+    - eventType
+    - outcome.result
+    - actor.alternateId
+    - actor.type
+    - actor.displayName
+    - client.ipAddress
+    - client.geographicalContext.country
+    - client.userAgent.rawUserAgent
+    - target
+    - debugContext.debugData.privilegeGranted
+    - published                # ISO8601 timestamp of the event
+
+# ── Analyst triage workflow ────────────────────────────────────────────────────
+# 1. Is the actor a known IAM admin? Check client.ipAddress against VPN/corporate
+#    egress ranges — external IPs from unexpected countries are escalation indicators.
+# 2. For Branch 1/2: who is the target (target[].displayName)?
+#    - A newly created user or OAuth client = very high suspicion.
+#    - A known service account in a planned migration = lower risk.
+# 3. For Branch 4 (policy change): pull the raw event's changeDetails.from / .to
+#    fields to confirm whether requireMfa was set to false.
+# 4. For Branch 5 (IdP add): what SAML/OIDC issuer was configured?
+#    An external domain (e.g., accounts.attacker.com) = escalate immediately.
+# 5. Cross-correlate actor.alternateId with user.session.start events in the
+#    preceding 30 minutes to find the session that triggered the change —
+#    check that session's MFA factor and IP for signs of credential compromise.
+#
+# Relevant hardening controls (Okta Admin Console):
+#   - Enable "Admin Console" session binding to prevent session token theft
+#   - Require phishing-resistant MFA (WebAuthn/FIDO2) for all admin roles
+#   - Enable Okta ThreatInsight and flag logins from anonymizing proxies
+#   - Restrict API token creation to dedicated service accounts

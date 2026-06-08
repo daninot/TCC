@@ -1,0 +1,25 @@
+title: Suspicious Spring Framework Security Exception Classes
+id: ffabdbfb-337a-438d-adb5-f0b1cf8011a2
+status: test
+description: Detects suspicious access to Spring framework security exception classes in application logs, indicating potential exploitation attempts.
+references:
+    - https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html
+author: 'Your Name'
+date: 2023-02-20
+modified: 2023-02-20
+tags:
+    - attack.initial-access
+    - detection.emerging-threats
+logsource:
+    category: application
+detection:
+    selection:
+        Data|contains:
+            - 'org.springframework.security.authentication.BadCredentialsException'
+            - 'org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter$1'
+            - 'org.springframework.security.web.csrf.CsrfException'
+            - 'org.springframework.security.web.util.matcher.AntPathRequestMatcher$MatchResult'
+    condition: selection
+falsepositives:
+    - Unknown, please report false positives via https://github.com/SigmaHQ/sigma/issues
+level: high

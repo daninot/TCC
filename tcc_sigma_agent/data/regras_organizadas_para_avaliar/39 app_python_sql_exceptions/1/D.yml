@@ -1,0 +1,59 @@
+title: Python DB-API Exception and Database Error Indicators
+id: 9d3f6b2a-2026-pep249-dbapi-exceptions
+status: experimental
+description: Detects application log entries and HTTP responses that reveal Python DB-API (PEP 249) exception classes, DB driver error messages, or Python stack traces referencing database operations. Useful for hunting SQL errors, injection attempts, misconfigurations, and application faults that expose database internals.
+author: Detection Engineer
+date: 2026-06-07
+references:
+  - https://www.python.org/dev/peps/pep-0249/#exceptions
+logsource:
+  product: webserver
+  service: application
+  category: application_logs
+detection:
+  selection_dbapi_exception_names:
+    Message|re:
+      - '(?i)\b(InterfaceError|DatabaseError|DataError|OperationalError|IntegrityError|InternalError|ProgrammingError|NotSupportedError)\b'
+  selection_python_traceback:
+    Message|re:
+      - '(?m)Traceback \(most recent call last\):'
+      - '(?i)File ".*", line \d+, in .*'
+      - '(?i)raise .*'
+  selection_db_driver_indicators:
+    Message|re:
+      - '(?i)(psycopg2|pymysql|mysqlclient|MySQLdb|cx_Oracle|pyodbc|sqlite3|sqlalchemy|pg8000)'
+  selection_db_error_messages:
+    Message|re:
+      - '(?i)(You have an error in your SQL syntax|syntax error at or near|ORA-|SQLSTATE
+
+\[\d+\]
+
+|Unknown column|Duplicate entry|deadlock detected|database is locked|no such table|permission denied for relation)'
+  selection_sql_injection_signatures:
+    RequestUri|re:
+      - '(?i)(\bunion\b.*\bselect\b|\bor\s+\'1\'=\'1\b|--\s|/\*.*\*/|sleep\(|benchmark\()'
+  condition: (selection_dbapi_exception_names or selection_python_traceback or selection_db_driver_indicators or selection_db_error_messages) and not selection_sql_injection_signatures
+fields:
+  - timestamp
+  - Host
+  - Service
+  - Application
+  - Message
+  - RequestUri
+  - UserAgent
+  - HttpMethod
+  - Status
+falsepositives:
+  - Development, staging, or debug environments that intentionally log full Python tracebacks.
+  - Legitimate application errors and database exceptions surfaced by normal application behavior.
+level: medium
+tags:
+  - detection.logging
+  - web.application
+  - error.handling
+  - db
+notes: |
+  - Tuning: suppress alerts from non-production environments and known maintenance windows; restrict to production log streams or require repeated occurrences to reduce noise.
+  - Investigation: capture full log lines, correlated request/response pairs, request parameters, recent code deployments, and database connectivity metrics; reproduce safely in a test environment if needed.
+  - Remediation: avoid exposing full tracebacks to end users, sanitize error messages, implement parameterized queries/ORM protections, and fix underlying database errors or misconfigurations.
+

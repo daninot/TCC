@@ -1,0 +1,29 @@
+title: Python Path Configuration File Created in macOS Site-Packages Directory
+id: d2e3f4a5-b6c7-8901-defa-890123456789
+status: experimental
+description: Detects creation of a Python path configuration file (.pth) in macOS Python library site-packages folders. These files are executed at every Python startup (3.5+) regardless of import, enabling stealthy code execution and persistence. This technique was observed in exploitation of CVE-2024-3400 affecting Palo Alto GlobalProtect.
+references:
+    - https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/
+    - https://www.virustotal.com/gui/file/3de2a4392b8715bad070b2ae12243f166ead37830f7c6d24e778985927f9caac
+    - https://docs.python.org/3/library/site.html
+author: Senior Threat Detection Engineer
+date: 2024-01-01
+tags:
+    - attack.persistence
+    - attack.execution
+    - attack.t1546
+    - attack.t1059.006
+    - cve.2024.3400
+logsource:
+    product: macos
+    category: file_event
+detection:
+    selection_path:
+        TargetFilename|re: '(?i)/[Pp]ython3\.[0-9]{1,2}/site-packages/'
+    selection_extension:
+        TargetFilename|endswith: '.pth'
+    condition: all of selection_*
+falsepositives:
+    - Legitimate Python package installations via pip or other package managers creating .pth files in site-packages
+    - Developer tooling or virtual environment setup scripts generating path configuration files
+level: high

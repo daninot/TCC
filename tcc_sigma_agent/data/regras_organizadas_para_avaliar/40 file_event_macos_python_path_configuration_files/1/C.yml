@@ -1,0 +1,32 @@
+title: Suspicious Python PTH File Creation (UPSTYLE Backdoor)
+id: f4a87b32-e567-4a11-9a3b-2810a455a71a
+status: experimental
+description: |
+  Detects the creation or modification of a Python path configuration file (.pth), specifically targeting the name 'system.pth' within Python's site-packages or dist-packages directories.
+  This technique abuses the Python `site` module's initialization process, which automatically executes lines starting with 'import' in .pth files. 
+  This specific persistence and execution hijacking technique was leveraged by the UPSTYLE backdoor during the widespread exploitation of Palo Alto GlobalProtect appliances (CVE-2024-3400).
+author: Gemini
+date: 2026/06/07
+references:
+    - https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/
+    - https://docs.python.org/3/library/site.html
+    - https://www.virustotal.com/gui/file/3de2a4392b8715bad070b2ae12243f166ead37830f7c6d24e778985927f9caac
+tags:
+    - attack.persistence
+    - attack.privilege_escalation
+    - attack.defense_evasion
+    - attack.t1574.004
+    - cve.2024.3400
+logsource:
+    category: file_event
+    product: linux
+detection:
+    selection:
+        TargetFilename|contains:
+            - '/site-packages/'
+            - '/dist-packages/'
+        TargetFilename|endswith: '/system.pth'
+    condition: selection
+falsepositives:
+    - Highly unlikely. While legitimate Python packages do use .pth files for namespace packages (like `azure.pth` or `zope.interface.pth`), a file explicitly named `system.pth` is non-standard and highly indicative of the UPSTYLE campaign IOCs.
+level: high

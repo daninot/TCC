@@ -1,0 +1,31 @@
+title: Python SQL Exception Classes in Application Logs
+id: b4c5d6e7-f8a9-40b1-92c3-d4e5f6a7b8c9
+status: experimental
+description: Detects Python SQL exception classes (PEP 249) in application logs, which may indicate SQL injection probing or database exploitation attempts.
+references:
+    - https://www.python.org/dev/peps/pep-0249/#exceptions
+author: Senior Threat Detection Engineer
+date: 2026-06-06
+logsource:
+    product: python
+    category: application
+detection:
+    selection:
+        message|contains:
+            - 'Warning'
+            - 'Error'
+            - 'InterfaceError'
+            - 'DatabaseError'
+            - 'DataError'
+            - 'OperationalError'
+            - 'IntegrityError'
+            - 'InternalError'
+            - 'ProgrammingError'
+            - 'NotSupportedError'
+    condition: selection
+falsepositives:
+    - Legitimate database errors from application logic
+level: medium
+tags:
+    - attack.initial_access
+    - attack.t1190

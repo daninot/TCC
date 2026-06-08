@@ -1,0 +1,112 @@
+title: Okta System Log — Suspicious Authentication and Administrative Activity
+id: 1a2b3c4d-2026-okta-systemlog-suspicious-activity
+status: experimental
+description: Detects anomalous or suspicious Okta System Log events that may indicate account compromise, credential stuffing, token abuse, or malicious administrative activity. Flags repeated authentication failures, unusual token issuance, creation or modification of OAuth clients/API tokens, suspicious admin actions, and risky SAML/OIDC errors. Useful for early detection of identity-based intrusions and supply-chain or tenant compromise.
+author: Detection Engineer
+date: 2026-06-07
+references:
+  - https://developer.okta.com/docs/reference/api/system-log/
+  - https://developer.okta.com/docs/reference/api/event-types/
+logsource:
+  product: okta
+  service: system_log
+  category: identity
+detection:
+  selection_failed_auth:
+    EventType|contains:
+      - "user.authentication.failed"
+      - "user.session.start_failed"
+    Outcome|contains:
+      - "FAILURE"
+  selection_bruteforce_threshold:
+    EventType|contains:
+      - "user.authentication.failed"
+    CountByClientIP: ">20"
+    Timeframe: "10m"
+  selection_multiple_user_failures:
+    EventType|contains:
+      - "user.authentication.failed"
+    CountByClientIP: ">10"
+    Timeframe: "10m"
+  selection_success_after_failures:
+    EventType|contains:
+      - "user.authentication.succeeded"
+    RelatedEvent|contains:
+      - "user.authentication.failed"
+    RelatedEventCount: ">3"
+    Timeframe: "15m"
+  selection_new_device_or_geo:
+    EventType|contains:
+      - "user.session.start"
+    Actor|contains:
+      - "authenticationProvider"
+    Client|re:
+      - '(?i)ipAddress'
+    Outcome|contains:
+      - "SUCCESS"
+    Note: "Correlate with device or geo that is new for the user"
+  selection_oauth_client_create:
+    EventType|contains:
+      - "oauth2.client.create"
+      - "oauth2.client.update"
+      - "oauth2.client.rotate_secret"
+  selection_api_token_create:
+    EventType|contains:
+      - "token.create"
+      - "api.token.create"
+      - "application.token.create"
+  selection_admin_privilege_change:
+    EventType|re:
+      - '(?i)system.admin.(add|remove|update|privilege|role)'
+  selection_saml_oidc_errors:
+    EventType|contains:
+      - "app.sso.saml2.assertion_error"
+      - "app.sso.oidc.error"
+      - "app.sso.saml2.signature_verification_failed"
+  selection_app_install_from_unusual_actor:
+    EventType|contains:
+      - "application.integration.create"
+      - "application.oauth2.create"
+    ActorType|contains:
+      - "USER"
+    ActorId|re:
+      - '(?i)^(?!00u)[a-z0-9]{8,}$'
+  condition: >
+    (selection_failed_auth and (selection_bruteforce_threshold or selection_multiple_user_failures))
+    or (selection_success_after_failures)
+    or (selection_new_device_or_geo and selection_failed_auth)
+    or selection_oauth_client_create
+    or selection_api_token_create
+    or selection_admin_privilege_change
+    or selection_saml_oidc_errors
+    or selection_app_install_from_unusual_actor
+fields:
+  - published
+  - eventType
+  - actor
+  - outcome
+  - client
+  - request
+  - target
+  - ipAddress
+  - userAgent
+  - eventId
+  - severity
+falsepositives:
+  - Legitimate administrative changes by IT or DevOps teams (whitelist known admin accounts and automation service accounts).
+  - Scheduled or automated integrations that create/rotate OAuth clients or API tokens as part of CI/CD pipelines.
+  - Users legitimately logging in from new devices or traveling (tune by comparing to known device/geo baselines).
+level: high
+tags:
+  - identity
+  - okta
+  - attack.credential_access
+  - attack.initial_access
+  - attack.persistence
+  - detection.identity
+notes: |
+  - Tuning: whitelist trusted automation/service accounts and known management IP ranges; adjust brute-force thresholds to match tenant authentication volume.
+  - Enrichment: add user risk score, device fingerprint, geolocation, and recent Okta ThreatInsight verdicts to improve fidelity.
+  - Investigation: collect full System Log event JSON, correlate with recent admin/API activity, check for newly created OAuth clients or API tokens, review related sign-in history for affected users, and search for lateral activity or suspicious provisioning.
+  - Response: temporarily suspend compromised accounts, revoke suspicious tokens/clients, rotate affected credentials, require MFA re-enrollment, and perform a tenant-wide audit of recent administrative changes.
+

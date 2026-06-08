@@ -1,0 +1,39 @@
+title: Suspicious Spring Security Exception Classes in Application Logs
+id: 1d9f3b6a-4c2e-4b7f-8a1d-0e2f3c4b5a6e
+status: experimental
+description: Detects Spring application log entries that include Spring Security exception class names commonly raised during unauthorized access attempts, CSRF failures, cookie tampering, malformed requests, or other exploitation attempts. These exceptions often indicate probing or attempted abuse of authentication and authorization controls.
+author: Senior Threat Detection Engineer
+date: 2026/06/12
+references:
+  - [https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html](https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html)
+tags:
+  - web
+  - spring
+  - security
+  - detection
+logsource:
+  product: spring
+  category: application
+  description: Spring application logs (e.g., application.log) containing exception class names and stack traces. Ensure application logging captures exception class names and stack traces.
+detection:
+  selection_exception:
+    Message|contains:
+      - 'AccessDeniedException'
+      - 'AuthenticationCredentialsNotFoundException'
+      - 'BadCredentialsException'
+      - 'InsufficientAuthenticationException'
+      - 'DisabledException'
+      - 'LockedException'
+      - 'AccountExpiredException'
+      - 'CredentialsExpiredException'
+      - 'CsrfException'
+      - 'InvalidCsrfTokenException'
+      - 'MissingCsrfTokenException'
+      - 'RequestRejectedException'
+      - 'AuthenticationServiceException'
+      - 'SessionAuthenticationException'
+  condition: selection_exception
+falsepositives:
+  - Legitimate authentication or authorization failures from misconfigured clients, expired credentials, or expected access control enforcement.
+  - Automated testing, health checks, or integration tests that intentionally trigger security exceptions.
+level: medium

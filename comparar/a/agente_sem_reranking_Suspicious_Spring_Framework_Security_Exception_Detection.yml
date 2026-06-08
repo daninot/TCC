@@ -1,0 +1,28 @@
+title: Suspicious Spring Framework Security Exception Detection
+id: 67a5ae63-a2ec-4d83-a5c8-0a6303cce5d8
+status: test
+description: Detects suspicious Spring framework security exception classes in application logs indicating exploitation attempts
+references:
+    - https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html
+author: Your Name
+date: 2023-02-20
+modified: 2023-02-20
+tags:
+    - attack.exploitation
+    - detection.security
+logsource:
+    category: application
+detection:
+    selection:
+        EventID|contains:
+            - 'org.springframework.security.authentication.BadCredentialsException'
+            - 'org.springframework.security.authentication.CredentialsNotFoundException'
+            - 'org.springframework.security.authentication.DisabledException'
+            - 'org.springframework.security.authentication.LockedException'
+            - 'org.springframework.security.authentication.UnknownAccountException'
+            - 'org.springframework.security.core.AuthenticationException'
+            - 'org.springframework.security.core.userdetails.UsernameNotFoundException'
+    condition: selection
+falsepositives:
+    - Unknown, please report false positives via https://github.com/SigmaHQ/sigma/issues
+level: medium
