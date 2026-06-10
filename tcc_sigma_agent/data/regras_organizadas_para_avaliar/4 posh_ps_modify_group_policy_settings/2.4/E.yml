@@ -1,33 +1,31 @@
-title: PowerShell Group Policy Modification
-id: 3ef25890-e768-4fb6-b31b-7411bc2df4de
-status: stable
-description: Detects PowerShell scripts modifying Group Policy settings in the registry (such as SmartScreen settings or Group Policy refresh intervals) to bypass security controls or maintain persistence. This rule requires PowerShell Script Block Logging (Event ID 4104) to be enabled.
+title: PowerShell Script Block Modifying Group Policy Settings
+id: f7a3e2d1-4b5c-6d7e-8f9a-0b1c2d3e4f5a
+status: experimental
+description: Detects PowerShell script blocks that modify Group Policy-related registry settings, such as SmartScreen configuration or Group Policy refresh intervals. Adversaries abuse this to disable security controls, escalate privileges, or achieve persistence. Requires PowerShell Script Block Logging to be enabled.
 references:
-
-* [https://github.com/redcanaryco/atomic-red-team/blob/40b77d63808dd4f4eafb83949805636735a1fd15/atomics/T1484.001/T1484.001.md](https://github.com/redcanaryco/atomic-red-team/blob/40b77d63808dd4f4eafb83949805636735a1fd15/atomics/T1484.001/T1484.001.md)
+  - https://github.com/redcanaryco/atomic-red-team/blob/40b77d63808dd4f4eafb83949805636735a1fd15/atomics/T1484.001/T1484.001.md
 author: Senior Threat Detection Engineer
-date: 2026/05/26
+date: 2026-05-26
 tags:
-* attack.defense_evasion
-* attack.privilege_escalation
-* attack.t1484.001
+  - attack.defense-evasion
+  - attack.privilege-escalation
+  - attack.t1484.001
 logsource:
-product: windows
-category: ps_script
+  product: windows
+  category: ps_script
 detection:
-selection_path:
-ScriptBlockText|contains: '\SOFTWARE\Policies\Microsoft\Windows\System'
-selection_values:
-ScriptBlockText|contains:
-* 'GroupPolicyRefreshTime'
-* 'GroupPolicyRefreshTimeOffset'
-* 'GroupPolicyRefreshTimeDC'
-* 'GroupPolicyRefreshTimeOffsetDC'
-* 'EnableSmartScreen'
-* 'ShellSmartScreenLevel'
-condition: selection_path and selection_values
+  selection_path:
+    ScriptBlockText|contains:
+      - 'HKLM:\Software\Policies\Microsoft'
+      - 'HKLM:\SOFTWARE\Policies\Microsoft'
+  selection_values:
+    ScriptBlockText|contains:
+      - 'SmartScreenEnabled'
+      - 'GroupPolicyRefreshTime'
+      - 'EnableSmartScreen'
+      - 'ConfigureSmartScreen'
+      - 'DisableWindowsConsumerFeatures'
+  condition: selection_path and selection_values
 falsepositives:
-
-
-* Legitimate administrative scripts or configuration management tools updating Group Policy registry configurations.
-level: medium
+  - Legitimate Group Policy modifications performed by system administrators or configuration management tools (e.g., SCCM, DSC, Ansible)
+level: high

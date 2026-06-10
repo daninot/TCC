@@ -1,0 +1,109 @@
+title: Suspicious LSASS Access and Credential Dumping Indicators
+id: 2026-06-08-windows-lsass-access-dump
+status: experimental
+description: Detects attempts to read or dump LSASS memory and related credential dumping activity by monitoring high-privilege process access to lsass.exe, creation or execution of known dumping tools and debugger patterns, SeDebugPrivilege assignments/usage, and creation of dump files in user-writable locations. Correlate process access with dump file writes or suspicious child processes to increase confidence.
+author: Detection Engineer
+date: 2026-06-08
+references:
+  - https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
+  - https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html
+  - https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment
+  - https://web.archive.org/web/20230420013146/http://security-research.dyndns.org/pub/slides/FIRST2017/FIRST-2017_Tom-Ueltschi_Sysmon_FINAL_notes.pdf
+logsource:
+  product: windows
+  service: sysmon,security
+  category: process_access,process_creation,file_event,security
+detection:
+  selection_lsass_process_access:
+    EventID: 10
+    TargetImage|re:
+      - '(?i)\\lsass\.exe$'
+    GrantedAccess|re:
+      - '(?i)(0x0010|0x0020|0x0008|0x0400|0x0002|0x1fffff|0x1f0fff)'
+  selection_procdump_usage:
+    EventID: 1
+    Image|re:
+      - '(?i)\\procdump(?:64)?(\.exe)?$'
+    CommandLine|re:
+      - '(?i)\b(-ma|-accepteula|-s|-mp)\b'
+      - '(?i)\blsass\.exe\b'
+  selection_rundll_minidump:
+    EventID: 1
+    Image|re:
+      - '(?i)\\rundll32\.exe$'
+    CommandLine|re:
+      - '(?i)comsvcs\.dll,MiniDump'
+  selection_mimikatz_activity:
+    EventID: 1
+    Image|re:
+      - '(?i)\\mimikatz(\.exe|\.dll)?$'
+    CommandLine|re:
+      - '(?i)sekurlsa|logonpasswords|lsadump'
+  selection_debugger_tools:
+    EventID: 1
+    Image|re:
+      - '(?i)\\(cdb|windbg|adplus|taskmgr|procdump)\.exe$'
+  selection_dump_file_written:
+    EventID: 11
+    TargetFilename|re:
+      - '(?i)\\.*(lsass|memory|cred|creds|dump).*\.(dmp|dump|bin|log|txt)$'
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\AppData\\Local\\Temp\\.*\.(dmp|dump|bin)$'
+  selection_sedebug_priv_assigned:
+    EventID: 4672
+    Privileges|re:
+      - '(?i)SeDebugPrivilege'
+  selection_sedebug_priv_used:
+    EventID: 4673
+    PrivilegeList|re:
+      - '(?i)SeDebugPrivilege'
+  correlation_access_then_dump:
+    - when: selection_lsass_process_access
+      then: selection_dump_file_written
+      within: "2m"
+  correlation_access_then_tool:
+    - when: selection_lsass_process_access
+      then: selection_procdump_usage
+      within: "2m"
+  condition: >
+    selection_lsass_process_access
+    or selection_procdump_usage
+    or selection_rundll_minidump
+    or selection_mimikatz_activity
+    or selection_debugger_tools
+    or selection_sedebug_priv_assigned
+    or selection_sedebug_priv_used
+    or correlation_access_then_dump
+    or correlation_access_then_tool
+fields:
+  - timestamp
+  - EventID
+  - ComputerName
+  - SubjectUserName
+  - Image
+  - ParentImage
+  - CommandLine
+  - TargetImage
+  - GrantedAccess
+  - AccessMask
+  - TargetFilename
+  - ProcessId
+  - ParentProcessId
+falsepositives:
+  - Legitimate administrative or developer debugging activity (procdump, windbg, taskmgr) performed by IT or support teams.
+  - Endpoint protection, monitoring, or backup agents that legitimately read process memory or create dumps.
+  - Forensic collections performed by incident response teams.
+level: high
+tags:
+  - attack.credential_access
+  - attack.t1003
+  - detection.windows.sysmon
+  - hunting
+notes: |
+  - Tuning: whitelist known management and monitoring hosts, signed debugging tools, and scheduled support activity; require correlation (process access + dump file write or known dumping tool execution) to reduce noise.
+  - Investigation: collect full process trees, command lines, the created dump file (preserve and hash), digital signatures of involved binaries, account context, and recent privilege assignments; search for lateral movement or C2 activity following the dump.
+  - Response: if malicious, isolate the host, remove unauthorized dumps, rotate exposed credentials, revoke compromised accounts, and perform a broader hunt for similar indicators across the environment.
+

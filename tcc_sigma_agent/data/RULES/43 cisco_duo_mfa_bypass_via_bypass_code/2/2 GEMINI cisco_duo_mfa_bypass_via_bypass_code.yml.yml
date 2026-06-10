@@ -1,0 +1,24 @@
+title: Cisco Duo MFA Authentication via Bypass Code
+id: b91f9456-628a-4422-b6be-b8eec4c1266d
+status: experimental
+description: Detects successful Cisco Duo MFA authentication completed using a temporary bypass code. Attackers with administrative access or via social engineering may issue bypass codes to defeat MFA without compromising the enrolled device.
+references:
+- [https://duo.com/docs/adminapi#logs](https://duo.com/docs/adminapi#logs)
+- [https://help.duo.com/s/article/6327?language=en_US](https://help.duo.com/s/article/6327?language=en_US)
+author: Senior Threat Detection Engineer
+date: 2026/06/08
+tags:
+- attack.defense_evasion
+- attack.t1556.006
+- attack.t1078.004
+logsource:
+product: cisco
+service: duo
+detection:
+selection:
+factor: 'bypass_code'
+result: 'success'
+condition: selection
+falsepositives:
+- Legitimate use of bypass codes by users who have temporarily lost access to their primary MFA device, authorized by IT.
+level: medium

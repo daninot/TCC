@@ -1,0 +1,78 @@
+```yml
+title: TeleRAT: Another Android Trojan Leveraging Telegram’s Bot API to Target Iranian Users
+
+description: |
+  This blog details our findings navigating through some Operational Security (OPSEC) fails while sifting through multiple malicious APK variants abusing Telegram's Bot API; including the discovery of a new Trojan we've named “TeleRAT”.
+
+references:
+  - https://researchcenter.paloaltonetworks.com/2018/03/unit42-telerat-another-android-trojan-leveraging-telegrams-bot-api-to-target-iranian-users/
+  - https://blog.malwarebytes.com/threat-analysis/2016/11/telecrypt-the-ransomware-abusing-telegram-api-defeated/
+
+tags:
+  - Android
+  - Iran
+  - IRRAT
+  - Telegram’s Bot API
+  - TeleRAT
+
+summary: |
+  We investigated how these Telegram Bots were being abused to command and control malicious Android applications. This blog details our findings navigating through some Operational Security (OPSEC) fails while sifting through multiple malicious APK variants abusing Telegram's Bot API; including the discovery of a new Trojan we've named “TeleRAT”.
+
+categories:
+  - Malware
+  - Threat Research
+
+author: Ruchna Nigam Kyle Wilhoit
+
+date: March 20, 2018
+
+---
+
+title: TeleCrypt - the ransomware abusing Telegram API - defeated!
+
+description: |
+  A new ransomware, TeleCrypt appeared recently carrying some new ideas. While most ransomware communicates with their C&C over simple HTTP-based protocols, Telecrypt abuses for this purpose the API of a popular messenger, Telegram.
+
+references:
+  - https://blog.malwarebytes.com/threat-analysis/2016/11/telecrypt-the-ransomware-abusing-telegram-api-defeated/
+
+tags:
+  - Ransomware
+  - Telegram API
+
+summary: |
+  Fortunately, the encryption used was not strong and one of our employees, Nathan Scott, already prepared a decryption tool, allowing the victims to recover their files without paying.
+
+categories:
+  - Malware
+  - Threat Research
+
+author: Malwarebytes Labs
+
+date: November 22, 2016
+
+---
+
+title: The rise of TeleBots: Analyzing disruptive KillDisk attacks
+
+description: |
+  ESET's Anton Cherepanov analyzes the work of TeleBots, a malicious toolset that was used in focused cyberattacks against targets in Ukraine's financial sector.
+
+references:
+  - https://www.welivesecurity.com/2016/12/13/rise-telebots-analyzing-disruptive-killdisk-attacks/
+
+tags:
+  - KillDisk
+  - TeleBots
+
+summary: |
+  We believe that the main goal of attackers using these tools is cybersabotage. This blog post outlines the details about the campaign that we discovered.
+
+categories:
+  - Malware
+  - Threat Research
+
+author: Anton Cherepanov
+
+date: December 13, 2016
+```

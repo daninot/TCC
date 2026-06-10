@@ -1,0 +1,37 @@
+title: Suspicious LSASS Process Access
+id: 0d2f7f3d-4c9f-4b7c-9f6b-2b4d2a5d7f31
+status: experimental
+description: Detects suspicious process access to lsass.exe using Sysmon Event ID 10 and access masks commonly associated with credential dumping.
+references:
+  - https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
+  - https://onedrive.live.com/view.aspx?resid=D026B4699190F1E6!2843&ithint=file%2cpptx&app=PowerPoint&authkey=!AMvCRTKB_V1J5ow
+  - https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html
+  - https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment
+  - https://web.archive.org/web/20230420013146/http://security-research.dyndns.org/pub/slides/FIRST2017/FIRST-2017_Tom-Ueltschi_Sysmon_FINAL_notes.pdf
+author: OpenAI
+date: 2026-06-08
+tags:
+  - attack.credential_access
+  - attack.t1003.001
+logsource:
+  product: windows
+  category: process_access
+detection:
+  selection_event:
+    EventID: 10
+    TargetImage|endswith: '\lsass.exe'
+  selection_access:
+    GrantedAccess:
+      - '0x1010'
+      - '0x1410'
+      - '0x1fffff'
+  selection_calltrace:
+    CallTrace|contains:
+      - 'dbghelp.dll'
+      - 'dbgcore.dll'
+  condition: selection_event and ((selection_access) or (selection_calltrace))
+falsepositives:
+  - Legitimate EDR/AV tooling
+  - Backup, forensic, or system management software
+  - Approved administrative diagnostics on endpoints
+level: high

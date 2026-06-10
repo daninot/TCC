@@ -1,0 +1,39 @@
+title: System File Copied to Unusual Location
+id: 7e8f5a6b-4c3d-4e2f-9a1b-2c3d4e5f6a7b
+status: experimental
+description: Detects a copy operation of a system executable from a protected system directory (e.g., System32, SysWOW64) to a non-system location. This behavior may indicate an attempt to evade security monitoring and execute binaries from untrusted paths.
+references:
+  - https://twitter.com/ffforward/status/1481672378639912960
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1036/T1036.md#atomic-test-1---system-file-copied-to-unusual-location
+author: Sigma Rule Generator
+date: 2026-06-08
+tags:
+  - attack.defense-evasion
+  - attack.t1036
+  - attack.execution
+  - attack.t1059.001
+logsource:
+  product: windows
+  category: file_event
+detection:
+  selection:
+    TargetFilename|contains:
+      - ':\Users\'
+      - ':\Temp\'
+      - ':\Windows\Temp\'
+      - ':\ProgramData\'
+    Image|endswith:
+      - '\cmd.exe'
+      - '\xcopy.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+    SourceFilename|contains:
+      - ':\Windows\System32\'
+      - ':\Windows\SysWOW64\'
+      - ':\Windows\WinSxS\'
+  filter:
+    TargetFilename|contains: ':\Windows\'
+  condition: selection and not filter
+falsepositives:
+  - Legitimate administrative actions such as copying system tools for debugging or portable execution.
+level: medium

@@ -1,0 +1,42 @@
+title: Suspicious File Rename to .dll Extension
+id: a1b2c3d4-e5f6-47a8-9b0c-1d2e3f4a5b6c
+status: experimental
+description: Detects file rename operations where a non-DLL file is renamed to a .dll extension, indicating masquerading techniques used by malware to evade extension-based detection.
+references:
+    - https://twitter.com/ffforward/status/1481672378639912960
+    - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1036/T1036.md#atomic-test-1---system-file-copied-to-unusual-location
+author: Senior Threat Detection Engineer
+date: 2026-06-08
+logsource:
+    product: windows
+    category: file_rename
+    definition: 'Requires Microsoft-Windows-Kernel-File provider with KERNEL_FILE_KEYWORD_RENAME_SETLINK_PATH keyword enabled'
+detection:
+    selection:
+        TargetFilename|endswith: '.dll'
+    filter_main_source_dll:
+        SourceFilename|endswith: '.dll'
+    filter_main_source_tmp:
+        SourceFilename|endswith: '.tmp'
+    filter_main_source_empty:
+        SourceFilename: null
+    filter_main_tiworker:
+        Image|endswith: '\TiWorker.exe'
+        TargetFilename|contains: '\Windows\WinSxS\'
+    filter_main_windows_update:
+        - Image|endswith: '\wuauclt.exe'
+        - TargetFilename|contains: ':\$WINDOWS.~BT\Sources\'
+    filter_main_program_files:
+        Image|contains:
+            - '\Program Files\'
+            - '\Program Files (x86)\'
+    filter_optional_squirrel:
+        SourceFilename|contains: 'squirrel_temp'
+    condition: selection and not 1 of filter_main_* and not 1 of filter_optional_*
+falsepositives:
+    - Legitimate installer or software update rename operations (e.g., .tmp to .dll)
+level: high
+tags:
+    - attack.defense_evasion
+    - attack.t1036
+    - attack.t1036.008

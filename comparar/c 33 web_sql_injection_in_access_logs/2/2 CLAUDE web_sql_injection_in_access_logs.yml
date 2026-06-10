@@ -1,0 +1,93 @@
+title: SQL Injection Attempt in Web Server Access Logs
+id: b0c1d2e3-f4a5-6789-bcde-678901234567
+status: experimental
+description: Detects SQL injection attempts in web server access logs via GET requests whose URIs contain SQL injection payloads including schema enumeration, UNION-based extraction, blind injection, and URL-encoded variants of common SQLi strings.
+references:
+    - https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/
+    - https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/
+    - https://brightsec.com/blog/sql-injection-payloads/
+    - https://github.com/payloadbox/sql-injection-payload-list
+    - https://book.hacktricks.xyz/pentesting-web/sql-injection/mysql-injection
+author: Senior Threat Detection Engineer
+date: 2024-01-01
+tags:
+    - attack.initial_access
+    - attack.t1190
+    - attack.credential_access
+    - attack.t1110
+logsource:
+    category: webserver
+detection:
+    selection:
+        cs-method: 'GET'
+    keywords:
+        cs-uri-query|contains:
+            - 'UNION+SELECT'
+            - 'UNION SELECT'
+            - 'union+select'
+            - 'union select'
+            - '%55NION+%53ELECT'
+            - '%55NION%20%53ELECT'
+            - 'UNION%20SELECT'
+            - 'union%20select'
+            - 'information_schema'
+            - 'INFORMATION_SCHEMA'
+            - '%69nformation_schema'
+            - 'information%5Fschema'
+            - 'table_name'
+            - 'TABLE_NAME'
+            - 'table_schema'
+            - 'TABLE_SCHEMA'
+            - '@@version'
+            - '@@VERSION'
+            - '%40%40version'
+            - 'database()'
+            - 'DATABASE()'
+            - 'schema()'
+            - 'SCHEMA()'
+            - 'sleep('
+            - 'SLEEP('
+            - 'waitfor+delay'
+            - 'WAITFOR+DELAY'
+            - 'WAITFOR DELAY'
+            - 'waitfor delay'
+            - 'benchmark('
+            - 'BENCHMARK('
+            - '1=1--'
+            - '1+1=1'
+            - "'1'='1"
+            - "' OR '1'='1"
+            - "' or '1'='1"
+            - '+OR+1=1'
+            - '+or+1=1'
+            - '%27+OR+%271%27%3D%271'
+            - "' AND 1=1"
+            - "' and 1=1"
+            - '+AND+1=1'
+            - 'ORDER+BY+1'
+            - 'order+by+1'
+            - 'ORDER BY 1'
+            - 'group_concat('
+            - 'GROUP_CONCAT('
+            - 'load_file('
+            - 'LOAD_FILE('
+            - 'into+outfile'
+            - 'INTO+OUTFILE'
+            - 'INTO OUTFILE'
+            - 'into outfile'
+            - 'char(0x'
+            - 'CHAR(0x'
+            - 'convert('
+            - 'CONVERT('
+            - 'extractvalue('
+            - 'EXTRACTVALUE('
+            - 'updatexml('
+            - 'UPDATEXML('
+    filter_main_404:
+        sc-status: 404
+    condition: selection and keywords and not 1 of filter_main_*
+falsepositives:
+    - Authorized penetration testing or vulnerability scanning activities
+    - Web application firewalls or security tools testing their own rulesets
+    - Developers testing SQL injection prevention in development environments
+level: medium

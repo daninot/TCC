@@ -1,0 +1,48 @@
+title: Non-DLL File Renamed To DLL Extension
+id: 7c3d5c7b-6f5f-4d2d-a1f3-6d8d0b5d9e11
+status: test
+description: Detects file rename operations where a file that did not previously have a DLL extension is renamed to .dll, which may indicate masquerading or payload staging. Requires Microsoft-Windows-Kernel-File provider with at least the KERNEL_FILE_KEYWORD_RENAME_SETLINK_PATH keyword enabled.
+references:
+
+* [https://twitter.com/ffforward/status/1481672378639912960](https://twitter.com/ffforward/status/1481672378639912960)
+* [https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1036/T1036.md#atomic-test-1---system-file-copied-to-unusual-location](https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1036/T1036.md#atomic-test-1---system-file-copied-to-unusual-location)
+  logsource:
+  product: windows
+  category: file_rename
+  definition: 'Requirements: Microsoft-Windows-Kernel-File provider with at least the KERNEL_FILE_KEYWORD_RENAME_SETLINK_PATH keyword enabled'
+  detection:
+  selection:
+  TargetFilename|endswith: '.dll'
+  filter_main_dll_source:
+  SourceFilename|endswith: '.dll'
+  filter_main_tmp_source:
+  SourceFilename|endswith: '.tmp'
+  filter_main_empty_source:
+  SourceFilename:
+
+  * ''
+  * null
+    filter_main_tiworker:
+    Image|endswith: '\TiWorker.exe'
+    SourceFilename|contains: '\Windows\WinSxS'
+    filter_main_wuauclt:
+    Image|endswith: '\wuauclt.exe'
+    filter_main_windows_update_path:
+    TargetFilename|contains: ':$WINDOWS.~BT\Sources'
+    filter_main_programfiles:
+    TargetFilename|contains:
+  * ':\Program Files'
+  * ':\Program Files (x86)'
+    filter_optional_squirrel:
+    SourceFilename|contains: '\SquirrelTemp'
+    condition: selection and not 1 of filter_main_* and not 1 of filter_optional_*
+    falsepositives:
+* Legitimate software installation and update activity
+* Windows servicing and component store operations
+* Application auto-updaters using temporary staging files
+  level: medium
+  tags:
+* attack.defense-evasion
+* attack.t1036
+* attack.t1036.003
+

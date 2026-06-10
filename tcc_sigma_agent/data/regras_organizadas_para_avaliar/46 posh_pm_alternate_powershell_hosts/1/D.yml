@@ -1,0 +1,37 @@
+title: Remote Service Installation via Network Logon
+id: 4a3a2b96-d7fc-4cb9-80e4-4a545fe95f46
+status: test
+description: |
+    Detects when a new service is installed (EventID 4697) following a network logon
+    (EventID 4624, LogonType=3). This pattern is indicative of remote lateral movement
+    or persistence, as documented in the Threat Hunter Playbook.
+references:
+    - https://threathunterplaybook.com/hunts/windows/190815-RemoteServiceInstallation/notebook.html
+author: Jai Minton, oscd.community
+date: 2020/10/05
+tags:
+    - attack.lateral_movement
+    - attack.persistence
+    - attack.execution
+    - attack.t1543.003
+logsource:
+    product: windows
+    service: security
+detection:
+    # First event: Network logon (EventID 4624, LogonType=3)
+    event1:
+        EventID: 4624
+        Logon_Type: 3
+    # Second event: Service installation (EventID 4697)
+    event2:
+        EventID: 4697
+    timeframe: 30s
+    condition: (event1 and not filter1) and event2
+    filter1:
+        Source_Network_Address:
+            - '::1'
+            - '127.0.0.1'
+falsepositives:
+    - Legitimate remote administrative actions (e.g., IT support scripts, configuration management).
+    - Network logons from localhost or IPv6 loopback.
+level: high

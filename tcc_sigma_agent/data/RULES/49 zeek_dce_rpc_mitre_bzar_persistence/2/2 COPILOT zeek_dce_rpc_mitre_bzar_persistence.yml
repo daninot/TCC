@@ -1,0 +1,65 @@
+title: DCE-RPC Calls Indicative of Remote Persistence via Print/Logon RPCs
+id: 8f2b1c3d-4a5e-4b6c-9d0e-1f2a3b4c5d6e
+status: experimental
+description: Detects DCE-RPC calls to RPC endpoints and operations commonly abused to install print monitors/print processors or create processes under another user's logon session on remote hosts. These RPC endpoint/operation pairs have been observed in adversary persistence techniques. Requires Zeek DCE-RPC logging that captures endpoint/interface and operation names.
+author: Senior Threat Detection Engineer
+date: 2026/06/15
+references:
+  - [https://github.com/mitre-attack/bzar#indicators-for-attck-persistence](https://github.com/mitre-attack/bzar#indicators-for-attck-persistence)
+  - `https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rprn/` [(learn.microsoft.com in Bing)](https://www.bing.com/search?q="https%3A%2F%2Flearn.microsoft.com%2Fen-us%2Fopenspecs%2Fwindows_protocols%2Fms-rprn%2F") (print spooler RPC)
+tags:
+  - attack.persistence
+  - attack.lateral_movement
+  - windows
+  - rpc
+logsource:
+  product: zeek
+  service: dce_rpc
+  category: network_traffic
+  description: Zeek DCE-RPC logs containing fields such as endpoint, interface, operation, opnum, src_ip, dst_ip, and uid. Ensure DCE/RPC parsing is enabled.
+detection:
+  op1:
+    endpoint|contains:
+      - 'spoolss'
+    operation|contains:
+      - 'RpcAddMonitor'
+  op2:
+    endpoint|contains:
+      - 'spoolss'
+    operation|contains:
+      - 'RpcAddPrintProcessor'
+  op3:
+    endpoint|contains:
+      - 'IRemoteWinspool'
+    operation|contains:
+      - 'RpcAddMonitor'
+      - 'RpcAddMonitorAsync'
+  op4:
+    endpoint|contains:
+      - 'IRemoteWinspool'
+    operation|contains:
+      - 'RpcAddPrintProcessor'
+      - 'RpcAddPrintProcessorAsync'
+  op5:
+    endpoint|contains:
+      - 'ISecLogon'
+    operation|contains:
+      - 'SeclCreateProcessWithLogonW'
+  op6:
+    endpoint|contains:
+      - 'ISecLogon'
+    operation|contains:
+      - 'SeclCreateProcessWithLogonWEx'
+  condition: 1 of op1 op2 op3 op4 op5 op6
+fields:
+  - endpoint
+  - interface
+  - operation
+  - opnum
+  - src_ip
+  - dst_ip
+  - uid
+falsepositives:
+  - Legitimate administrative or print server management activity that installs print monitors or processors.
+  - Remote management tooling or enterprise orchestration that invokes print or logon RPCs for valid operational reasons.
+level: high

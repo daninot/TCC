@@ -1,0 +1,50 @@
+title: MSBuild Outbound Network Connection to HTTP or HTTPS Port
+id: 7e1f4b2c-3d9a-4e8f-b6c1-5a3d2e7f1b48
+status: experimental
+description: >
+  Detects outbound network connections initiated by MSBuild.exe to standard
+  HTTP and HTTPS ports. MSBuild is a signed Microsoft build-automation binary
+  that supports inline task execution via XML project files, allowing
+  arbitrary managed code to be compiled and executed in-process without
+  writing a payload to disk. SilentTrinity and similar C2 frameworks abuse
+  this capability to achieve application allow-list bypass by hosting a
+  malicious MSBuild project file on attacker infrastructure and invoking
+  MSBuild directly. Because the payload executes within the MSBuild process,
+  the resulting C2 beacon traffic appears to originate from a trusted,
+  signed Microsoft binary. MSBuild has no legitimate operational need to
+  initiate outbound HTTP or HTTPS connections in a production environment;
+  its normal function is local build orchestration. Any outbound connection
+  on port 80 or 443 from MSBuild.exe should be treated as a high-confidence
+  indicator of abuse and investigated immediately.
+references:
+  - https://www.blackhillsinfosec.com/my-first-joyride-with-silenttrinity/
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.defense_evasion
+  - attack.execution
+  - attack.t1127.001
+  - attack.t1071.001
+logsource:
+  category: network_connection
+  product: windows
+detection:
+  selection:
+    Image|endswith: '\MSBuild.exe'
+    Initiated: 'true'
+    DestinationPort:
+      - 80
+      - 443
+  filter:
+    DestinationIp|startswith:
+      - '127.'
+      - '::1'
+  condition: selection and not filter
+falsepositives:
+  - Developer workstations where MSBuild legitimately retrieves NuGet
+    packages or communicates with an internal package feed or build
+    orchestration service during a genuine software build workflow.
+    Detection should be suppressed or contextualised on dedicated build
+    agents where such activity is expected and the destination IP ranges
+    of internal package repositories are known.
+level: high

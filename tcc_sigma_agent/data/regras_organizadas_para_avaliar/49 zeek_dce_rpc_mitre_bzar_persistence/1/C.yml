@@ -1,0 +1,30 @@
+title: Remote Persistence via Winspool or ISecLogon RPC
+id: 9d1a6c77-7b1a-4f7b-9f5e-7bd3d3c0c2ac
+status: experimental
+description: Detects remote DCE-RPC operations associated with ATT&CK persistence techniques, including Winlogon/helper logon and remote print monitor or print processor additions.
+references:
+  - https://github.com/mitre-attack/bzar#indicators-for-attck-persistence
+author: OpenAI
+date: 2026-06-08
+logsource:
+  product: zeek
+  service: dce_rpc
+detection:
+  selection:
+    dce_rpc.operation|contains:
+      - 'ISecLogon::SeclCreateProcessWithLogonW'
+      - 'ISecLogon::SeclCreateProcessWithLogonExW'
+      - 'IRemoteWinspool::RpcAsyncAddMonitor'
+      - 'IRemoteWinspool::RpcAsyncAddPrintProcessor'
+      - 'spoolss::RpcAddMonitor'
+      - 'spoolss::RpcAddPrintProcessor'
+  condition: selection
+falsepositives:
+  - Legitimate remote administration
+  - Printer management and deployment tools
+  - Authorized logon-session creation by enterprise software
+level: high
+tags:
+  - attack.persistence
+  - attack.t1547.004
+  - attack.t1547.010

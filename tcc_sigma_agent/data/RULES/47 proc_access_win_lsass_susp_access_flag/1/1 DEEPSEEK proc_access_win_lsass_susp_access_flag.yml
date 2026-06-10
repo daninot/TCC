@@ -1,0 +1,27 @@
+title: Potential Mimikatz LSASS Access via Sysmon
+id: 7c8e9f0a-1b2c-3d4e-5f6a-7b8c9d0e1f2a
+status: experimental
+description: Detects suspicious access to LSASS.exe with memory read or query permissions, indicative of credential dumping tools like Mimikatz. This rule focuses on Sysmon Event ID 10 and specific GrantedAccess values (0x1010 or 0x1410) associated with in-memory or on-disk Mimikatz execution.
+references:
+  - https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html
+  - https://web.archive.org/web/20230420013146/http://security-research.dyndns.org/pub/slides/FIRST2017/FIRST-2017_Tom-Ueltschi_Sysmon_FINAL_notes.pdf
+author: Sigma Rule Generator (based on research by CyberWardog and Tom Ueltschi)
+date: 2026-06-05
+tags:
+  - attack.credential-access
+  - attack.t1003.001
+logsource:
+  product: windows
+  service: sysmon
+detection:
+  selection:
+    EventID: 10
+    TargetImage|endswith: '\lsass.exe'
+    GrantedAccess:
+      - '0x1010'   # PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ (latest Mimikatz)
+      - '0x1410'   # PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ (older Mimikatz)
+  condition: selection
+falsepositives:
+  - Legitimate security software or administrative tools that need to query or read LSASS memory.
+  - Some AV solutions or endpoint detection tools may access LSASS for monitoring purposes.
+level: critical

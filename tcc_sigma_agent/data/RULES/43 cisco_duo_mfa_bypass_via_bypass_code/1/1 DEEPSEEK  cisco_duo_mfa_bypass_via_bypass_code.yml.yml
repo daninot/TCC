@@ -1,0 +1,25 @@
+title: Creation of a Duo Bypass Code
+id: 5e6c3fdb-6db8-4f57-9b0c-efdee89973b8
+status: experimental
+description: Detects when a Duo administrator creates a bypass code for a user, which may indicate an attempt to bypass multi-factor authentication (MFA) for malicious persistence or initial access.
+references:
+  - https://duo.com/docs/adminapi#logs
+  - https://help.duo.com/s/article/6327?language=en_US
+author: Sigma Rule Generator
+date: 2026-06-03
+tags:
+  - attack.persistence
+  - attack.t1098
+  - attack.initial-access
+  - attack.t1078
+logsource:
+  product: cisco
+  service: duo
+detection:
+  selection:
+    event_type: admin
+    action: bypass_create
+  condition: selection
+falsepositives:
+  - Legitimate creation of a bypass code by a system administrator for a user who has lost access to their MFA device.
+level: high

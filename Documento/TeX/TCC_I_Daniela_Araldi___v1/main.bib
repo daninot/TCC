@@ -1,0 +1,656 @@
+%%%% REFERÊNCIAS
+%%
+%% Conjunto padronizado de elementos descritivos retirados de um documento, que permite sua identificação individual.
+%%
+%% Cada entrada no arquivo BibTeX segue um formato padrão. Este formato muda ligeiramente baseado no tipo de entrada, mas a sintaxe
+%% continua a mesma.
+%%
+%% O rótulo de cada entrada não pode conter caracteres especiais, acentuados ou cedilha.
+%%
+%% A formatação do texto no campo "AUTHOR" deve obedecer algumas regras:
+%%   - Acento agudo:        "á = {\'a}".
+%%   - Acento crase:        "à = {\`a}".
+%%   - Acento til:          "ã = {\~a}".
+%%   - Acento circunflexo:  "ê = {\^e}".
+%%   - Acento trema:        "ü = {\"u}".
+%%   - Acento na letra i:   "í = {\'\i}".
+%%   - Cedilha:             "ç = {\c{c}}".
+%%   - Sobrenome composto:  "Santos, Filho, Jos{\'e} C. S.; da Silva, Erivanildo Lopes".
+%%   - Nome de organização: "{\mbox IONA Technologies PLC}".
+%%
+%% A formatação do texto no campo "TITLE" deve obedecer algumas regras (também válidas para o texto no campo "AUTHOR"):
+%%   - MAIÚSCULAS: "REAL = {REAL}".
+%%   - Minúsculas: "real = {real}".
+%%   - CamelCase:  "Real = {R}eal".
+
+%% TIPOS DE ENTRADA
+%%
+%% Ao inserir uma referência no banco de dados, a primeira coisa a decidir é o tipo de entrada. Existem vários tipos de entrada, mas
+%% não são completas, porém são suficientes para o BibTeX fornecer entradas para lidar com praticamente qualquer tipo de referência
+%% razoavelmente bem.
+
+%% ARTICLE - Um artigo de um jornal ou revista.
+%%   - Campos requeridos: AUTHOR, TITLE, JOURNAL e YEAR.
+%%   - Campos opcionais: VOLUME, NUMBER, PAGES, MONTH e NOTE.
+
+@ARTICLE{Guimaraes2003,
+  AUTHOR   = {Guimar{\~a}es, Eliane G. and Maffeis, Antonio T. and Pereira, James L. and Russo, Bruno G. and Cardozo, Eleri and Bergerman, Marcel and Magalh{\~a}es, Mauricio F.},
+  TITLE    = {{REAL}},
+  JOURNAL  = {IEEE Transactions on Education},
+  YEAR     = {2003},
+  VOLUME   = {46},
+  NUMBER   = {1},
+  PAGES    = {37--42},
+  MONTH    = feb,
+  SUBTITLE = {a virtual laboratory for mobile robot experiment}
+}
+
+
+%% BOOK - Um livro com uma editora explícita.
+%%   - Campos requeridos: AUTHOR ou EDITOR, TITLE, PUBLISHER e YEAR.
+%%   - Campos opcionais: VOLUME ou NUMBER, SERIES, ADDRESS, EDITION, MONTH e NOTE.
+
+
+%% BOOKLET - Uma obra impressa mas sem uma editora ou instituição patrocinadora.
+%%   - Campos requeridos: TITLE.
+%%   - Campos opcionais: AUTHOR, HOWPUBLISHED, ADDRESS, MONTH, YEAR e NOTE.
+
+@BOOKLET{Thompson2001,
+  TITLE        = {X-Ray Data Booklet},
+  AUTHOR       = {Thompson, Albert C. and Vaughan, Douglas},
+  HOWPUBLISHED = {Lawrence Berkeley National Laboratory, University of California},
+  ADDRESS      = {California, USA},
+  MONTH        = jan,
+  YEAR         = {2001},
+  PAGES        = {457}
+}
+
+%% CONFERENCE - O mesmo que "INPROCEEDINGS", incluído para compatibilidade de escrita.
+%%   - Campos requeridos: AUTHOR, TITLE, BOOKTITLE e YEAR.
+%%   - Campos opcionais: EDITOR, VOLUME ou NUMBER, SERIES, PAGES, ADDRESS, MONTH, ORGANIZATION, PUBLISHER e NOTE.
+
+@CONFERENCE{Alt1995,
+  AUTHOR       = {Alt, Martin and Martin, Florian},
+  TITLE        = {Generation of Efficient Interprocedural Analyzers with {PAG}},
+  BOOKTITLE    = {SAS'95, Static Analysis Symposium},
+  YEAR         = {1995},
+  EDITOR       = {Mycroft, Alan},
+  PAGES        = {33--50},
+  MONTH        = sep,
+  PUBLISHER    = {Springer}
+}
+@CONFERENCE{PodzinsRomanovs,
+  author    = {Podzins, Oskars and Romanovs, Andrejs},
+  title     = {Why SIEM is Irreplaceable in a Secure IT Environment?},
+  booktitle = {2019 Open Conference of Electrical, Electronic and Information Sciences (eStream)}, 
+  year      = {2019},
+  volume    = {},
+  number    = {},
+  pages     = {1-5},
+  keywords  = {Companies;Computer crime;Software;Firewalls (computing);Monitoring;cyber security;network security;security management;computer security;SIEM;Log analysis;SOC;incidents management},
+  doi = {10.1109/eStream.2019.8732173}}
+
+%% INBOOK - Uma parte de um livro, que pode ser um capítulo e/ou um intervalo de páginas.
+%%   - Campos requeridos: AUTHOR ou EDITOR, TITLE, CHAPTER ou PAGES, PUBLISHER e YEAR.
+%%   - Campos opcionais: VOLUME ou NUMBER, SERIES, TYPE, ADDRESS, EDITION, MONTH, NOTE.
+
+@BOOK{Santos2000,
+  AUTHOR    = {Santos, Euripedes P. and von Zuben, Fernando J.},
+  TITLE     = {Automated Log Analysis and Anomaly Detection Using Machine Learning},  
+  PAGES     = {137--147},
+  PUBLISHER = {CRC Press},
+  YEAR      = {2022},
+  VOLUME    = {13},
+  ADDRESS   = {USA},
+  SERIES    = {International Series on Computational Intelligence},
+  SUBTITLE  = {design, applications}
+}
+
+%% INCOLLECTION - Uma parte de um livro com o seu próprio título.
+%%   - Campos requeridos: AUTHOR, TITLE, BOOKTITLE, PUBLISHER e YEAR.
+%%   - Campos opcionais: EDITOR, VOLUME OR NUMBER, SERIES, TYPE, CHAPTER, PAGES, ADDRESS, EDITION, MONTH e NOTE.
+
+@incollection{Shah2022,
+  author    = {Shah, Ali Hussain and Pasha, Daem and Habib Zadeh, Esmaeil and Konur, Savas},
+  title     = {Automated Log Analysis and Anomaly Detection Using Machine Learning},
+  booktitle = {Fuzzy Systems and Data Mining VIII},
+  series    = {Frontiers in Artificial Intelligence and Applications},
+  volume    = {358},
+  pages     = {137--147},
+  publisher = {IOS Press},
+  year      = {2022},
+  address   = {Amsterdam, Netherlands},
+  doi       = {10.3233/FAIA220378}
+}
+
+@incollection{Nurusheva2024,
+  author       = {Nurusheva, Assel and Abdiraman, Aliya and Satybaldina, Dina and Goranin, Nikolaj},
+  title        = {Machine Learning Algorithms in SIEM Systems for Enhanced Detection and Management of Security Events},
+  booktitle    = {Bulletin of L.\,N.\,Gumilyov Eurasian National University. Mathematics, Computer Science, Mechanics Series},
+  volume       = {148},
+  number       = {3},
+  pages        = {6--17},
+  publisher    = {L.\,N.\,Gumilyov Eurasian National University},
+  address      = {Astana, Kazakhstan},
+  year         = {2024},
+  doi          = {10.32523/bulmathenu.2024/3.1}
+}
+
+
+@inproceedings{Saddi2024,
+  author    = {Venkata Ramana Saddi and Santhosh Kumar Gopal and Abdul Sajid Mohammed and S. Dhanasekaran and Mahaveer Singh Naruka},
+  title     = {Examine the Role of Generative AI in Enhancing Threat Intelligence and Cyber Security Measures},
+  booktitle = {Proceedings of the 2024 2nd International Conference on Disruptive Technologies (ICDT)},
+  year      = {2024},
+  pages     = {537--542},
+  publisher = {IEEE},
+  address   = {India},
+  doi       = {10.1109/ICDT61202.2024.10489766}
+}
+
+@inproceedings{Santos2024,
+  author    = {Gabriel Santos and João Martins and Gessé Evangelista},
+  title     = {Prompt Engineering com ChatGPT no contexto acadêmico de IHC: uma revisão rápida da literatura},
+  booktitle = {Anais do Simpósio Brasileiro de Fatores Humanos em Sistemas Computacionais (IHC)},
+  year      = {2024},
+  address   = {Ribeirão Preto, SP, Brasil},
+  publisher = {Centro Universitário Estácio de Ribeirão Preto},
+  note      = {Disponível em: \url{https://sol.sbc.org.br/journals/index.php/ihc/article/view/25054}},
+}
+
+
+%% INPROCEEDINGS - Um artigo nos anais de uma conferência.
+%%   - Campos requeridos: AUTHOR, TITLE, BOOKTITLE e YEAR.
+%%   - Campos opcionais: EDITOR, VOLUME ou NUMBER, SERIES, PAGES, ADDRESS, MONTH, ORGANIZATION, PUBLISHER e NOTE.
+
+
+%% MANUAL - Uma documentação técnica.
+%%   - Campos requeridos: TITLE.
+%%   - Campos opcionais: AUTHOR, ORGANIZATION, ADDRESS, EDITION, MONTH, YEAR e NOTE.
+
+
+%% MISC - Use esse tipo quando nada mais se encaixa.
+%%   - Campos requeridos: "NENHUM".
+%%   - Campos opcionais: AUTHOR, TITLE, HOWPUBLISHED, MONTH, YEAR e NOTE.
+
+
+%% PHDTHESIS - Uma tese de doutorado.
+%%   - Campos requeridos: AUTHOR, TITLE, SCHOOL e YEAR.
+%%   - Campos opcionais: TYPE, ADDRESS, MONTH e NOTE.
+
+%% PROCEEDINGS - As deliberações de uma conferência.
+%%   - Campos requeridos: TITLE e YEAR.
+%%   - Campos opcionais: EDITOR, VOLUME ou NUMBER, SERIES, ADDRESS, MONTH, ORGANIZATION, PUBLISHER e NOTE.
+
+
+%% TECHREPORT - Um relatório publicado por uma escola ou uma outra instituição, geralmente dentro de uma série numerada.
+%%   - Campos requeridos: AUTHOR, TITLE, INSTITUTION e YEAR.
+%%   - Campos opcionais: TYPE, NUMBER, ADDRESS, MONTH e NOTE.
+
+
+%% UNPUBLISHED - Um documento com um autor e um título, mas não publicado formalmente.
+%%   - Campos requeridos: AUTHOR, TITLE e NOTE.
+%%   - Campos opcionais: MONTH e YEAR.
+
+
+%% CAMPOS
+%%
+%% Os tipos de entradas bibliográficas contém alguns subconjuntos padrões de entradas de dados:
+%%   - ADDRESS: Endereço da editora (normalmente, apenas a cidade, mas pode ser o endereço completo para editoras menos conhecidas).
+%%   - ANNOTE: Uma anotação para estilos bibliográficos adotados (não típico).
+%%   - AUTHOR: O(s) nome(s) do(s) autor(es) (no caso de haver mais de um autor, separá-los por "and").
+%%   - BOOKTITLE: O título do livro, mesmo que apenas parte dele esteja sendo citado.
+%%   - CHAPTER: O número do capítulo.
+%%   - CROSSREF: A chave de entrada da referência cruzada.
+%%   - EDITION: A edição de um livro, forma longa (como o "primeiro" ou "segundo").
+%%   - EDITOR: O(s) nome(s) do(s) editor(es).
+%%   - EPRINT: A especificação de uma publicação eletrônica, muitas vezes um "preprint" ou um relatório técnico.
+%%   - HOWPUBLISHED: Como ele foi publicado, se o método de publicação não é típico.
+%%   - INSTITUTION: A instituição que esteve envolvida na publicação, mas não é necessariamente a editora.
+%%   - JOURNAL: O jornal ou a revista onde o trabalho foi publicado.
+%%   - KEY: Um campo oculto utilizado para especificar ou colocar em ordem alfabética as entradas (quando o campos "autor" e
+%%     "editor" estão em falta). Note que isto é muito diferente da chave (mencionados apenas após esta lista) que é usado para
+%%     citar ou fazer uma referência cruzada à entrada.
+%%   - MONTH: O mês de publicação (ou, se não publicado, no mês de criação).
+%%   - NOTE: Diversas informações extras.
+%%   - NUMBER: O "número" de um jornal, uma revista, ou um relatório técnico, se aplicável. (A maioria das publicações tem um campo
+%%     "volume", mas não o campo "número").
+%%   - ORGANIZATION: A organização patrocinadora.
+%%   - PAGES: números de página, separados por vírgulas ou hifens duplo. Para os livros, o número total de páginas.
+%%   - PUBLISHER: O nome da editora.
+%%   - SCHOOL: A escola onde a tese ou dissertação foi escrita.
+%%   - SERIES: A série de livros onde foi publicado em (por exemplo: "A Hardy Boys" ou "Lecture Notes in Computer Science").
+%%   - TITLE: o título do trabalho.
+%%   - TYPE: O tipo de relatório técnico, por exemplo, "Nota de Investigação".
+%%   - URL: O endereço da web.
+%%   - VOLUME: O volume de uma revista ou de um livro com vários volumes.
+%%   - YEAR: O ano de publicação (ou, se não publicado, o ano de criação).
+%%
+%% Além disto, cada entrada contém uma chave (rótulo) que é usada para citar ou uma entrada de referência cruzada. Esta chave é o
+%% primeiro item em uma entrada BibTeX, e não faz parte de qualquer domínio.
+
+@MISC{PaloAlto1,
+  AUTHOR        = {},
+  TITLE         = {What Is the Role of AI and ML in Modern SIEM Solutions?},
+  HOWPUBLISHED  = {},
+  YEAR          = {2025},
+  ORGANIZATION  = {Palo Alto Networks},
+  URL           = {https://www.paloaltonetworks.com/cyberpedia/role-of-artificial-intelligence-ai-and-machine-learning-ml-in-siem},
+  urlaccessdate = {20 jun. 2025}
+}
+
+@MISC{Exabeam1,
+  AUTHOR       = {},
+  TITLE        = {AI SIEM: How SIEM with AI/ML is Revolutionizing the SOC},
+  YEAR         = {2025},
+  ORGANIZATION = {Exabeam},
+  URL          = {https://www.exabeam.com/explainers/siem/ai-siem-how-siem-with-ai-ml-is-revolutionizing-the-soc/},
+  URLACCESSDATE = {20 jun. 2025}
+}
+
+@MISC{LangChain,
+  AUTHOR       = {},
+  TITLE        = {Introduction},
+  YEAR         = {2025},
+  ORGANIZATION = {LangChain, Inc.},
+  URL          = {https://python.langchain.com/docs/introduction},
+  URLACCESSDATE = {20 jun. 2025}
+}
+
+@MISC{SigmaRules,
+  AUTHOR       = {},
+  TITLE        = {Sigma Rules},
+  YEAR         = {2025},
+  ORGANIZATION = {SigmaHQ},
+  URL          = {https://sigmahq.io/docs/basics/rules.html},
+  URLACCESSDATE = {20 jun. 2025}
+}
+
+@MISC{AboutSigma,
+  AUTHOR       = {},
+  TITLE        = {About Sigma},
+  YEAR         = {2025},
+  ORGANIZATION = {SigmaHQ},
+  URL          = {https://sigmahq.io/docs/guide/about.html},
+  URLACCESSDATE = {20 jun. 2025},
+}
+
+@MISC{SigmaReadMe,
+  AUTHOR       = {},
+  TITLE        = {Sigma - Generic Signature Format for SIEM Systems},
+  YEAR         = {2025},
+  ORGANIZATION = {SigmaHQ},
+  URL          = {https://github.com/SigmaHQ/sigma/tree/master},
+  URLACCESSDATE = {20 jun. 2025},
+}
+
+@MISC{PantherLabs,
+  AUTHOR       = {},
+  TITLE        = {Sigma Rules: Your Guide to Threat Detection’s Open Standard},
+  YEAR         = {2025},
+  ORGANIZATION = {Panther Labs},
+  URL          = {https://panther.com/blog/your-guide-to-the-sigma-rules-open-standard-for-threat-detection},
+  URLACCESSDATE = {20 jun. 2025},
+}
+
+@MISC{PicusSecurity,
+  AUTHOR       = {},
+  TITLE        = {What Is a YARA Rule?},
+  YEAR         = {2025},
+  ORGANIZATION = {Picus Security},
+  URL          = {https://www.picussecurity.com/resource/glossary/what-is-a-yara-rule},
+  URLACCESSDATE = {20 jun. 2025},
+}
+
+@MISC{Splunk1,
+  AUTHOR       = {Meghan McGowan},
+  TITLE        = {Detecting malicious activities with Sigma rules},
+  YEAR         = {2025},
+  ORGANIZATION = {Splunk LLC},
+  URL          = {https://lantern.splunk.com/Security/UCE/Guided_Insights/Threat_hunting/Detecting_malicious_activities_with_Sigma_rules},
+  URLACCESSDATE = {20 jun. 2025},
+}
+
+@MISC{CyberSkillsHub,
+  AUTHOR       = {Faruk Ulutaş},
+  TITLE        = {Sigma Rules: Steps to Follow in Threat Hunting},
+  YEAR         = {2024},
+  ORGANIZATION = {CyberSkillsHub},
+  URL          = {https://cyberskillshub.com/en/sigma-rules-threat-hunting-guide/#Steps_to_Implement_Sigma_Rules},
+  URLACCESSDATE = {20 jun. 2025},
+}
+
+@MISC{Marriot,
+  AUTHOR       = {David Shepardson},
+  TITLE        = {SMarriott CEO apologizes for data breach, unsure if China responsible},
+  YEAR         = {2019},
+  ORGANIZATION = {Reuters},
+  URL          = {https://www.reuters.com/article/us-usa-cyber-congress/marriott-ceo-apologizes-for-data-breach-unsure-if-china-responsible-idUSKCN1QO217/},
+  URLACCESSDATE = {20 jun. 2025},
+}
+
+@techreport{verizon2025dbir,
+  author      = {Verizon Business},
+  title       = {2025 Data Breach Investigations Report (DBIR)},
+  institution = {Verizon Business},
+  year        = {2025},
+  address     = {USA},
+  url         = {https://www.verizon.com/business/resources/T437/reports/2025-dbir-data-breach-investigations-report.pdf},
+  note        = {C. David Hylender, Philippe Langlois, Alex Pinto, Suzanne Widup (eds.)},
+}
+
+@techreport{verizon2018dbir,
+    author      = {Verizon Business},
+    title       = {2018 Data Breach Investigations Report},
+    institution = {Verizon},
+     year       = {2018},
+    number      = {11th Edition},
+    url         = {https://www.verizon.com/business/resources/reports/DBIR_2018_Report.pdf},
+    address     = {New York, USA}
+}
+
+
+@MISC{RuleCreationGuide,
+  AUTHOR       = {Florian Roth},
+  TITLE        = {Rule Creation Guide},
+  YEAR         = {2022},
+  ORGANIZATION = {SigmaHQ},
+  URL          = {https://github.com/SigmaHQ/sigma/wiki/Rule-Creation-Guide},
+  URLACCESSDATE = {20 jun. 2025},
+}
+
+@MISC{MITREporIBM,
+  AUTHOR       = {},
+  TITLE        = {What is the MITRE ATT&CK framework?},
+  YEAR         = {2025},
+  ORGANIZATION = {IBM},
+  URL          = {https://www.ibm.com/think/topics/mitre-attack},
+  URLACCESSDATE = {20 jun. 2025},
+}
+
+@misc{openaiTextGuide,
+  author       = {OpenAI},
+  title        = {Text generation guide},
+  howpublished = {\url{https://platform.openai.com/docs/guides/text?api-mode=responses}},
+  year         = {2024},
+  note         = {Acesso em: 22 jun. 2025}
+}
+
+@article{charan2023fromtext,
+  author    = {P. V. Sai Charan and Hrushikesh Chunduri and P. Mohan Anand and Sandeep K. Shukla},
+  title     = {From Text to MITRE Techniques: Exploring the Malicious Use of Large Language Models for Generating Cyber Attack Payloads},
+  journal   = {arXiv preprint arXiv:2305.15336},
+  year      = {2023},
+  url       = {https://arxiv.org/abs/2305.15336}
+}
+
+@misc{mitreDataImpact,
+  author       = {{MITRE Corporation}},
+  title        = {T1486: Data Encrypted for Impact},
+  year         = {2024},
+  howpublished = {\url{https://attack.mitre.org/techniques/T1486/}},
+  note         = {MITRE ATT\&CK Framework, acesso em 25 jun. 2025}
+}
+
+@misc{mitreProcessInjection,
+  author       = {{MITRE Corporation}},
+  title        = {T1055: Process Injection},
+  year         = {2024},
+  howpublished = {\url{https://attack.mitre.org/techniques/T1055/}},
+  note         = {MITRE ATT\&CK Framework, acesso em 25 jun. 2025}
+}
+
+@techreport{picus2023redreport,
+  author       = {{Picus Security}},
+  title        = {The Red Report 2023: Top Ten Most Prevalent MITRE ATT\&CK Techniques Used by Threat Actors},
+  year         = {2023},
+  institution  = {Picus Security},
+  type         = {Relatório Técnico},
+  howpublished = {\url{https://www.picussecurity.com/resource/report/the-red-report-2023}},
+  note         = {Acesso em: 25 jun. 2025}
+}
+
+@misc{picusAbout,
+  author       = {{Picus Security}},
+  title        = {About Us – Picus Security},
+  year         = {2025},
+  howpublished = {\url{https://www.picussecurity.com/about-us}},
+  note         = {Acesso em: 25 jun. 2025}
+}
+
+@online{nist_red_team,
+  author       = {{National Institute of Standards and Technology (NIST)}},
+  title        = {Red Team},
+  year         = {2024},
+  url          = {https://csrc.nist.gov/glossary/term/red_team},
+  note         = {Acesso em: 25 jun. 2025},
+  organization = {NIST Computer Security Resource Center (CSRC)}
+}
+
+@online{ibm_penetration_testing,
+  author       = {{IBM Brasil}},
+  title        = {Penetration Testing},
+  year         = {2025},
+  url          = {https://www.ibm.com/br-pt/topics/penetration-testing},
+  note         = {Acesso em: 25 jun. 2025},
+  organization = {IBM}
+}
+
+@article{oti2021comprehensive,
+  author    = {Eric U. Oti and Michael O. Olusola and Francis C. Eze and Samuel U. Enogwe},
+  title     = {Comprehensive Review of K-Means Clustering Algorithms},
+  journal   = {International Journal of Advances in Scientific Research and Engineering},
+  year      = {2021},
+  volume    = {7},
+  number    = {8},
+  pages     = {64--68},
+  month     = {aug},
+  doi       = {10.31695/IJASRE.2021.34050}
+}
+
+@incollection{liddy2001natural,
+  author       = {Liddy, Elizabeth D.},
+  title        = {Natural Language Processing},
+  booktitle    = {Encyclopedia of Library and Information Science},
+  edition      = {2nd},
+  year         = {2001},
+  publisher    = {Marcel Decker, Inc.},
+  address      = {New York},
+  series       = {Book Chapter},
+  note         = {Disponível via SURFACE, Syracuse University},
+  url          = {https://surface.syr.edu/istpub/63/},
+}
+
+@Inbook{Chowdhary2020,
+author= {Chowdhary, K. R.},
+title={Natural Language Processing},
+bookTitle={Fundamentals of Artificial Intelligence},
+year={2020},
+publisher={Springer India},
+address={New Delhi},
+pages={603--649},
+isbn={978-81-322-3972-7},
+doi={10.1007/978-81-322-3972-7_19},
+}
+
+@article{motlagh2024llmcyber,
+  title     = {Large Language Models in Cybersecurity: State-of-the-Art},
+  author    = {Motlagh, Mohammad A. and Jafari, Mohsen and Dehghantanha, Ali},
+  journal   = {arXiv preprint arXiv:2401.01910},
+  year      = {2024},
+  url       = {https://arxiv.org/abs/2401.01910}
+}
+
+@article{zhou2024prompt,
+  title     = {A Systematic Survey of Prompt Engineering in Large Language Models},
+  author    = {Zhou, Qi and Li, Shuo and Xu, Can and Li, Yu and Zhao, Wayne Xin and Wu, Weiran and Wen, Ji-Rong},
+  journal   = {arXiv preprint arXiv:2402.00159},
+  year      = {2024},
+  url       = {https://arxiv.org/abs/2402.00159}
+}
+
+@misc{weber2024redpajamaopendatasettraining,
+      title={RedPajama: an Open Dataset for Training Large Language Models}, 
+      author={Maurice Weber and Daniel Fu and Quentin Anthony and Yonatan Oren and Shane Adams and Anton Alexandrov and Xiaozhong Lyu and Huu Nguyen and Xiaozhe Yao and Virginia Adams and Ben Athiwaratkun and Rahul Chalamala and Kezhen Chen and Max Ryabinin and Tri Dao and Percy Liang and Christopher Ré and Irina Rish and Ce Zhang},
+      year={2024},
+      eprint={2411.12372},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2411.12372}, 
+}
+
+@article{hasanov2024application,
+  title={Application of Large Language Models in Cybersecurity: A Systematic Literature Review},
+  author={Hasanov, Ismayil and Virtanen, Seppo and Hakkala, Antti and Isoaho, Jouni},
+  journal={IEEE Access},
+  volume={12},
+  pages={176751--176778},
+  year={2024},
+  publisher={IEEE},
+  doi = {10.1109/ACCESS.2024.3505983}
+}
+
+@misc{owasp2024promptinjection,
+  author       = {{OWASP Foundation}},
+  title        = {{LLM01: Prompt Injection - OWASP Top 10 for Large Language Model Applications}},
+  year         = {2024},
+  howpublished = {\url{https://genai.owasp.org/llmrisk/llm01-prompt-injection/}},
+  note         = {Accessed: 2025-06-25}
+}
+
+@misc{kaspersky2024jailbreaking,
+  author       = {{Kaspersky}},
+  title        = {O que é Jailbreak?},
+  year         = {2024},
+  howpublished = {\url{https://www.kaspersky.com.br/resource-center/definitions/what-is-jailbreaking}},
+  note         = {Accessed: 2025-06-25}
+}
+
+@article{jordan2015machine,
+  title={Machine learning: Trends, perspectives, and prospects},
+  author={Jordan, Michael I and Mitchell, Tom M},
+  journal={Science},
+  volume={349},
+  number={6245},
+  pages={255--260},
+  year={2015},
+  publisher={American Association for the Advancement of Science}
+}
+
+@inproceedings{Dimitrov2025YARA,
+  author    = {Dimitar Dimitrov and Dimitar Nikolov},
+  title     = {Leveraging YARA and Sigma Rules to Detect Chinese State-Sponsored Hacking Groups of the "Typhoon" Type},
+  booktitle = {Environment. Technology. Resources. Proceedings of the 16th International Scientific and Practical Conference},
+  year      = {2025},
+  volume    = {II},
+  pages     = {107--113},
+  publisher = {RTU Press},
+  address   = {Rezekne, Latvia},
+  doi       = {10.17770/etr2025vol2.8617},
+  url       = {https://doi.org/10.17770/etr2025vol2.8617}
+}
+
+@misc{nist_cwe_slice,
+  author  = {{NIST}},
+  title   = {NVD CWE Slice},
+  year    = {2024},
+  url     = {https://nvd.nist.gov/vuln/categories},
+  note    = {Acessado em: 26 jun. 2025}
+}
+
+@misc{CWE_About,
+  author = {{The MITRE Corporation}},
+  title = {{Common Weakness Enumeration (CWE): About CWE}},
+  howpublished = {\url{https://cwe.mitre.org/about/index.html}},
+  year = {2006--2025},
+  note = {Accessed: 26 June 2025}
+}
+
+@misc{NIST_CVE_Process,
+  author = {{National Institute of Standards and Technology (NIST)}},
+  title = {{CVE Program: The Process}},
+  howpublished = {\url{https://nvd.nist.gov/general/cve-process}},
+  year = {2025},
+  note = {Accessed: 26 June 2025}
+}
+
+@misc{MITRE_ATTACK,
+  author = {{The MITRE Corporation}},
+  title = {{MITRE ATT\&CK{\textregistered}}},
+  howpublished = {\url{https://attack.mitre.org/}},
+  year = {2025},
+  note = {Accessed: 26 June 2025}
+}
+
+@misc{CVE_History,
+  author = {{The MITRE Corporation}},
+  title = {{About CVE: History}},
+  howpublished = {\url{https://www.cve.org/About/History}},
+  year = {2025},
+  note = {Accessed: 26 June 2025}
+}
+
+@misc{CWE_Usage_Guidance,
+  author = {{The MITRE Corporation}},
+  title = {{CWE Usage Guidance}},
+  howpublished = {\url{https://cwe.mitre.org/documents/cwe_usage/guidance.html}},
+  year = {2025},
+  note = {Accessed: 26 June 2025}
+}
+
+@misc{NIST_NVD_General,
+  author = {{National Institute of Standards and Technology (NIST)}},
+  title = {{National Vulnerability Database (NVD): General}},
+  howpublished = {\url{https://nvd.nist.gov/general}},
+  year = {2025},
+  note = {Accessed: 26 June 2025}
+}
+
+@misc{NIST_NVD_Metrics,
+  author = {{National Institute of Standards and Technology (NIST)}},
+  title = {{National Vulnerability Database (NVD): Vulnerability Metrics}},
+  howpublished = {\url{https://nvd.nist.gov/vuln-metrics}},
+  year = {2025},
+  note = {Accessed: 26 June 2025}
+}
+
+@misc{CWE_352,
+  author = {{The MITRE Corporation}},
+  title = {{CWE-352: Cross-Site Request Forgery (CSRF)}},
+  howpublished = {\url{https://cwe.mitre.org/data/definitions/352.html}},
+  year = {2025},
+  note = {Accessed: 26 June 2025}
+}
+
+@misc{IBM_RandomForest,
+  author = {{IBM}},
+  title = {{What is a Random Forest?}},
+  howpublished = {\url{https://www.ibm.com/think/topics/random-forest}},
+  year = {2023},
+  note = {Last updated: October 26, 2023; Accessed: 26 June 2025}
+}
+
+@misc{IBM_SVM,
+  author = {{IBM}},
+  title = {{What are Support Vector Machines (SVMs)?}},
+  howpublished = {\url{https://www.ibm.com/think/topics/support-vector-machine}},
+  year = {2023},
+  note = {Last updated: December 27, 2023; Accessed: 26 June 2025}
+}
+
+@bachelorthesis{Lempinen2023Chatbot,
+  author    = {Lempinen, Mikko and Pyyny, Emilia and Juntunen, Arttu},
+  title     = {Chatbot for Assessing System Security with OpenAI GPT-3.5},
+  school    = {University of Oulu, Faculty of Information Technology and Electrical Engineering, Degree Programme in Computer Science and Engineering},
+  year      = {2023},
+  month     = {June},
+  note      = {34 p.}
+}
+
+@misc{Wazuh_Official,
+  author = {{Wazuh, Inc.}},
+  title = {{Wazuh - The Open Source Security Platform}},
+  howpublished = {\url{https://wazuh.com/}},
+  year = {2024},
+  note = {Copyright \textcopyright{} 2015-2024 Wazuh, Inc.; Accessed: 26 June 2025}
+}

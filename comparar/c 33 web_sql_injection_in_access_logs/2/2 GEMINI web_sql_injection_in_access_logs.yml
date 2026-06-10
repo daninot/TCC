@@ -1,0 +1,49 @@
+title: SQL Injection Attempt in Web Server Logs
+id: e4c8d52b-43a1-432d-9a84-18cfaefb81da
+status: stable
+description: Detects SQL injection attempts in web server access logs targeting GET requests, including schema enumeration, UNION-based extraction, blind injection, and URL-encoded variants.
+references:
+
+* [https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/](https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/)
+* [https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/](https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/)
+* [https://brightsec.com/blog/sql-injection-payloads/](https://brightsec.com/blog/sql-injection-payloads/)
+* [https://github.com/payloadbox/sql-injection-payload-list](https://github.com/payloadbox/sql-injection-payload-list)
+* [https://book.hacktricks.xyz/pentesting-web/sql-injection/mysql-injection](https://book.hacktricks.xyz/pentesting-web/sql-injection/mysql-injection)
+author: Senior Threat Detection Engineer
+date: 2026/06/06
+tags:
+* attack.initial_access
+* attack.t1190
+logsource:
+category: webserver
+detection:
+selection:
+cs-method: 'GET'
+keywords:
+cs-uri|contains:
+* 'union select'
+* 'union%20select'
+* 'union+select'
+* 'information_schema'
+* 'information%5Fschema'
+* 'select@@version'
+* 'select%20%40%40version'
+* 'select+%40%40version'
+* 'or 1=1'
+* 'or%201%3D1'
+* 'or+1%3D1'
+* 'waitfor delay'
+* 'waitfor%20delay'
+* 'waitfor+delay'
+* 'pg_sleep'
+* 'database()'
+* 'database%28%29'
+filter_main_404:
+sc-status: 404
+condition: selection and keywords and not 1 of filter_main_*
+falsepositives:
+
+
+* Security penetration testing or authorized vulnerability scanning activity.
+* Legitimate application queries or parameter values that accidentally contain overlapping SQL keyword syntax.
+level: high

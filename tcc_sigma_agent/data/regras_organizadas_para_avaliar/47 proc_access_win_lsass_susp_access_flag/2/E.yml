@@ -1,0 +1,130 @@
+title: LSASS Process Access with Credential Dumping Access Rights
+id: f1e3c8b2-4d7a-4f2e-b9c5-3a6d1e8f4b27
+status: experimental
+description: >
+  Detects process access requests to the Local Security Authority Subsystem
+  Service (lsass.exe) with GrantedAccess flags consistent with credential
+  dumping tooling in the Mimikatz family. LSASS holds NTLM hashes, Kerberos
+  tickets, and cleartext credentials for interactively logged-on users.
+  Access mask families such as 0x1F0FFF and its variants request full process
+  access including VM_READ and PROCESS_DUP_HANDLE, which are the minimum
+  rights needed to extract credential material from LSASS memory. The 0x1010
+  and 0x1410/0x1438 families represent PROCESS_QUERY_LIMITED_INFORMATION
+  combined with VM_READ, the minimum access set used by modern dumpers
+  attempting to reduce their footprint. Detection combines mandatory targeting
+  of lsass.exe with a broad catalog of suspicious access mask values, then
+  aggressively suppresses known-legitimate sources including Windows Defender,
+  common EDR products, virtualisation agents, and developer tooling to reduce
+  false-positive volume in instrumented environments.
+references:
+  - https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
+  - https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html
+  - https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment
+  - https://web.archive.org/web/20230420013146/http://security-research.dyndns.org/pub/slides/FIRST2017/FIRST-2017_Tom-Ueltschi_Sysmon_FINAL_notes.pdf
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.credential_access
+  - attack.t1003.001
+logsource:
+  category: process_access
+  product: windows
+detection:
+  selection_target:
+    TargetImage|endswith: '\lsass.exe'
+  selection_access:
+    - GrantedAccess|endswith:
+        - '30'
+        - '50'
+        - '70'
+        - '90'
+        - 'B0'
+        - 'D0'
+        - 'F0'
+        - '38'
+        - '58'
+        - '78'
+        - '98'
+        - 'B8'
+        - 'D8'
+        - 'F8'
+        - '3A'
+        - '5A'
+        - '7A'
+        - '9A'
+        - 'BA'
+        - 'DA'
+        - 'FA'
+    - GrantedAccess|startswith:
+        - '0x1F0'
+        - '0x1f0'
+        - '0x1F1'
+        - '0x1f1'
+        - '0x1F2'
+        - '0x1f2'
+        - '0x1F3'
+        - '0x1f3'
+        - '0x1418'
+        - '0x1438'
+        - '0x143a'
+        - '0x1010'
+        - '0x1410'
+        - '0x100000'
+        - '0x40'
+  filter_main_system_paths:
+    SourceImage|startswith:
+      - 'C:\Windows\System32\'
+      - 'C:\Windows\SysWOW64\'
+      - 'C:\Windows\WinSxS\'
+      - 'C:\Program Files\'
+      - 'C:\Program Files (x86)\'
+  filter_main_defender_exe:
+    SourceImage|endswith: '\MsMpEng.exe'
+  filter_main_defender_calltrace:
+    CallTrace|contains|all:
+      - '\Windows Defender\Definition Updates\'
+      - 'mpengine.dll'
+    GrantedAccess: '0x1418'
+  filter_main_defender_client:
+    CallTrace|contains:
+      - 'MpClient.dll'
+      - 'mprtp.dll'
+  filter_main_explorer:
+    SourceImage|endswith: '\explorer.exe'
+    GrantedAccess: '0x401'
+  filter_optional_malwarebytes:
+    SourceImage|endswith:
+      - '\mbupdatr.exe'
+      - '\MBAMInstallerService.exe'
+    GrantedAccess: '0x40'
+  filter_optional_vscode:
+    SourceImage|contains: '\Microsoft VS Code\'
+  filter_optional_vmware:
+    SourceImage|endswith: '\vmtoolsd.exe'
+  filter_optional_procexp:
+    SourceImage|endswith:
+      - '\PROCEXP64.EXE'
+      - '\PROCEXP.EXE'
+      - '\handle.exe'
+      - '\handle64.exe'
+    GrantedAccess: '0x40'
+  filter_optional_aurora:
+    SourceImage|endswith:
+      - '\aurora-agent.exe'
+      - '\thor64.exe'
+      - '\thor.exe'
+    GrantedAccess: '0x40'
+  filter_optional_webex:
+    SourceImage|endswith: '\WebexHost.exe'
+    GrantedAccess: '0x401'
+  filter_optional_steam:
+    SourceImage|startswith: 'C:\Program Files (x86)\Steam\'
+  condition: all of selection_* and not 1 of filter_main_* and not 1 of filter_optional_*
+falsepositives:
+  - Endpoint security, EDR, and AV products not covered by the optional
+    filter group that legitimately open LSASS for process inspection or
+    memory scanning; add newly discovered legitimate sources to the
+    appropriate filter block after confirming the source binary.
+  - Crash-dump utilities or system diagnostics tools that access LSASS
+    memory as part of an authorised forensic or debugging workflow.
+level: high

@@ -1,0 +1,143 @@
+%%%% CAPÍTULO 3 - MATERIAL E MÉTODOS (PODE SER OUTRO TÍTULO DE ACORDO COM O TRABALHO REALIZADO)
+
+\chapter{Materiais e Métodos}\label{cap:materialemetodos}
+
+%A ênfase deste capítulo está em reportar o que e como será feito para alcançar o objetivo do trabalho. Este capítulo pode ser subdividido, inicialmente, em duas seções, sendo uma para os materiais e outra para os métodos.
+
+\section{Materiais}\label{sec:materiais}
+
+%\adr{Os materiais utilizados para o desenvolvimento desse trabalho serão essencialmente as regras Sigma, disponíveis em seu repositório \cite{SigmaReadMe}; as LLMs mais conhecidas e de ampla utilização, como \textit{ChatGPT}, \textit{Deepseek}, \textit{Microsoft Copilot}, \textit{Gemini} e \textit{Grok}; linguagem de programação Python, ambiente de desenvolvimento xxx.\\ Para o desenvolvimento do agente... segue normal. tira fora esse parágrafo abaixo.}
+
+Os materiais utilizados para o desenvolvimento deste trabalho serão essencialmente as regras \textit{Sigma} (arquivos em YAML) disponíveis em seu repositório \cite{SigmaReadMe} --- composto atualmente por mais de 3.400 regras; 
+as LLMs mais conhecidas e de ampla utilização, como \textit{ChatGPT}, \textit{Deepseek}, \textit{Microsoft Copilot}, \textit{Gemini} e \textit{Grok};
+%são as IAs generativas que serão utilizadas para testar a geração de regras \textit{Sigma}, para posteriormente avaliar a qualidade das mesmas.
+linguagem de programação \textit{Python};
+ambiente de desenvolvimento \textit{Visual Studio Code};
+para o desenvolvimento do agente, \textit{framework} de código aberto \textit{LangChain} --- facilitador da construção de aplicações que usam modelos de linguagem grandes (LLMs) \cite{LangChain}.
+
+
+\section{Métodos}\label{sec:metodo}
+
+%\adr{O desenvolvimento do agente autônomo "é a terceira etapa", as duas primeiras são atividades diferentes! estava banstante confuso. Tentei reescrever. Verifique.\\
+%O desenvolvimento e avaliação do presente trabalho envolverá três etapas distintas, que serão detalhadas a seguir. A primeira fase envolverá a geração de regras utilizando as LLMs já mencionadas, visando um cenário simplificado e que remete a um usuário inexperiente. A segunda fase incluirá um prompt customizado e que fornecerá dados e instruções relevantes para extrair um melhor desempenho e acucária das LLMs na geração das regras. Na terceira fase será desenvolvido um agente especializado, treinado para a geração de regras de forma autônoma, com base nas referências/dados da vulnerabilidade da qual se pretende proteger. Inicialmente serão obtidas todas as regras \textit{Sigma} através de seu repositório no \textit{GitHub} \cite{SigmaReadMe}, sendo organizadas da seguinte forma: 3000 regras para a base de treinamento e 400 regras para testes. A avaliação dos resultados será realizada através de análise manual por amostragem e análise automatizada (Distância do Cosseno, \textit{Term Frequency-Inverse Document Frequency} (TF-IDF), ou Jaccard, ainda a definir) para verificar a acurácia perante as regras originais ou uma eventual melhoria em sua estrutura, por se tratar de uma busca mais recente, utilizando informações adicionais às referências usadas durante a criação da regra original. Por fim, uma análise de qual fase alcançou o melhor desempenho ou custo-benefício será apresentada.}
+
+A primeira fase envolveu a geração manual de regras utilizando as LLMs já mencionadas, visando um cenário simplificado e que remete a um usuário inexperiente.
+A segunda fase incluirá um \textit{prompt} customizado que fornecerá dados e instruções relevantes para extrair melhor desempenho e acurácia das LLMs na geração das regras.
+Já na terceira fase será desenvolvido um agente especializado, treinado para a geração de regras de forma autônoma, com base nas referências/dados da vulnerabilidade da qual se pretende proteger.
+
+Inicialmente serão obtidas todas as regras \textit{Sigma} por meio de seu repositório no \textit{GitHub} \cite{SigmaReadMe}, sendo organizadas da seguinte forma: 3000 regras para a base de treinamento e 400 regras para testes. 
+A avaliação dos resultados será realizada através de análise manual por amostragem e análise automatizada (Distância do Cosseno, \textit{Term Frequency-Inverse Document Frequency} (TF-IDF), Jaccard - à definir) 
+para verificar a acurácia perante as regras originais ou eventual melhoria em sua estrutura, por se tratar de uma busca mais recente, utilizando informações adicionais às referências usadas durante a criação da regra original. 
+Por fim, uma análise de qual fase alcançou o melhor desempenho e qualidade será apresentada.
+
+As etapas de desenvolvimento e avaliação do presente trabalho são detalhadas a seguir.
+
+\subsection{Primeira fase}\label{primeirafase}
+
+Inicialmente serão selecionadas manualmente 10\% das regras de teste (40);
+elas serão utilizadas para a geração de regras através de um \textit{prompt} simples, sem customizações, em cada uma das LLMs, da mesma forma que um usuário inexperiente faria, conforme é exibido no ``\textbf{Prompt Básico}''.
+Para solicitar a geração das regras, as referências de cada uma delas serão extraídas e armazenadas, já que contém o(s) \textit{link}(s) com as informações fundamentais que deram origem àquela regra.
+Em seguida serão inclusas no \textit{prompt} e enviadas como requisição para a IA de forma manual.
+
+\caixa{\textit{Prompt Básico}}{``Generate a SIGMA rule (https://sigmahq.io/docs/basics/rules.html) for this event: \\
+https://localtonet.com/documents/supported-tunnels \\
+https://cloud.google.com/blog/topics/threat-intelligence/unc3944-targets-saas-applications''}
+
+Para fins explicativos, os \textit{links} posteriores à palavra ``\textit{event}''  são as referências inseridas na regra \textit{Sigma} pelo seu autor (visíveis no campo ``\textit{reference}'' das regras); 
+e o \textit{link} mencionado após a palavra ``\textit{rule}'' é a página do repositório que instrui a escrita de uma regra \textit{Sigma}.
+
+O próximo passo será gerar as regras de forma automatizada, utilizando-se de um \textit{script} para otimizar o processo.
+Tanto a seleção manual quanto a automatizada constituirá os resultados deste trabalho.
+
+Após reunir réplicas\footnote{As réplicas são as regras geradas pelas IAs.} de regras \textit{Sigma} já existentes, 
+será realizada comparação manual por amostragem entre a regra original e suas réplicas, considerando os campos mais relevantes (que tornam a regra ativa ou operável no SIEM);
+são eles: os componentes \textit{detection} e \textit{logsource}. 
+%Existe o interesse de automatizar essa análise, porém o método ainda não foi definido -- algumas sugestões são as técnicas de Distância do Cosseno, \textit{Term Frequency-Inverse Document Frequency} (TF-IDF) e Jaccard, usadas em aprendizado de máquina. 
+
+%\jt{<algo que seria interessante seria automatizar essa análise (outra coisa que a banca esperaria). Como essa comparação será realizada? Distância do cosseno? Jaccard? TF-IDF (Term Frequency-Inverse Document Frequency)? Algo que você poderia fazer seria desenvolver a suas próprias formas de comparação. Digo isso porque pode acontecer comparações onde há mesmas regras escritas de forma diferente. Se você conseguir propor essas medidas, já seria uma contribuição do seu trabalho. Posso lhe ajudar com isso no TCC2.>} \adr{por amostragem} entre a regra original e suas réplicas, a partir dos campos mais relevantes -- ou seja, os componentes que tornam a regra ativa ou operável no SIEM. 
+
+Ao final dessa análise, o estudo demonstrará a qualidade das regras \textit{Sigma} escritas através de um \textit{prompt} básico e será possível indicar qual LLM se destacou percentualmente perante as demais.
+%Para isso, também será necessário definir o que classifica um resultado como satisfatório, e aqui vale lembrar que o essencial é a parte prática, ou seja, que a regra funcione bem.
+
+
+\subsection{Segunda fase}\label{segundafase}
+
+A segunda fase utilizará engenharia de \textit{prompt} para fornecer às LLMs melhor contexto e informações precisas que aprimorem as regras desenvolvidas por elas, novamente resultando num estudo comparativo ranqueando quais devolvem melhores resultados.
+
+%\jt{<detalhar o esta fase. Como você pretende fazer isso? Quais estratégias você pretende fazer para a geração de prompts?>}
+
+%Esta etapa será importante para definir a continuidade do escopo do projeto. Caso se verifique que, após um \textit{prompt} bem construído, uma ou mais IAs escrevem regras SIGMA de forma satisfatória, a ponto de possivelmente atender à demanda problemática mencionada no capítulo \ref{cap:introducao}, é vista a mudança de escopo deste trabalho. No entanto, se um \textit{prompt} bem arranjado não providencie resultados suficientes a ponto de se considerar o uso das IAs como aliadas permanentes, há que se seguir para a terceira etapa e objetivo deste trabalho. \adr{Novamente, reescreve essa etapa dizendo que será mais um estudo que será exibido e no final comparado qual o melhor custo-benefício entre os três.}
+
+%\adr{aqui ainda falta escrever... imagino que sejam só comentários pra vc lembrar... O último parágrafo pode manter.}
+%Esta etapa requer um aprofundamento no tema de engenharia de \textit{prompt}, que se refere ao processo de formular cuidadosamente as perguntas ou comandos para se obter respostas específicas e otimizadas \cite{Santos2024}.
+%Os autores citam que, com essa técnica, a precisão e a relevância das respostas podem ser deveras influenciadas graças à estruturação das perguntas.
+O processo envolve o uso estratégico de palavras-chave, clareza na formulação dos textos, além de adaptação do \textit{prompt}\cite{Santos2024},
+pois segundo a própria \citeonline{openaiTextGuide}, "diferentes tipos de modelos de linguagem podem precisar ser solicitados de forma diferente para produzir os melhores resultados".
+
+O processo de amostragem e teste da primeira fase será replicado, porém com o diferencial do refinamento dos \textit{prompts}.
+
+Sendo assim, as mesmas 40 regras de testes selecionadas serão utilizadas para a geração de regras através de um \textit{prompt} customizado, em cada uma das LLMs -- aqui o usuário é mais experiente que o anterior.
+Em seguida, utilizar-se-á de um \textit{script} que automatize a tarefa.
+
+%O produto passará por comparação manual por amostragem entre regra original e suas réplicas, novamente considerando os campos \textit{detection} e \textit{logsource}.
+
+%Esta etapa de refinamento nos \textit{prompts} será mais uma evolução dentro do estudo que será exibido. No final será feita as devidas comparações e pontuado o melhor custo-benefício entre os três.
+É importante salientar que em todas as fases será inclusa uma averiguação final de um especialista e/ou da ``comunidade \textit{Sigma}'' (pessoas que contribuem regularmente com o repositório de regras). %\jt{<foi defido o especialista que fará isso? Não precisa mencionar no texto, mas averigue se há algum especialista disposto a colaborar. Acho que o especialista em questão é o Adriano. O questionamento é para verificar se há um outro especialista em mente.>}, 
+Ademais, os respectivos resultados passarão por análise qualitativa novamente e o método de comparação usado na primeira fase será repetido.
+
+
+\subsection{Terceira fase}\label{terceirafase}
+
+%\adr{Na terceira fase o agente de IA será projetado e testado segundo sua precisão e qualidade das regras geradas... reescreve para deixar claro que será feito e comparado com os resultados das fases anteriores.}
+
+%\adr{aqui também ainda falta escrever formalmente, reescrever e complementar.}
+Na terceira fase do projeto, o agente de IA será projetado e testado segundo sua precisão e qualidade das regras geradas. 
+O desenvolvimento do agente começará por escrita de código e, quando preparado, será treinado com 3000 regras \textit{Sigma}; para o teste serão 400. 
+Ajustes serão feitos conforme necessidade.
+Das 400 réplicas por LLM (serão 2 mil no total, se forem usadas 5 LLMs), 10\% serão retiradas para uma análise inicial manual, posteriormente automatizada. %refeita por método estatístico X.
+
+Para as avaliações, primeiro será necessário definir parâmetros que validam uma regra.
+De antemão já pode-se considerar que as regras validadas serão, no mínimo, iguais às originais -- o que não significa exatamente que são boas, pois algumas podem já estar datadas, por exemplo --, fazendo-se necessário verificar as regras descartadas para entender o motivo da não validação, pois algumas regras diferentes podem ser melhores que as originais.
+A avaliação das regras descartadas será feita por especialista ou pela comunidade \textit{Sigma}.
+
+Com os critérios definidos, os desempenhos dos LLMs serão medidos utilizando métricas qualitativas e quantitativas, calculadas para cada modelo e fase do experimento.
+Serão calculados, por exemplo, taxa de similaridade média textual, taxa de acerto e desvio padrão, analisando a proporção de réplicas consideradas ``semelhantes'' à original. 
+
+O produto final do trabalho será uma composição analítica qualitativa e quantitativa entre todos os produtos obtidos, das três fases.
+
+%-primeiro método manualq
+%-análise por amostragem mais manual
+%-depois ITF-DF
+%-avaliar com medidas estatísticas
+%-no mínimo foi igual se o método validar
+%-as não boas será feito análise manual ou especialista
+%-a regra diferente pode estar melhor
+
+%Com um \textit{dataset} robusto de treinamento, inicia-se a elaboração do agente autônomo com a ferramenta \textit{LangChain}, estruturando-o com a lógica de criação de regras \textit{Sigma} – incluindo identificação de fontes de \textit{logs} e definição de detecções.
+
+%\jt{<algo que falta: como os seus resultados serão avaliados?>}
+
+%esqueci o que era pra escrever mais
+
+
+%\section{Cronograma}
+
+
+%\begin{table}[htb]%% Ambiente table
+%\caption{Cronograma de Atividades - Ano 2025}%% Legenda
+%\label{quad:cronograma}%% Rótulo
+%\begin{tabularx}{\textwidth}{@{\extracolsep{\fill}}lcccccccccc}%% Ambiente tabularx
+%\toprule
+%\textbf{Atividade} & \textbf{Mar} & \textbf{Abr} & \textbf{Mai} & \textbf{Jun} & \textbf{Jul} & \textbf{Ago} & \textbf{Set} & \textbf{Out} & \textbf{Nov} & \textbf{Dez} \\ \midrule
+%Elaboração da proposta                 & X &   &   &   &   &   &   &   &   &   \\
+%Pesquisa bibliográfica                 &   & X & X & X & X & X & X & X & X &   \\
+%Automatização com LLMs                 &   &   &   & X & X &   &   &   &   &   \\
+%Anterior + engenharia de \textit{prompt} &   &   &   &   &   & X & X &   &   &   \\
+%Desenvolvimento agente                 &   &   &   &   &   &   & X & X &   &   \\
+%Comparação resultados                  &   &   &   &   &   &   &   & X & X &   \\
+%Escrita da monografia                  & X & X & X & X & X & X & X & X & X & X \\
+%Apresentação                           &   &   &   &   & X &   &   &   & X &   \\ \bottomrule
+%\end{tabularx}
+%\fonte{}%% Fonte
+%\end{table}
+

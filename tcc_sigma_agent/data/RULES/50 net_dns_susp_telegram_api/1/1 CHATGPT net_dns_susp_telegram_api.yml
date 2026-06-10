@@ -1,0 +1,64 @@
+title: Telegram Bot API C2 Traffic
+id: 2bf3d4ab-3f0a-4c7a-8f9d-3c4f1c55b9d1
+status: experimental
+description: Detects outbound HTTP(S) requests to the Telegram Bot API, which may indicate malware abusing Telegram bots for command-and-control, tasking, or exfiltration.
+references:
+
+* [https://core.telegram.org/bots/faq](https://core.telegram.org/bots/faq)
+* [https://researchcenter.paloaltonetworks.com/2018/03/unit42-telerat-another-android-trojan-leveraging-telegrams-bot-api-to-target-iranian-users/](https://researchcenter.paloaltonetworks.com/2018/03/unit42-telerat-another-android-trojan-leveraging-telegrams-bot-api-to-target-iranian-users/)
+* [https://blog.malwarebytes.com/threat-analysis/2016/11/telecrypt-the-ransomware-abusing-telegram-api-defeated/](https://blog.malwarebytes.com/threat-analysis/2016/11/telecrypt-the-ransomware-abusing-telegram-api-defeated/)
+* [https://www.welivesecurity.com/2016/12/13/rise-telebots-analyzing-disruptive-killdisk-attacks/](https://www.welivesecurity.com/2016/12/13/rise-telebots-analyzing-disruptive-killdisk-attacks/)
+  author: OpenAI
+  date: 2026-06-08
+  tags:
+* attack.command_and_control
+* attack.t1071.001
+* attack.t1102
+  logsource:
+  category: proxy
+  detection:
+  selection_host_1:
+  cs-host|contains: 'api.telegram.org'
+  selection_host_2:
+  url|contains: 'api.telegram.org'
+  selection_host_3:
+  dst_domain: 'api.telegram.org'
+  selection_bot_prefix_1:
+  cs-uri-stem|contains: '/bot'
+  selection_bot_prefix_2:
+  url|contains: '/bot'
+  selection_method_1:
+  cs-uri-stem|contains:
+
+  * '/getUpdates'
+  * '/sendMessage'
+  * '/sendDocument'
+  * '/sendPhoto'
+  * '/sendFile'
+  * '/getFile'
+  * '/answerCallbackQuery'
+    selection_method_2:
+    url|contains:
+  * '/getUpdates'
+  * '/sendMessage'
+  * '/sendDocument'
+  * '/sendPhoto'
+  * '/sendFile'
+  * '/getFile'
+  * '/answerCallbackQuery'
+    condition: (1 of selection_host_*) and (1 of selection_bot_prefix_*) and (1 of selection_method_*)
+    fields:
+* cs-host
+* cs-uri-stem
+* cs-uri-query
+* url
+* dst_domain
+* src_ip
+* user_agent
+* process_name
+  falsepositives:
+* Legitimate Telegram bot integrations
+* Developer testing of Telegram bots
+* User-driven applications that intentionally access the Telegram Bot API
+  level: medium
+

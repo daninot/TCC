@@ -1,0 +1,81 @@
+title: SQL Injection Indicators in Web Server GET Requests
+id: e2b7c9a4-5f3d-4a1b-9c2e-7d6f8a0b1c2d
+status: experimental
+description: Detects potential SQL injection attempts in web server access logs by identifying GET requests whose URIs contain common SQLi payloads (plain-text and URL-encoded variants). Excludes 404 responses to reduce noise from scanners hitting non-existent endpoints.
+author: Senior Threat Detection Engineer
+date: 2026/06/08
+references:
+  - [https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/](https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/)
+  - [https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/](https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/)
+  - [https://brightsec.com/blog/sql-injection-payloads/](https://brightsec.com/blog/sql-injection-payloads/)
+  - [https://github.com/payloadbox/sql-injection-payload-list](https://github.com/payloadbox/sql-injection-payload-list)
+  - [https://book.hacktricks.xyz/pentesting-web/sql-injection/mysql-injection](https://book.hacktricks.xyz/pentesting-web/sql-injection/mysql-injection)
+tags:
+  - attack.injection
+  - web
+  - detection
+logsource:
+  category: webserver
+  description: Web server access logs (unstructured or semi-structured) containing HTTP Method, URI/Request, and ResponseCode fields.
+detection:
+  selection_method:
+    Method:
+      - 'GET'
+  keywords:
+    Uri|contains:
+      - 'UNION SELECT'
+      - 'UNION%20SELECT'
+      - 'UNION+SELECT'
+      - 'UNION+ALL+SELECT'
+      - 'UNION%2BALL%2BSELECT'
+      - 'information_schema'
+      - 'information_schema.tables'
+      - 'information_schema.columns'
+      - 'SELECT%20%2A%20FROM'
+      - 'SELECT%20%2A%20FROM%20information_schema'
+      - 'concat('
+      - 'concat%28'
+      - 'group_concat('
+      - 'group_concat%28'
+      - 'version()'
+      - 'version%28%29'
+      - 'database()'
+      - 'database%28%29'
+      - 'sleep('
+      - 'sleep%28'
+      - 'benchmark('
+      - 'benchmark%28'
+      - "or 1=1"
+      - "%27%20OR%20%271%27%3D%271"
+      - "%27%20OR%20%271%27%3D%271%20--"
+      - "' OR '1'='1"
+      - "' OR 1=1 --"
+      - 'ORDER BY 1--'
+      - 'ORDER%20BY%201--'
+      - 'ORDER+BY+1--'
+      - '/*'
+      - '%2F%2A'
+      - '--'
+      - '%2D%2D'
+      - 'xp_cmdshell'
+      - 'load_file('
+      - 'load_file%28'
+      - 'into outfile'
+      - 'into%20outfile'
+      - 'substr('
+      - 'substr%28'
+      - 'ascii('
+      - 'ascii%28'
+      - 'char('
+      - 'char%28'
+      - '%27--'
+      - '%27%3B--'
+      - '%3Cscript%3E' 
+  filter_main_404:
+    ResponseCode:
+      - 404
+  condition: selection_method and keywords and not 1 of filter_main_404
+falsepositives:
+  - Automated scanners or vulnerability scanners probing endpoints that return non-404 responses.
+  - Legitimate application URLs or parameters that coincidentally contain SQL-like tokens (e.g., documentation pages, encoded examples).
+level: high

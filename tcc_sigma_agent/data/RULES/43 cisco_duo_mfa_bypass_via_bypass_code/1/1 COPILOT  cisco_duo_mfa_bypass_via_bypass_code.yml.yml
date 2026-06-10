@@ -1,0 +1,113 @@
+title: Suspicious Duo Admin API and Authentication Events
+id: 2d7f9b1e-2026-duo-admin-suspicious-activity
+status: experimental
+description: Detects anomalous or suspicious events in Duo Admin API / system logs that may indicate account compromise, token abuse, unauthorized administrative changes, or suspicious MFA activity (e.g., mass failed authentications, bypass code usage, API/admin token creation, unusual admin console actions, and enrollment of new devices from unfamiliar IPs or geographies).
+author: Detection Engineer
+date: 2026-06-08
+references:
+  - https://duo.com/docs/adminapi#logs
+  - https://help.duo.com/s/article/6327?language=en_US
+logsource:
+  product: duo
+  service: admin_api
+  category: identity
+detection:
+  selection_mass_failed_auth:
+    event_type|contains:
+      - "authentication"
+    result|re:
+      - '(?i)failure|denied|rejected'
+    CountByUser: ">10"
+    Timeframe: "10m"
+  selection_success_after_failures:
+    event_type|contains:
+      - "authentication"
+    result|re:
+      - '(?i)success'
+    RelatedEvent|re:
+      - '(?i)authentication.*failure'
+    RelatedEventCount: ">3"
+    Timeframe: "15m"
+  selection_bypass_code_use:
+    event_type|contains:
+      - "bypass_code"
+    action|re:
+      - '(?i)use|redeem'
+    result|re:
+      - '(?i)success'
+  selection_new_device_enrollment:
+    event_type|contains:
+      - "enrollment"
+      - "device"
+    action|re:
+      - '(?i)create|enroll|add'
+    ip|not_in_cidr:
+      - "10.0.0.0/8"
+      - "172.16.0.0/12"
+      - "192.168.0.0/16"
+  selection_admin_api_token_create:
+    event_type|contains:
+      - "admin_api"
+      - "integration"
+    action|re:
+      - '(?i)create|generate|rotate|issue'
+    object|re:
+      - '(?i)token|key|client|secret|integration'
+  selection_admin_console_unusual:
+    event_type|contains:
+      - "admin"
+      - "policy"
+      - "settings"
+    action|re:
+      - '(?i)add|remove|update|change|enable|disable|reset'
+    actor_type|re:
+      - '(?i)user|service)'
+    actor_id|not_in:
+      - "00u0000000000000000" 
+  selection_geo_anomaly:
+    event_type|contains:
+      - "authentication"
+    ip_geo|re:
+      - '(?i)(russia|china|iran|north korea|pakistan|ukraine)'
+    result|re:
+      - '(?i)success'
+  selection_suspicious_useragent:
+    event_type|contains:
+      - "authentication"
+    user_agent|re:
+      - '(?i)(curl|python-requests|libwww-perl|nikto|sqlmap|masscan|nmap)'
+  condition: >
+    (selection_mass_failed_auth or selection_success_after_failures or selection_bypass_code_use or selection_new_device_enrollment or selection_admin_api_token_create or selection_admin_console_unusual or selection_geo_anomaly or selection_suspicious_useragent)
+fields:
+  - timestamp
+  - event_type
+  - action
+  - result
+  - actor
+  - actor_type
+  - actor_id
+  - user
+  - user_id
+  - ip
+  - ip_geo
+  - user_agent
+  - object
+  - request_id
+falsepositives:
+  - Legitimate administrative activity (CI/CD automation, scheduled token rotations, or onboarding events) — whitelist known service accounts and automation IPs.
+  - Bulk authentication failures from corporate VPNs, proxy misconfigurations, or large-scale password resets initiated by IT.
+  - New device enrollments from traveling users or legitimate remote employees; correlate with helpdesk tickets.
+level: high
+tags:
+  - identity
+  - mfa
+  - duo
+  - detection.identity
+  - attack.credential_access
+  - attack.initial_access
+notes: |
+  - Tuning: whitelist trusted admin/service accounts, known automation IP ranges, and scheduled onboarding windows; adjust thresholds for authentication volume to match tenant size.
+  - Enrichment: add geolocation, ASN, device fingerprint, user risk score, and recent Okta/Duo ThreatInsight verdicts where available.
+  - Investigation: retrieve full Duo event JSON, correlate with upstream authentication logs (VPN, SSO, cloud apps), check for newly created API clients/tokens, review admin change diffs, and search for lateral activity or suspicious sessions tied to the same IPs or tokens.
+  - Response: revoke suspicious API keys/tokens, disable compromised accounts, require MFA re-enrollment, block offending IPs, and perform a tenant-wide audit of recent administrative changes.
+

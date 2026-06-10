@@ -5,3 +5,4 @@ chromadb
 pysigma         #a biblioteca oficial do sigma cli
 pyyaml
 python-dotenv
+duckduckgo-search

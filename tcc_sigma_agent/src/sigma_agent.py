@@ -9,6 +9,7 @@ from sentence_transformers import CrossEncoder
 # from langchain_community.vectorstores import Chroma       #deprecated
 from langchain_chroma import Chroma
 from langchain_ollama import ChatOllama
+from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, START, END
 from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaError
@@ -18,7 +19,7 @@ from urllib.parse import urlparse
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CHROMA_DIR = os.path.join(BASE_DIR, "..", "data", "chroma_db")
 EMBEDDINGS_MODEL = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
-RERANKER_MODEL = CrossEncoder("cross-enco"der/ms-marco-MiniLM-L-12-v2")
+RERANKER_MODEL = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-12-v2")
 PROMPT_PATH = os.path.join(BASE_DIR, "..", "prompts", "sigma_system_prompt.md")
 with open(PROMPT_PATH, "r", encoding="utf-8") as f:
     SIGMA_SYSTEM_PROMPT = f.read()
@@ -30,63 +31,15 @@ with open(PROMPT_PATH, "r", encoding="utf-8") as f:
 # nó 4 = criação da regra com LLM local
 # nó 5 = validação com o Sigma CLI
 
-#função para encontrar todas as menções de CVE e CWE em qualquer texto:
-def extrair_referencias(texto: str):
-    cves = set(m.group().upper() for m in re.finditer(r"CVE-\d{4}-\d+", texto, re.IGNORECASE))
-    cwes = set(m.group().upper() for m in re.finditer(r"CWE-\d+", texto, re.IGNORECASE))
-    return cves, cwes
-
-#função para extrair palavras significativas do caminho de uma URL. usado quando a página fica inacessível:
-def extrair_palavras_chave_url(url:str):
-    caminho = urlparse(url).path
-    texto = re.sub(r"[/\-_\.]+", " ", caminho)
-    lixo = {"html", "htm", "php", "asp", "aspx", "vuln", "detail", "www"}
-    return [
-        p.lower() for p in texto.split()
-        if len(p) >= 3 and not p.isdigit() and p.lower() not in lixo
-    ]
-
-#função para consultar a API do MITRE para um CVE:
-def consulta_mitre(cve_id:str):
-    try:
-        r = requests.get(f"https://cveawg.mitre.org/api/cve/{cve_id}", timeout=10)
-        if r.status_code == 200:
-            descricoes = r.json().get("containers",{}).get("cna",{}).get("descriptions",[])
-            if descricoes:
-                return descricoes[0].get("value", "")   #retorna a descrição ou None
-    except requests.exceptions.RequestException:
-        pass
-    return None
-
-#função que consulta a API do NVD para um CVE:
-def consulta_nvd(cve_id:str):
-    try:
-        url_api = f"https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={cve_id}"
-        r = requests.get(url_api, timeout=10)
-        if r.status_code == 200:
-            vulns = r.json().get("vulnerabilities",[])
-            if vulns:
-                cve_item = vulns[0].get("cve",{})
-                descricao = next(
-                    (x["value"] for x in cve_item.get("descriptions",[]) if x.get("lang") == "en"),
-                    None
-                )
-                cwes = [
-                    d["value"]
-                    for w in cve_item.get("weaknesses",[])
-                    for d in w.get("description",[])
-                    if d.get("lang") == "en"
-                ]
-                cvss = None
-                for chave in ("cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
-                    if chave in cve_item.get("metrics",{}) and cve_item["metrics"][chave]:
-                        cvss = cve_item["metrics"][chave][0].get("cvssData", {}).get("baseScore")
-                        break
-                return {"descricao": descricao, "cwes": cwes, "cvss": cvss}
-    except requests.exceptions.RequestException:
-        pass
-    return None
-
+from funcoes import (
+    extrair_referencias,
+    extrair_palavras_chave_url,
+    extrair_secoes_tecnicas,
+    consulta_mitre,
+    consulta_nvd,
+    validar_tags_attack,
+    busca_duckduckgo,
+)
 
 # >>>>>>>> ESTADO <<<<<<<<<     (caderno de anotações)
 class GraphState(TypedDict):
@@ -94,6 +47,7 @@ class GraphState(TypedDict):
     tipo_input: str          #pode ser cve, uma hash ou 'texto_livre'
     termo_busca: str         #cve ou hash extraído
     url_fornecida: list       #possível url que esteja no input
+    texto_para_rag: str        #trechos técnicos extraídos do RAG (nó 2)
     contexto_rag: str        #exemplos de regras (nó 2)
     contexto_api: str        #dados técnicos da ameaça (nó 3)
     regra_gerada: str        #YAML gerado pela LLM (nó 4)
@@ -130,20 +84,29 @@ def no_1_classificador(state: GraphState) -> GraphState: #recebe um state como a
         termo = padrao_hash.group().lower()
     else:
         tipo = "texto_livre"
-        termo = texto  #mantém o texto inteiro para buscar no banco vetorial depois
-    
+        #termo = texto  #mantém o texto inteiro para buscar no banco vetorial depois
+        termo = ""    #vazio pro nó2 decidir oq usar
+
+    texto_para_rag = extrair_secoes_tecnicas(texto_sem_url)   #pré-processa o texto isolando as seções técnicas 
+
     print(f" -> Tipo: {tipo}")
-    print(f" -> Termo isolado: {termo}")
+    if termo:
+        print(f" -> Termo isolado: {termo}")
     if urls_limpas:
         print(f" -> URLs detectadas: {len(urls_limpas)} encontrada(s).")
         for u in urls_limpas:
             print(f"    - {u}")
+    if texto_para_rag != texto_sem_url:
+        print(f" -> Seções técnicas extraídas para o RAG ({len(texto_para_rag)} caracteres).")
+    else:
+        print(" -> Sem seções estruturadas.")
 
-    #retorna atualizando o estado com a nova lista de URLs
+    #retorna atualizado o estado com a nova lista de URLs
     return {
         "tipo_input": tipo, 
         "termo_busca": termo, 
-        "urls_fornecidas": urls_limpas
+        "url_fornecida": urls_limpas,
+        "texto_para_rag": texto_para_rag
     }
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -158,10 +121,28 @@ def no_2_rag(state: GraphState) -> GraphState:
 
     print("\n[Nó 2] Buscando contexto no RAG - com re-ranking\n")
     
-    # Se o Nó 1 identificou um termo (ex: um CVE), usamos ele para buscar.
-    # Se for texto livre, usamos a frase inteira do usuário.
-    termo_pesquisa = state["termo_busca"] if state.get("termo_busca") else state["input_usuario"]
-    print(f" -> Pesquisando no banco vetorial por: {termo_pesquisa[:80]}\n")
+    #oq pesquisar no banco vetorial, em ordem de prioridade:
+    #i) se termo isolado (CVE ou hash), vai direto;
+    #ii) senão, usa o texto pré-processado (seções técnicas);
+    #iii) fallback: input do usuário completo.
+
+    if state.get("termo_busca"):
+        termo_pesquisa = state["termo_busca"]
+        origem = "termo isolado"
+    elif state.get("texto_para_rag"):
+        termo_pesquisa = state["texto_para_rag"]
+        origem = "seções técnicas"
+    else:
+        termo_pesquisa = state.get("input_usuario", "")
+        origem = "fallback"     #input completo
+
+    print(f" -> Estratégia: {origem}")
+    print(f" -> ChromaDB recebe: ({len(termo_pesquisa)} caracteres)): "
+          f"{termo_pesquisa[:120]}...\n")
+    
+
+    #termo_pesquisa = state["termo_busca"] if state.get("termo_busca") else state["input_usuario"]
+    #print(f" -> Pesquisando no banco vetorial por: {termo_pesquisa[:80]}\n")
 
     # Carregamos o modelo leve de embeddings e o banco criado
     #embeddings = HuggingFaceEmbeddings(model_name="bge-small-en-v1.5")
@@ -189,7 +170,10 @@ def no_2_rag(state: GraphState) -> GraphState:
     print(f" -> re-ranking concluído.")
     print(f" -> scores: {[round(float(s),3) for s, _ in top_5]}")
 
-    contexto_formatado = "\n\n---\n\n".join([doc.page_content for _, doc in top_5])
+    contexto_formatado = "\n\n".join([
+        f"### EXEMPLO {i} ###\n{doc.page_content}"
+        for i, (_, doc) in enumerate(top_5, start=1)
+    ])
     return {"contexto_rag": contexto_formatado}
 
 #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -199,21 +183,25 @@ def no_2_rag(state: GraphState) -> GraphState:
 #Se a API falhar ou não tiver internet, o agente não dá erro, vai seguir em frente.
 def no_3_api(state: GraphState) -> GraphState:
 
-    print("\n||Nó 3|| Buscando dados em APIs externas...")
+    print("\n[Nó 3] Buscando dados em APIs externas...")
     
     tipo = state.get("tipo_input", "")  #usar .get() evita q o programa quebre (keyerror) caso as chaves não existam no estado
     termo = state.get("termo_busca", "")
-    url = state.get("url_fornecida", "")
+    urls = state.get("url_fornecida", [])
     entrada_usuario = state.get("input_usuario", "")
     contexto_api = "Nenhum dado externo coletado."      #inicialização da váriavel que vai pegar esse contexto
     trechos = []
 
-    #1: procura CVEs e CWEs em todo o texto de entrada do usuário:
+    if isinstance(urls, str):       #se por acaso vier string, normaliza pra lista
+        urls = [urls] if urls else []
+
+    #procura CVEs e CWEs em todo o texto de entrada do usuário:
     cves_encontrados, cwes_encontrados = extrair_referencias(entrada_usuario)
 
-    #2: procura uma URL para acessar:
-    if url:
-        print(f" -> URL fornecida detectada. Acessando: {url}")
+    #procura uma URL para acessar:
+    if urls:
+        print(f" -> {len(urls)} fornecida(s) para processar.")
+        
         headers = {
             "User-Agent": (
                 "Mozilla/5.0 (X11; Linux x86_64) "
@@ -221,42 +209,51 @@ def no_3_api(state: GraphState) -> GraphState:
                 "Chrome/124.0.0.0 Safari/537.36"
             )
         }
-        #Conversão de URL do github para a versão raw
-        if "github.com" in url and "/blob/" in url:
-            url_raw = url.replace("github.com", "raw.githubusercontent.com")
-            url_raw = url_raw.replace("/blob/", "/")
-            print(f" -> URL do github convertida para raw: {url_raw}")
-            url = url_raw
 
-        acesso_ok = False
-        try:
-            resposta_url = requests.get(url, timeout=10, headers=headers)
-            if resposta_url.status_code == 200:
-                soup = BeautifulSoup(resposta_url.text, "html.parser")
-                texto_limpo = soup.get_text(separator=" ", strip=True)
-                trechos.append(f"Conteúdo da URL {url}:\n{texto_limpo[:3000]}")
-                print(" -> Conteúdo da URL extraído com sucesso.")
-                acesso_ok = True
-            else:
-                print(f" -> ERRO HTTP {resposta_url.status_code} ao acessar a URL.")
-        except requests.exceptions.RequestException as e:
-            print(f" -> Falha ao acessar a URL: {e}")
-        
-        #mesmo se o acesso funcionar, vai procurar CVE/CWE na URL:
-        cves_url, cwes_url = extrair_referencias(url)
-        cves_encontrados.update(cves_url)
-        cwes_encontrados.update(cwes_url)
+        for i, url in enumerate(urls, start=1):
 
-        #se a URL falhar, extrai as palavras-chave do caminho (fallback):
-        if not acesso_ok:
-            palavras = extrair_palavras_chave_url(url)
-            if palavras:
-                trechos.append(
-                    f"\tURL inacessível. Palavras extraídas da URL: {', '.join(palavras)}"
-                )
-                print(f" -> Palavras da URL: {', '.join(palavras)}")
+            #Conversão de URL do github para a versão raw
+            if "github.com" in url and "/blob/" in url:
+                url_raw = url.replace("github.com", "raw.githubusercontent.com")
+                url_raw = url_raw.replace("/blob/", "/")
+                print(f" -> URL do github convertida para raw: {url_raw}")
+                url = url_raw
+
+            acesso_ok = False
+            try:
+                resposta_url = requests.get(url, timeout=10, headers=headers)
+                if resposta_url.status_code == 200:
+                    soup = BeautifulSoup(resposta_url.text, "html.parser")
+                    # pega só parágrafos e títulos, que costumam ter o conteúdo principal
+                    elementos = soup.find_all(["p", "h1", "h2", "h3", "article"])
+                    texto_limpo = " ".join(
+                        e.get_text(separator=" ", strip=True) for e in elementos
+                    )
+                    if not texto_limpo:   # fallback se a página não usa tags semânticas
+                        texto_limpo = soup.get_text(separator=" ", strip=True)
+                    trechos.append(f"Conteúdo da URL {url}:\n{texto_limpo[:3000]}")
+                    print(" -> Conteúdo da URL extraído com sucesso.")
+                    acesso_ok = True
+                else:
+                    print(f" -> ERRO HTTP {resposta_url.status_code} ao acessar a URL.")
+            except requests.exceptions.RequestException as e:
+                print(f" -> Falha ao acessar a URL: {e}")
+            
+            #mesmo se o acesso funcionar, vai procurar CVE/CWE na URL:
+            cves_url, cwes_url = extrair_referencias(url)
+            cves_encontrados.update(cves_url)
+            cwes_encontrados.update(cwes_url)
+
+            #se a URL falhar, extrai as palavras-chave do caminho (fallback):
+            if not acesso_ok:
+                palavras = extrair_palavras_chave_url(url)
+                if palavras:
+                    trechos.append(
+                        f"\tURL inacessível. Palavras extraídas da URL: {', '.join(palavras)}"
+                    )
+                    print(f" -> Palavras da URL: {', '.join(palavras)}")
         
-    #3: Consulta o MITRE e o NVD para cada CVE encontrado no texto ou na URL:
+    #Consulta o MITRE e o NVD para cada CVE encontrado no texto ou na URL:
     if cves_encontrados:
         for cve_id in sorted(cves_encontrados):
             print(f" -> Consultando MITRE e NVD para {cve_id}...")
@@ -283,11 +280,11 @@ def no_3_api(state: GraphState) -> GraphState:
             else:
                 print(" -> Dados não obtidos do NVD.")
 
-    #4: Registra os CWEs encontrados como contexto adicional:
+    #Registra os CWEs encontrados como contexto adicional:
     if cwes_encontrados:
         trechos.append(f"CWEs identificados: {', '.join(sorted(cwes_encontrados))}")
 
-    #5: Se for Hash consulta a API do VirusTotal:
+    #Se for Hash consulta a API do VirusTotal:
     if tipo == "hash" and termo:
         #print(f" -> Consultando plataforma para a hash '{termo}'. . .")
         #as hashes são consultadas no virustotal.com, mas ele exige uma API key pessoal. tenho aqui uma simulação apenas para entender a lógica
@@ -297,6 +294,20 @@ def no_3_api(state: GraphState) -> GraphState:
             f"{termo} está associada à man in the middle."
         )
         print(" -> Dados da hash carregados.")
+
+    # ~* BUSCA DUCKDUCKGO (incremento sempre, após as APIs) *~
+    # Escolhe o melhor termo disponível para a busca livre:
+    termo_busca_web = termo if termo else state.get("texto_para_rag", "")
+    if termo_busca_web:
+        # limita o tamanho da query (DuckDuckGo não lida bem com textos longos)
+        termo_busca_web = termo_busca_web[:200]
+        print(f" -> Busca complementar no DuckDuckGo: {termo_busca_web[:60]}...")
+        resultado_web = busca_duckduckgo(termo_busca_web, max_resultados=5)
+        if resultado_web:
+            trechos.append(f"Resultados da busca web (DuckDuckGo):\n{resultado_web}")
+            print(" -> Resultados da web obtidos.")
+        else:
+            print(" -> Sem resultados da web (ou lib indisponível).")
     
     #6: junta tudo
     if trechos:
@@ -333,20 +344,15 @@ OUTPUT REQUIREMENTS:
 4. Do NOT invent URLs that are not in the user request.
 """
     
-    #caso hajam novas tentativas:
+    # caso hajam novas tentativas:
     erro_anterior = state.get("erro_validacao", "")
     if erro_anterior and erro_anterior != "APROVADO":
         user_prompt += f"""
 
-ATTENTION - YOUR PREVIOUS ATTEMPT FAILED:
-Validation error:
+ATTENTION - the previous attempt failed validation with this error:
 {erro_anterior}
 
-Rule generated with error:
-{state.get('regra_gerada', '')}
-
-Fix the error and rewrite the YAML perfectly.
-"""
+Fix this specific problem and return a corrected, valid Sigma rule."""
 
     mensagens = [
         SystemMessage(content=SIGMA_SYSTEM_PROMPT),
@@ -364,7 +370,7 @@ Fix the error and rewrite the YAML perfectly.
 #vê se o YAML gerado pela LLM possui algum erro; confere a qualidade.
 def no_5_validador(state: GraphState) ->GraphState:
 
-    print("\n||Nó 5|| Revisando em 3 etapas a qualidade da regra gerada...")
+    print("\n[Nó 5] Revisando em 3 etapas a qualidade da regra gerada...")
 
     regra_revisao = state.get("regra_gerada", "")
     tentativas = state.get("tentativas", 0) + 1
@@ -382,7 +388,29 @@ def no_5_validador(state: GraphState) ->GraphState:
             yaml_limpo = linhas[1] if len(linhas) > 1 else ""
         if yaml_limpo.rstrip().endswith(marcador):
             yaml_limpo = yaml_limpo.rstrip()[:-len(marcador)].rstrip()
-                
+
+    #se o agente gerou várias regras separadas por '---', extrai só a primeira.
+    if "\n---" in yaml_limpo or yaml_limpo.startswith("---"):
+        print(" -> Detectado múltiplos documentos YAML; mantendo apenas o primeiro.")
+        try:
+            documentos = list(yaml.safe_load_all(yaml_limpo))
+            documentos_validos = [d for d in documentos if isinstance(d, dict) and d]
+            if documentos_validos:
+                yaml_limpo = yaml.safe_dump(
+                    documentos_validos[0],
+                    sort_keys=False,
+                    allow_unicode=True,
+                    default_flow_style=False
+                )
+            else:
+                msg_erro = "Nenhum documento YAML válido encontrado entre os múltiplos gerados."
+                print(f"    ERRO: \n{msg_erro}")
+                return {"erro_validacao": msg_erro, "tentativas": tentativas}
+        except yaml.YAMLError as e:
+            msg_erro = f"Falha ao separar documentos YAML múltiplos. Detalhes: {e}"
+            print(f"    ERRO: \n{msg_erro}")
+            return {"erro_validacao": msg_erro, "tentativas": tentativas}
+
     # ~* Correção automática de UUID *~ pro caso do agente gerar um id errado
     regra_corrigida = re.sub(
         r'^id:\s*.+$',
@@ -422,6 +450,24 @@ def no_5_validador(state: GraphState) ->GraphState:
             print(f"    ERRO: \n{msg_erro}")
             return {"erro_validacao":msg_erro, "tentativas":tentativas}
         
+    # ~* VALIDAÇÃO DE TAGS MITRE ATT&CK *~
+    tags = regra_dict.get("tags", [])
+    if tags:
+        validas, invalidas = validar_tags_attack(tags)
+        if invalidas:
+            msg_erro = (
+                f"Etapa 2 falhou - as seguintes tags não existem na taxonomia "
+                f"MITRE ATT&CK: {', '.join(invalidas)}. "
+                f"Use APENAS tags no formato 'attack.tXXXX' (técnicas reais, ex: "
+                f"attack.t1190) ou 'attack.<tatica>' (ex: attack.initial-access, "
+                f"attack.execution, attack.persistence). "
+                f"Remova ou substitua as tags inválidas por equivalentes reais."
+            )
+            print(f"    ERRO: \n{msg_erro}")
+            return {"erro_validacao": msg_erro, "tentativas": tentativas}
+        else:
+            print("    -> Todas as tags ATT&CK são válidas.")
+
     # 3. pySigma - validação semântica do Sigma:
     print(" [3/3] -> Validação semântica e lógica pelo pySigma")
     try:
@@ -450,8 +496,8 @@ def roteador_de_validacao(state: GraphState) -> str:
 
     if erro == "APROVADO":
         return "fim"
-    if tentativas >= 3:
-        print("\n!!! Atingiu 3 tentativas de correção; já é suficiente.")
+    if tentativas >= 4:
+        print("\n!!! Atingiu 4 tentativas de correção; já é suficiente.")
         return "fim"
     print("\n -> Enviando regra para correção...")
     return "refazer"

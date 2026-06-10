@@ -1,0 +1,60 @@
+title: PowerShell Execution from Non-Standard Host Application
+id: 9c2e7f4b-1d3a-4f8e-b7c2-6e4a1d9f3c58
+status: experimental
+description: >
+  Detects PowerShell engine invocations where the HostApplication recorded
+  in the classic PowerShell event log is not one of the standard Microsoft
+  PowerShell binaries. The HostApplication field identifies the process that
+  loaded the PowerShell runtime; under normal conditions this is powershell.exe
+  or powershell_ise.exe in their canonical System32 or SysWOW64 paths.
+  Adversaries and C2 frameworks such as SilentTrinity, Empire, and Covenant
+  embed the PowerShell runtime (System.Management.Automation.dll) directly
+  inside a custom executable, causing all PowerShell activity to be logged
+  under the attacker-controlled host process name rather than powershell.exe.
+  This technique bypasses detections and allow-list policies that focus
+  exclusively on the powershell.exe binary. Detection matches the
+  HostApplication marker in the Data field and then excludes all known
+  legitimate host paths across both architecture variants, the Windows
+  diagnostic host, and third-party products known to legitimately embed
+  the PowerShell runtime.
+references:
+  - https://threathunterplaybook.com/hunts/windows/190815-RemoteServiceInstallation/notebook.html
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.defense_evasion
+  - attack.execution
+  - attack.t1059.001
+  - attack.t1027
+logsource:
+  category: ps_classic_start
+  product: windows
+detection:
+  selection:
+    Data|contains: 'HostApplication='
+  filter_main_default_paths:
+    Data|contains:
+      - 'HostApplication=C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      - 'HostApplication=C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
+      - 'HostApplication=C:\Windows\System32\WindowsPowerShell\v1.0\powershell_ise.exe'
+      - 'HostApplication=C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell_ise.exe'
+      - 'HostApplication=C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'
+      - 'HostApplication=C:/Windows/SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+  filter_main_diagnostic:
+    Data|contains:
+      - 'HostApplication=C:\Windows\System32\sdiagnhost.exe'
+      - 'HostApplication=powershell'
+  filter_optional_third_party:
+    Data|contains:
+      - 'HostApplication=C:\Program Files\Citrix\ConfigSync\ConfigSync.exe'
+      - 'HostApplication=C:\Program Files (x86)\Hexnode\MDM Agent\HexnodeMDMAgent.exe'
+  condition: selection and not 1 of filter_main_* and not 1 of filter_optional_*
+falsepositives:
+  - Legitimate third-party software products that embed the PowerShell
+    runtime for configuration or management purposes and are not covered
+    by the optional filter group; add newly discovered hosts to the
+    filter_optional_third_party block after confirming legitimacy.
+  - In-house automation or DevOps tooling built on the PowerShell SDK
+    that invokes the runtime from a custom host process as part of an
+    approved internal platform.
+level: high

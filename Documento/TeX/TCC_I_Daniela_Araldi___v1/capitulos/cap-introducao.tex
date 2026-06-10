@@ -1,0 +1,89 @@
+%%%% CAPÍTULO 1 - INTRODUÇÃO
+%%
+%% Deve apresentar uma visão global da pesquisa, incluindo: breve histórico, importância e justificativa da escolha do tema,
+%% delimitações do assunto, formulação de hipóteses e objetivos da pesquisa e estrutura do trabalho.
+
+%% Título e rótulo de capítulo (rótulos não devem conter caracteres especiais, acentuados ou cedilha)
+\chapter{Introdução}\label{cap:introducao}
+
+\section{Motivação}\label{sec:consideracoesIniciais}
+
+A segurança cibernética contemporânea representa a base da estabilidade civilizatória global e isto se agrava pela evolução constante das ameaças digitais e complexidade das infraestruturas tecnológicas modernas. 
+Os ataques cibernéticos alimentam um ciclo vicioso de vulnerabilidades, comprometendo desde a integridade de dados sensíveis até a continuidade de serviços essenciais, como por exemplo nas áreas da saúde, energia e finanças.
+Este ciclo demanda abordagens inovadoras diante dos desafios crescentes em face às sofisticações dos ataques e da expansão das infraestruturas tecnológicas heterogêneas \cite{Shah2022}.
+
+Por infraestrutura heterogênea, entende-se um ambiente composto de diferentes tipos de tecnologias, dispositivos, sistemas operacionais, plataformas e arquiteturas que coexistem e interagem entre si. 
+Tal heterogeneidade aumenta a complexidade de gestão e de segurança, pois cada componente possui vulnerabilidades específicas, demandando atualizações distintas e estratégias diferentes de proteção. 
+Neste cenário, um único ponto fraco pode comprometer todo o ecossistema.
+Portanto, isso reforça a ideia de que a defesa cibernética precisa ser cada vez mais inovadora e adaptativa \cite{Shah2022, PaloAlto1, Exabeam1}.
+
+Os Sistemas de Gerenciamento de Informações e Eventos de Segurança (SIEMs) têm se consolidado como pilares na detecção e resposta a ameaças cibernéticas, especialmente diante da sofisticação dos ataques e do volume exponencial de dados gerados --- 
+um exemplo são os \textit{logs}, registros automáticos de eventos que ocorrem em sistemas, aplicativos, redes ou dispositivos, gerados diariamente dentro de uma empresa. 
+SIEMs, de forma similar aos \textit{firewalls}, IDSs (Sistemas de Detecção e Intrusão), IPSs (Sistemas de Prevenção de Intrusão) e \textit{syslogs}, são baseados em regras para filtrar e detectar ameaças e invasões. 
+A má notícia é que essas regras tradicionais de detecção nem sempre acompanham a evolução das técnicas maliciosas, apresentando limitações diante da necessidade de respostas mais rápidas e inteligentes \cite{Shah2022, PodzinsRomanovs}. 
+
+Dentre as iniciativas que buscam suprir essa lacuna, destacam-se as regras \textit{Sigma}, um formato aberto e descritivo voltado à criação de regras de detecção independentes de plataformas, o que facilita sua adoção em diferentes soluções de SIEMs. 
+No entanto, a criação e manutenção manual dessas regras pode se tornar um gargalo, principalmente em ambientes com elevado volume de eventos de segurança \cite{AboutSigma}.
+
+O padrão \textit{Sigma} permite a criação de regras de detecção em YAML --- uma linguagem de serialização de dados, usada para representar informações estruturadas de forma simples e legível, 
+sendo compartilháveis e convertíveis para linguagens como \textit{Splunk SPL} ou \textit{Elasticsearch Query} (linguagens de consulta nativas respectivamente do \textit{Splunk} e \textit{Elasticsearch}), 
+otimizando a colaboração entre as equipes de segurança. 
+No entanto, a geração manual dessas regras ainda é lenta e propensa a lacunas, especialmente diante de ameaças emergentes, como um possível \textit{ransomware} 
+(tipo de \textit{malware} que sequestra dados ou sistemas e exige resgate para devolvê-los ao usuário)
+ou \textit{zero-day exploit} --- ataque em que se explora uma falha de segurança desconhecida do \textit{software}, \textit{firmware} ou \textit{hardware} quando a vulnerabilidade ainda não foi descoberta pelo desenvolvedor e não há correção disponível \cite{AboutSigma, Exabeam1}.
+
+Com isso, é evidente que a aplicação de técnicas de inteligência artificial (IA) é uma ferramenta promissora na automatização da geração de regras \textit{Sigma}, agilizando a detecção de comportamentos suspeitos ou maliciosos, considerando o tempo útil da elaboração de uma regra e a sua qualidade técnica. 
+%\textit{A partir da análise de registros de eventos e da identificação de padrões associados a ataques conhecidos ou vulnerabilidades previamente exploradas, modelos de aprendizado de máquina são capazes de sugerir novas regras com base em evidências históricas, ampliando significativamente a capacidade de resposta dos Centros de Operações de Segurança (SOC).}
+%\adr{Aqui tem que se tomar certo cuidado com o que destacar ou prometer. "identificação de padrões associados a ataques conhecidos ou vulnerabilidades previamente exploradas"  envolveria um treinamento muito mais especializado e extenso, que não sei se seria interessante incluir. A ideia é criar regras pontuais, com base numa notícia publicada na Internet, um CVE ou algum feed de notícias sobre vulnerabilidades, de forma supervisionada pelo analista, nada será totalmente automático ou totalmente autônomo. O ideal seria fornecer para o agente o mapa da infraestrutura da rede do usuário (que equipamentos ele utiliza, marca, modelo, versão do software, etc), para que com base nisso, o agente busque possíveis vulnerabilidades e sugira uma regra nova. O que seria interessante destacar também é que esse agente buscaria frequentemente atualizações para as regras em uso de um usuário, caso novas informações sejam publicadas e sugeriria atualizações para melhorar a acurácia.}
+%Essa abordagem indica uma evolução importante sobre SIEMs autoadaptáveis e mais eficientes, capazes de se ajustar ao contexto atual das ameaças com menor intervenção humana e mais rapidez \cite{Exabeam1,PaloAlto1}.
+
+Sendo assim, este trabalho propõe a implementação de um agente capaz de automatizar a criação de regras \textit{Sigma}, 
+a partir de vulnerabilidades e dados históricos de ataques --- \gls{CVE}s, 
+indicadores de comprometimento (IOCs) e \textit{logs} de incidentes. 
+A ideia principal é a ferramenta estar habilitada para criar regras pontuais, com base em nova notícia sobre vulnerabilidade reproduzida na \textit{internet}, CVE, CWE, de forma supervisionada pelo analista (nada será totalmente automático),
+%O ideal seria fornecer para o agente o mapa da infraestrutura da rede do usuário (que equipamentos ele utiliza, marca, modelo, versão do software, etc), para que com base nisso, o agente busque possíveis vulnerabilidades e sugira uma regra nova. O que seria interessante destacar também é que esse agente buscaria frequentemente atualizações para as regras em uso de um usuário, caso novas informações sejam publicadas e sugeriria atualizações para melhorar a acurácia.
+além de frequentemente buscar e sugerir atualizações para as regras utilizadas pelo usuário conforme novas informações sejam publicadas, de forma a melhorar sua acurácia.
+
+O agente utilizará técnicas de Processamento de Linguagem Natural (NLP) para extrair padrões de ameaças em textos não estruturados, como relatórios de ataques e artigos técnicos \cite{Shah2022}, e técnicas de aprendizado de máquina --- mais precisamente LLMs (\textit{Large Language Models}) para a geração autônoma de regras \textit{Sigma}.
+O estudo de \citeonline{Lempinen2023Chatbot} apud \citeonline{hasanov2024application} mostra que na integração entre o \textit{ChatGPT} e o SIEM \textit{Wazuh}
+\footnote{O \textit{Wazuh} é uma solução de segurança de código aberto que possui funcionalidades de HIDS (\textit{Host-based Intrusion Detection System}, Sistema de Detecção de Intrusão baseado em Host) e SIEM \cite{Wazuh_Official}.} 
+houve eficácia na análise de \textit{logs}, detecção de padrões de ameaças e automatização de respostas de segurança. 
+O \textit{feedback} dos usuários indicou que a LLM é fácil de usar e eficaz no fornecimento de informações detalhadas sobre segurança, beneficiando principalmente os usuários com conhecimento limitado sobre o assunto. 
+Esse tipo de capacidade sugere que LLMs podem ser adaptados para gerar regras \textit{Sigma} autônomas a partir de dados de ameaças em tempo real. 
+
+%Esta proposta visa contribuir com a evolução do processo de detecção em SIEMs, almejando fornecer mecanismos mais eficientes, escaláveis e autônomos para antecipar, reconhecer e mitigar ameaças cibernéticas em ambientes corporativos e governamentais, inclusive com potencial de democratizar o acesso a detecções avançadas, especialmente para as organizações com recursos limitados. Por fim, ao aplicar inteligência em detecção de ameaças de forma automatizada, o projeto contribui para um ecossistema de segurança mais resiliente e colaborativo, mitigando um dos gargalos na defesa cibernética moderna, que é a latência entre a descoberta de uma ameaça e sua detecção eficaz.
+
+%\jt{<se houver tempo, talvez seria interessante contextualizar, brevemente, processamento de língua natural e LLM, que de fato serão utilizados no seu trabalho, por mais que também envolvam aprendizado de máquina (principalmente LLM)>}
+
+\section{Objetivos}\label{sec:objetivos}
+
+\subsection{Objetivo geral}\label{subsec:objetivoGeral}
+
+Desenvolver um agente que automatize a criação de regras \textit{Sigma} para SIEM, treinado com a integração de dados históricos de ataques cibernéticos (IOCs, CVEs, \textit{logs} de incidentes) e vulnerabilidades, visando otimizar a detecção de ameaças em SIEMs e reduzir a demora entre a identificação de uma ameaça e sua mitigação.
+
+\subsection{Objetivos específicos}\label{subsec:objetivosEspecificos}
+
+\begin{itemize}
+    \item Criação de regras \textit{Sigma} utilizando LLMs;
+    \item Desenvolvimento de um agente autônomo para a geração de regras \textit{Sigma};
+    \item Comparação dos resultados dos métodos utilizados;
+\end{itemize}
+
+%\section{Justificativa}\label{sec:justificativa}
+
+%Haja vista a crescente complexidade e volume dos dados de segurança gerados em ambientes organizacionais, os quais tornam inviável a análise manual e a atualização contínua de regras de detecção em sistemas SIEM, a utilização de regras \textit{Sigma}, apesar de padronizada e amplamente aplicável, ainda depende de especialistas manuseando a sua criação, o que representa um entrave frente à velocidade com que novas ameaças surgem. Neste cenário, a integração de inteligência artificial ao processo de geração de regras se apresenta como uma interessante solução, sendo capaz de automatizar a identificação de \adr{"padrões maliciosos com base em dados históricos" (aqui novamente: você vai criar um agente treinado para descobrir "padrões maliciosos" ou simplesmente sugerir a criação de regras com base nos dados e campos que um evento de segurança pode conter para gerar um alarme?)}, visando fortalecer a capacidade de resposta dos SOCs. Ao propor um sistema de sugestão de regras \textit{Sigma} treinado com uma base de dados reais de ataques e vulnerabilidades, este projeto de pesquisa visa fomentar mais eficiência, escalabilidade e inteligência nos processos de detecção de ameaças, alinhando-se às demandas contemporâneas de cibersegurança.
+ 
+
+%Justificar o objeto de pesquisa (o que será feito) e a forma de resolução do problema (como fazer). A forma de resolução pode estar centrada no método, nas tecnologias, no uso de conceitos (fundamentação teórica).
+%A Justificativa explicita porque desenvolver o referido trabalho, como o mesmo se insere no contexto de pesquisa, de produção científica. Pode incluir o porquê utilizar as tecnologias e ferramentas indicadas, a contribuição em termos de inovação ou mesmo de aprendizado.
+%O trabalho não precisa ser justificado em decorrência de ser inovador ou por ter gerado uma significativa contribuição ao conhecimento na área em que o mesmo se insere. Pode referir-se simplesmente à aplicabilidade de conhecimentos adquiridos durante o curso. Sendo assim, a justificativa não deve ser elaborada considerando um mercado a ser atingido e sim com relação ao uso de tecnologias aprendidas e/ou estudadas, o conhecimento e aprendizado do aluno e a aplicabilidade do trabalho desenvolvido.
+
+\section{Estrutura do trabalho}\label{sec:estruturaTrabalho}
+
+Este trabalho possui cinco capítulos, organizados de forma a conduzir o leitor do embasamento teórico à abordagem metodológica que será adotada. No primeiro capítulo, apresenta-se a introdução do tema, defendendo a motivação, os objetivos e a justificativa do estudo. 
+O capítulo 2 disserta sobre conceitos necessários para se compreender o assunto do trabalho: sistemas SIEM, regras \textit{Sigma} e LLMs --- o que são, como se configuram na segurança da informação e como se relacionam entre si diante da mitigação de ameaças.
+Já o capítulo 3 discute trabalhos relacionados, oferecendo uma visão crítica sobre pesquisas e soluções correlatas. 
+O capítulo 4 descreve os materiais e os métodos utilizados, detalhando as etapas do desenvolvimento da proposta em três fases. 
+Por fim, são apresentadas as referências que fundamentam teoricamente o trabalho.
+
+

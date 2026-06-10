@@ -1,0 +1,28 @@
+title: Network Connection Initiated by MSBuild
+id: e3b1c5d4-a2e6-4f78-98b9-c6d5e4f3a2b2
+status: experimental
+description: Detects network connections initiated by MSBuild, a signed Microsoft binary often abused by C2 frameworks like SilentTrinity to execute attacker-controlled payloads while bypassing application allow-lists. Outbound traffic from MSBuild to standard web ports is highly suspicious.
+references:
+- [https://www.blackhillsinfosec.com/my-first-joyride-with-silenttrinity/](https://www.blackhillsinfosec.com/my-first-joyride-with-silenttrinity/)
+author: Senior Threat Detection Engineer
+date: 2026/06/08
+tags:
+- attack.defense_evasion
+- attack.t1218.005
+- attack.command_and_control
+- attack.t1071.001
+logsource:
+product: windows
+category: network_connection
+detection:
+selection:
+Image|endswith: '\msbuild.exe'
+filter:
+DestinationPort:
+- 80
+- 443
+Initiated: 'true'
+condition: selection and filter
+falsepositives:
+- Legitimate software development workflows downloading remote packages (e.g., via NuGet) or building projects that require external web dependencies during compilation.
+level: medium

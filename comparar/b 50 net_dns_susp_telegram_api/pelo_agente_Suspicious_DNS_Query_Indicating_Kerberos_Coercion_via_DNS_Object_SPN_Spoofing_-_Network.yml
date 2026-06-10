@@ -1,0 +1,34 @@
+title: Suspicious DNS Query Indicating Kerberos Coercion via DNS Object SPN Spoofing - Network
+id: c646b84f-99f5-445f-9bac-2406d55c0068
+related:
+    - id: b07e58cf-cacc-4135-8473-ccb2eba63dd2 # Potential Kerberos Coercion via DNS Object Spoofing
+      type: similar
+    - id: e7a21b5f-d8c4-4ae5-b8d9-93c5d3f28e1c # Suspicious DNS Query Indicating Kerberos Coercion via DNS Object Spoofing
+      type: similar
+status: experimental
+description: |
+    Detects DNS queries containing patterns associated with Kerberos coercion attacks via DNS object spoofing.
+references:
+  - https://www.synacktiv.com/publications/ntlm-reflection-is-dead-long-live-ntlm-reflection-an-in-depth-analysis-of-cve-2025
+  - https://googleprojectzero.blogspot.com/2021/10/using-kerberos-for-authentication-relay.html
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+date: 2025-06-20
+tags:
+    - attack.collection
+    - attack.credential-access
+    - attack.persistence
+    - attack.privilege-escalation
+    - attack.t1557.001
+    - attack.t1187
+logsource:
+    product: zeek
+    service: dns
+detection:
+    selection:
+        query|contains|all:
+            - 'UWhRCA' # Follows this pattern UWhRCAAAAA..BAAA
+            - 'BAAAA'
+    condition: selection
+falsepositives:
+    - Unknown
+level: high

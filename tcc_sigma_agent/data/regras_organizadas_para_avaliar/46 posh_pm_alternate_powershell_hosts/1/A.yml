@@ -1,0 +1,110 @@
+title: Remote Service Installation from Unusual Location
+id: 2026-06-08-remote-service-installation-0001
+status: experimental
+description: Detects creation or installation of Windows services where the service binary is located in user-writable or non-standard system locations, or where service installation is performed by uncommon tools or parent processes. Attackers often install services to achieve persistence by placing service executables in Downloads, Temp, AppData, or network shares and using sc.exe, powershell, wmic, or service wrappers (nssm/srvany). Correlate service install events with process creation and file writes to raise confidence.
+author: Detection Engineer
+date: 2026-06-08
+references:
+  - https://threathunterplaybook.com/hunts/windows/190815-RemoteServiceInstallation/notebook.html
+logsource:
+  product: windows
+  service: security,sysmon
+  category: process_creation,service_installation,file_event
+detection:
+  selection_service_install_event:
+    EventID: 7045
+    # Windows Security log: A service was installed
+  selection_service_image_path_unusual:
+    EventID: 7045
+    ServiceFileName|re:
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\'
+      - '(?i)\\AppData\\Local\\Temp\\'
+      - '(?i)\\AppData\\Roaming\\'
+      - '(?i)\\Users\\Public\\'
+      - '(?i)\\.*\\Downloads\\'
+      - '(?i)\\\\Temp\\\\'
+      - '(?i)^[a-z]:\\.*\
+
+\[^\\]
+
++\
+
+\[^\\]
+
++\\.(exe|dll)$'
+  selection_service_image_network:
+    EventID: 7045
+    ServiceFileName|re:
+      - '(?i)^(\\\\\\\\|https?:\/\/|file:\/\/)'
+  selection_service_installer_tools:
+    EventID: 1
+    Image|re:
+      - '(?i)\\sc\.exe$'
+      - '(?i)\\wmic\.exe$'
+      - '(?i)\\powershell(\.exe)?$'
+      - '(?i)\\pwsh(\.exe)?$'
+      - '(?i)\\regsvr32\.exe$'
+      - '(?i)\\nssm\.exe$'
+      - '(?i)\\srvany\.exe$'
+    CommandLine|re:
+      - '(?i)\bcreate\b|\bcreate service\b|\bcreateobject\b|\bNew-Service\b|\bInstall-Service\b|\bsc\s+create\b'
+  selection_service_installer_parent_unusual:
+    EventID: 1
+    ParentImage|re:
+      - '(?i)\\(msedge|chrome|firefox|iexplore|outlook|winword|excel|powerpnt)\.exe$'
+  selection_file_write_service_binary:
+    EventID: 11
+    TargetFilename|re:
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\.*\.(exe|dll|ps1|bat|cmd)$'
+      - '(?i)\\AppData\\Local\\Temp\\.*\.(exe|dll|ps1|bat|cmd)$'
+  selection_unsigned_service_binary:
+    EventID: 11
+    TargetFilename|re:
+      - '(?i)\.(exe|dll)$'
+    Signed: "false"
+  selection_rapid_service_install_after_write:
+    # Correlate: file write followed by service install within short timeframe
+    correlation:
+      - when: selection_file_write_service_binary
+      - then: selection_service_install_event
+      - within: "2m"
+  condition: |
+    (selection_service_install_event and (selection_service_image_path_unusual or selection_service_image_network))
+    or (selection_service_installer_tools and (selection_service_installer_parent_unusual or selection_service_image_path_unusual))
+    or selection_rapid_service_install_after_write
+fields:
+  - timestamp
+  - EventID
+  - ComputerName
+  - SubjectUserName
+  - ServiceName
+  - ServiceFileName
+  - Image
+  - ParentImage
+  - CommandLine
+  - TargetFilename
+  - Signed
+  - ProcessId
+falsepositives:
+  - Legitimate installers, developer tools, or enterprise deployment systems that stage or install services in non-standard locations (whitelist known deployment servers and automation accounts).
+  - Portable or self-contained applications intentionally installed by users to non-system paths.
+level: high
+tags:
+  - attack.persistence
+  - attack.t1543
+  - attack.t1543.003
+  - detection.windows
+  - hunting.remote_service_installation
+notes: |
+  - Tuning: whitelist known CI/CD, deployment, and backup hosts; restrict detection to external-facing or user endpoints and to service installs by non-admin or unusual parent processes.
+  - Investigation: collect the service binary, compute hashes, check digital signature, capture full process tree and command lines for the installer, review network connections from the host, and search for other hosts with the same service binary or installer command lines.
+  - Response: if malicious, stop and disable the service, isolate the host, remove the binary, rotate credentials if present, and perform a broader hunt for related persistence mechanisms.
+

@@ -1,0 +1,119 @@
+% ATENÇÃO - veja com o seu orientador se você vai ter este capítulo e se este vai ter nome!
+\chapter{Trabalhos Relacionados}
+\label{cap:trabalhos:relacionados}
+
+%\jt{<neste capítulo poderiam ser apresentados mais trabalhos relacionados e de forma compacta. Segue um exemplo de um artigo que publiquei recentemente: \url{https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=11025844}>}
+
+%\jt{<Se você quiser, pode deixar do jeito que está, já há mais detalhes em comparação com artigos. Mesmo assim, recomendo a inclusão de pelo menos mais um trabalho relacionado>}
+
+%\jt{<roteiro para a apresentação de cada trabalho relacionado: o que foi feito; metodologia resumida; principais resultados>}
+
+\section{Machine Learning Algorithms in SIEM Systems for Enhanced Detection and Management of Security Events}
+
+O estudo de \citeonline{Nurusheva2024} propõe a integração de algoritmos de \textit{machine learning} (ML) em SIEMs convencionais para superar insuficiências na detecção das ameaças modernas. 
+O objetivo é aprimorar a identificação de ataques desconhecidos e reduzir falsos positivos por meio de um modelo dinâmico que analisa padrões históricos. 
+Para validar a abordagem, os pesquisadores implementaram uma arquitetura utilizando a pilha ELK 
+\footnote{Sigla para três ferramentas de código aberto: \textit{Elasticsearch}, que fornece funcionalidades de análise e pesquisa; \textit{Logstash}, responsável por coletar, agregar e armazenar dados usados pelo \textit{Elasticsearch}; e \textit{Kibana}, que fornece a interface do usuário e informações sobre os dados coletados e analisados anteriormente pelo \textit{Elasticsearch}.} 
+e simularam cenários reais de ciberataques na ferramenta DVWA (\textit{Damn Vulnerable Web Application}), criada especialmente para testes de penetração. 
+Um modelo de CNN (Rede Neural Convolucional) foi treinado com dados de amostras de ataques do repositório \textit{MITRE}, priorizando a detecção de \textit{ransomware} e movimentação lateral. 
+Os autores também mencionam que o código foi desenvolvido para comparação com modelos de \textit{Random Forest}(algoritmo de ML que combina a saída de múltiplas árvores de decisão para alcançar um único resultado \cite{IBM_RandomForest}) 
+e SVM (\textit{Support vector machine} --- algoritmo supervisionado de ML que classifica dados encontrando uma linha ou hiperplano ótimo que maximiza a distância entre cada classe em um espaço N-dimensional \cite{IBM_SVM}).
+
+%\jt{<seria possível apresentar os principais resulados em termos numéricos?>}
+
+Os autores afirmam ganhos operacionais significativos nos seus resultados: 
+o sistema reduziu falsos positivos ao correlacionar eventos de múltiplas fontes (\textit{firewalls}, IDS e servidores), 
+automatizou respostas em tempo real (como bloqueio de IPs via integração com \textit{bots} do \textit{Telegram}) e otimizou a eficiência de SOCs ao transformar alertas brutos em ações acionáveis. 
+\citeonline{Nurusheva2024} concluiram que os modelos de ML identificam padrões sutis em grandes volumes de \textit{logs} com maior precisão do que as regras estáticas, além de se adaptarem continuamente a novas táticas de ataque sem intervenção manual constante.
+A pesquisa contribui para entender um caminho de integração entre ML e SIEM, neste caso utilizando técnicas de aprendizado não supervisionado;
+no entanto, não fornece números quantitativos específicos.
+
+A solução do trabalho conecta-se com o presente projeto através do objetivo de ambos,
+que é sofisticar os SIEMs para o melhor enfrentamento de novas ameaças e/ou prevenção de ataques,
+e da base de vulnerabilidades em comum  --- padrão MITRE. 
+Os trabalhos diferem-se principalmente na abordagem: \citeonline{Nurusheva2024} possuem uma metodologia mais qualitativa e descritiva, servindo de exemplo teórico. 
+Já o trabalho da autora é um estudo qualitativo e quantitativo, de teor empírico, que fornecerá percentuais de dados comparativos no final.
+
+%\jt{<no quê o seu trabalho é diferente? (é importante "vender o peixe" para o seu trabalho)>}
+
+
+\section{Automated Log Analysis and Anomaly Detection Using Machine Learning}
+
+O estudo de \citeonline{Shah2022}, tem como objetivo propor um modelo automatizado para a detecção de anomalias em arquivos de \textit{logs}, enfrentando o desafio da ausência de dados rotulados. 
+A motivação central do trabalho é reduzir a sobrecarga de alertas nos sistemas de segurança e eliminar a necessidade de inspeção manual extensiva, inviável em ambientes com grandes volumes de \textit{logs}. 
+Para isso, os autores buscaram uma solução que aproveita tanto técnicas de aprendizado de máquina quanto o conhecimento prévio dos especialistas.
+
+A metodologia do trabalho combina aprendizado não supervisionado (\textit{K-means}
+%\footnote{\textit{K-Means} é um algoritmo iterativo de agrupamento que particiona N objetos em K \textit{clusters} disjuntos, utilizando centróides e distância euclidiana para minimizar a variância intra-\textit{cluster} \cite{oti2021comprehensive}.} 
+para \textit{clustering}) com aprendizado supervisionado (classificação com \textit{Naive Bayes}),
+utilizando regras automatizadas geradas a partir de conhecimento especializado para rotular registros inicialmente não estruturados. 
+Após a etapa de pré-processamento e vetorização de dados com TF-IDF, 
+os autores aplicam \textit{Elbow Method} para definir o número ideal de \textit{clusters} e,
+em seguida, criam regras baseadas em padrões observados nos \textit{clusters} para construir um conjunto de dados rotulados. 
+Esse conjunto, então, é usado para treinar um classificador que distingue eventos normais e anômalos, alcançando acurácia de 98\% na base de testes.
+
+O artigo de \citeonline{Shah2022} propõe a geração automática de rótulos com base em regras para prever ameaças com a ajuda de ML. 
+Já o presente trabalho busca desenvolver um agente autônomo que crie regras \textit{Sigma} para sistemas SIEM. 
+Os autores do estudo concluem que a detecção automatizada de anomalias enfrenta alguns desafios e um deles é a heterogeneidade dos ambientes de monitoramento e igualmente seus rótulos --- 
+desafio este que se pretende minimizar com a automatização da criação de regras \textit{Sigma}.
+
+Enquanto \citeonline{Shah2022} foca em rotular automaticamente dados de \textit{logs}, o uso das regras \textit{Sigma} permite a unificação dos padrões, amenizando os desafios dos ambientes heterogêneos, mencionado pelos autores. 
+%\adr{os SIEMs vão continuar sendo heterogêneos, pois cada um usa um formato e padronização de dados diferentes, além do que os eventos de devices diferentes também não são padronizados. As regras SIGMA são só uma forma de expressar a regra ou a ameaça e o que deve ser buscado, mas ainda precisa ser convertido para o SIEM de destino, que já possui as suas regras próprias, alías, mais de 90\% das regras usadas são do próprio SIEM, não vem e nem virão do SIGMA. Essa questão precisa estar clara pra você, principalmente, e assim conseguir definir melhor o escopo do trabalho e o objetivo que desejará alcançar no final. Enfim, SIGMA não é uma receita mágica que resolve esses problemas apresentados em outros trabalhos, mas é uma forma generalista de compartilhar novas regras vindas da comunidade e que podem ser convertidas automaticamente ou manualmente para o SIEM que o usuário já utiliza.}
+Dentre outros pontos, este trabalho propõe uma solução mais genérica, com regras prontas para implantação, enquanto o trabalho citado aborda um modelo de classificação focado em \textit{logs}.
+
+
+\section{From Text to MITRE Techniques: Exploring the Malicious Use of Large Language Models for Generating Cyber Attack Payloads}
+
+O artigo de \citeonline{charan2023fromtext} investiga os riscos associados ao uso malicioso de modelos de linguagem generativa para criação de códigos ofensivos baseados nas técnicas do MITRE ATT\&CK.
+O objetivo do estudo foi avaliar a capacidade desses modelos em gerar, via engenharia de \textit{prompt}, códigos executáveis correspondentes às 10 técnicas MITRE mais usadas por atacantes em 2022.
+Também buscam comparar o desempenho do \textit{ChatGPT} e \textit{Bard}(nomenclatura antiga do \textit{Google Gemini})
+em termos de geração, eficácia e sua habilidade de explicar claramente o que o código faz, como funciona e qual seu impacto.
+
+Os autores aplicaram engenharia de \textit{prompt} em ambos modelos já citados, 
+buscando contornar restrições éticas e técnicas impostas por padrão para as inteligências, 
+com o intuito de gerar com sucesso \textit{scripts} maliciosos.
+Dois exemplos são as técnicas T1055, de Injeção de processos \cite{mitreDataImpact},
+e T1486, de Criptografia para Impacto \cite{mitreDataImpact}.
+Esses códigos foram executados em um ambiente controlado (\textit{sandbox}),
+permitindo que a análise dos resultados ocorresse em segurança.
+O estudo de \citeonline{charan2023fromtext} se baseou em dados do \textit{Red Report} de 2023 \cite{picus2023redreport} da \textit{Picus Labs} --- divisão de pesquisa e desenvolvimento da empresa de segurança cibernética \textit{Picus Security} \cite{picusAbout},
+que analisou mais de 500 mil amostras de \textit{malware} reais. 
+A análise demonstrou que o \textit{ChatGPT} foi mais eficaz do que o \textit{Google Bard} na geração de código funcional e correção de erros.
+
+O artigo destaca tanto os riscos quanto os possíveis usos defensivos da tecnologia,
+como a simulação de cenários realistas por profissionais de segurança ofensiva, como os \textit{Pentesters}, profissionais de segurança ou \textit{hackers} éticos que simulam os ataques cibernéticos para encontrar vulnerabilidades no sistema computacional \cite{ibm_penetration_testing}, inclusos no \textit{Red Team} da empresa, que reúne todos os profissionais autorizados a reproduzir investidas no sistema como se fossem um potencial adversário contra a postura de segurança do ambiente \cite{nist_red_team}.
+O estudo de \citeonline{charan2023fromtext} também utiliza a engenharia de \textit{prompt} para extrair melhores informações das LLMs e automatizar tarefas correlacionadas, através da exploração do uso ofensivo das LLMs (para fins de conhecimento).
+Em contrapartida, o presente projeto sugere o uso de forma defensiva, voltado à detecção de ameaças e correlação de eventos. 
+
+%\vspace{1em}
+%\textcolor{white}{\gls{ioc}}
+%\textcolor{white}{\gls{cve}}
+%\textcolor{white}{\gls{llm}}
+%\textcolor{white}{\gls{ioc}}
+%\textcolor{white}{\gls{ips}}
+%\textcolor{white}{\gls{ia}}
+%\textcolor{white}{\gls{ml}}
+%\textcolor{white}{\gls{nlp}}
+%\textcolor{white}{\gls{soc}}
+%\textcolor{white}{\gls{gdpr}}
+%\textcolor{white}{\gls{pci-dss}}
+%\textcolor{white}{\gls{cwe}}
+%\textcolor{white}{\gls{nist}}
+%\textcolor{white}{\gls{cisa}}
+%\textcolor{white}{\gls{nvd}}
+%\textcolor{white}{\gls{cvss}}
+%\textcolor{white}{\gls{pln}}
+%\textcolor{white}{\gls{ri}}
+%\textcolor{white}{\gls{ei}}
+%\textcolor{white}{\gls{ta}}
+%\textcolor{white}{\gls{dvwa}}
+%\textcolor{white}{\gls{cnn}}
+%\textcolor{white}{\gls{svm}}
+%\textcolor{white}{\gls{ip}}
+%\textcolor{white}{\gls{tf-idf}}
+%\vspace{1em}
+
+%\adr{"o projeto proposto", escrito dessa forma, não dá pra saber se está falando do projeto apresentado no trabalho relacionado ou no seu. Sempre que for o seu, coloque "este trabalho, este projeto" ou algo similar, para deixar claro.}
+
+%\jt{<descrever mais um trabalho relacionado. Para o TCC2: criar uma tabela que apresente diversos trabalhos relacionados>}
+

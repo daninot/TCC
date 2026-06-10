@@ -1,0 +1,205 @@
+title: BazaLoader Masquerading - PDF File Renamed to DLL and Executed via rundll32
+id: 8c3f1e72-5b04-4d9a-a618-3e7f2d094c5a
+status: experimental
+description: |
+    Detects the BazaLoader delivery technique first reported by @ffforward
+    (January 2022) and codified in Atomic Red Team T1036 Atomic Test #2.
+
+    The technique works as follows:
+
+      Step 1 — A phishing email delivers a ZIP archive containing two files:
+                 README.cmd   — a batch script masquerading as documentation
+                 <name>.pdf   — the BazaLoader DLL with a .pdf extension
+                               (passes mail gateway inspection since .pdf is benign)
+
+      Step 2 — The victim extracts the ZIP and opens README.cmd, which executes
+                two key commands:
+                  a) ren <name>.pdf <name>.dll   (rename the disguised payload)
+                  b) rundll32 <name>.dll,<export> (execute the now-renamed DLL)
+
+      Step 3 — BazaLoader initialises, beacons to C2, and fetches Cobalt Strike
+                or a second-stage ransomware payload.
+
+    The detection has two complementary branches:
+
+    BRANCH A (file_rename): A file with .pdf extension is renamed to .dll. This
+    combination — not a .pdf being opened, not a .dll being written fresh, but
+    specifically a .pdf renamed to .dll — has no known legitimate use case. The
+    rename event is the earliest possible detection point, before any code runs.
+
+    BRANCH B (process_creation): rundll32.exe is executed with a command line
+    that references a DLL in a user-writable directory (Downloads, Temp, AppData,
+    Desktop, or a path matching %USERPROFILE%) by an ancestor cmd.exe process.
+    This catches the execution even if the rename event is missed (e.g., on hosts
+    without file-rename telemetry).
+
+    Both branches are high-confidence in isolation; together they form a kill
+    chain correlation that eliminates virtually all false positives.
+
+    Malware family context:
+      BazaLoader (aka BazarLoader) was developed by the TrickBot group and widely
+      used from 2020–2022 as an initial-access loader delivering Cobalt Strike,
+      Ryuk, Conti, and other ransomware families. This specific delivery variant
+      abuses the .pdf extension to bypass mail filters and endpoint AV that rely
+      on extension-based inspection without reading file magic bytes.
+
+    References:
+      - https://twitter.com/ffforward/status/1481672378639912960
+      - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1036/T1036.md#atomic-test-2---malware-masquerading-and-execution-from-zip-file
+      - https://attack.mitre.org/techniques/T1036/   (Masquerading)
+      - https://attack.mitre.org/techniques/T1218/011/ (Signed Binary Proxy: Rundll32)
+
+author: Claude (based on @ffforward reporting and Red Canary Atomic Red Team)
+date: 2026-06-06
+modified: 2026-06-06
+tags:
+    - attack.defense-evasion
+    - attack.t1036                # Masquerading
+    - attack.t1036.008            # Masquerading: Masquerade File Type
+    - attack.execution
+    - attack.t1218.011            # System Binary Proxy Execution: Rundll32
+    - attack.initial-access
+    - attack.t1566.001            # Phishing: Spearphishing Attachment
+    - tlp:white
+
+# ─── BRANCH A: file_rename logsource ──────────────────────────────────────────
+# Requires a SIEM/EDR that captures file rename events with both old and new
+# filename. Sysmon EventID 11 captures creation; for rename specifically use
+# EventID 11 with TargetFilename showing the new name OR a dedicated rename event.
+# CrowdStrike: RenameFile event. MDE: DeviceFileEvents with ActionType=FileRenamed.
+# If your platform does not emit rename events, rely on Branch B alone.
+
+---
+# NOTE: SIGMA does not natively support multi-logsource rules in a single file.
+# This file uses the conventional approach of placing Branch A and Branch B as
+# separate rule documents separated by '---'. Feed both to your SIEM; correlate
+# them on host + timestamp (within 30s) for the highest-fidelity alert.
+# Many detection engineers inline both branches under process_creation using
+# the CommandLine approach (Branch B) since file-rename telemetry is less
+# universally available.
+---
+
+title: BazaLoader - PDF Renamed to DLL (File Rename Indicator)
+id: 8c3f1e72-5b04-4d9a-a618-3e7f2d094c5a
+status: experimental
+description: >
+    Branch A — file rename event: a file with .pdf extension is renamed to .dll.
+    This has no legitimate use case and is the earliest detection point for the
+    BazaLoader PDF-masquerade delivery technique (@ffforward, Jan 2022).
+    Correlate with rule 1d94b7a3-... (rundll32 execution from user dir) within 30s
+    on the same host for confirmed kill-chain match.
+tags:
+    - attack.defense-evasion
+    - attack.t1036.008
+logsource:
+    category: file_rename          # Sysmon EID 11 + rename semantics; MDE FileRenamed
+    product: windows
+detection:
+    selection:
+        # Old name ends with .pdf, new name ends with .dll on the same file object.
+        # Field names vary by EDR — adjust as needed:
+        #   Sysmon:  TargetFilename (new), PreviousTargetFilename (old name before rename)
+        #   MDE:     FolderPath + FileName (new), PreviousFileName (old)
+        #   Falcon:  TargetFileName, OldFileName
+        PreviousTargetFilename|endswith: '.pdf'
+        TargetFilename|endswith: '.dll'
+    filter_system_paths:
+        # Exclude renames in system-managed directories where legitimate
+        # software update chains (very rarely) swap versioned files.
+        TargetFilename|startswith:
+            - 'C:\Windows\'
+            - 'C:\Program Files\'
+            - 'C:\Program Files (x86)\'
+    condition: selection and not filter_system_paths
+falsepositives:
+    - Intentional developer file manipulation (local dev environment) — extremely rare
+    - No known legitimate software performs this rename in user-writable directories
+level: high
+
+---
+
+title: BazaLoader - rundll32 Executing DLL From User-Writable Directory via cmd.exe
+id: 1d94b7a3-8e52-4f0b-c729-5a3b1e806d8f
+status: experimental
+description: >
+    Branch B — process creation: rundll32.exe executing a DLL from a user-writable
+    path (Downloads, Temp, AppData, Desktop) where the parent or grandparent process
+    is cmd.exe. This matches the README.cmd → rundll32 execution step of the
+    BazaLoader PDF-masquerade delivery chain. High-confidence standalone; correlate
+    with Branch A (PDF→DLL rename) for kill-chain confirmation.
+tags:
+    - attack.execution
+    - attack.t1218.011
+    - attack.defense-evasion
+    - attack.t1036
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_rundll32:
+        Image|endswith: '\rundll32.exe'
+        # DLL executed from a user-writable path — not from System32/SysWOW64
+        CommandLine|contains:
+            - '\Downloads\'
+            - '\AppData\'
+            - '\Temp\'
+            - '\Desktop\'
+            - '\Users\'
+        CommandLine|endswith: '.dll'
+
+    selection_cmd_parent:
+        # The .cmd script spawns rundll32 directly or via a child cmd.exe
+        ParentImage|endswith: '\cmd.exe'
+
+    selection_cmd_grandparent:
+        # Alternative: grandparent is cmd.exe (cmd → cmd → rundll32)
+        # Use if your EDR provides ParentOfParentImage
+        ParentImage|endswith: '\cmd.exe'
+
+    # Secondary signal: the CommandLine contains the classic ren .pdf .dll pattern
+    # This catches the rename command itself as it appears in cmd.exe's CommandLine
+    # when the parent cmd.exe process is logged (Sysmon EID 1 for cmd spawning ren).
+    selection_rename_cmdline:
+        Image|endswith: '\cmd.exe'
+        CommandLine|contains|all:
+            - '.pdf'
+            - '.dll'
+            - 'ren'         # ren or rename builtin
+
+    filter_legitimate_rundll32:
+        # Known-good rundll32 invocations from user paths (tune to your environment)
+        CommandLine|contains:
+            - 'printui.dll'
+            - 'shell32.dll'
+            - 'dfshim.dll'      # ClickOnce
+        ParentImage|endswith:
+            - '\msiexec.exe'
+            - '\svchost.exe'
+
+    condition: >
+        (
+          ( selection_rundll32 and selection_cmd_parent )
+          or selection_rename_cmdline
+        )
+        and not filter_legitimate_rundll32
+
+falsepositives:
+    - Custom in-house deployment scripts that invoke rundll32 from user directories
+      (address by extending filter_legitimate_rundll32 with known script hashes)
+    - Developer workflows running DLLs from local build output directories
+level: high
+
+# ── Analyst triage workflow ────────────────────────────────────────────────────
+# 1. Is there a corresponding file_rename event (Branch A) on the same host
+#    within 30 seconds? If yes, confirmed BazaLoader pattern — escalate.
+# 2. Check the directory for a ZIP file or .cmd file extracted recently
+#    (file_create events with .zip / .cmd extension in the same parent directory).
+# 3. Examine the DLL's PE header: BazaLoader DLLs typically have a very recent
+#    compile timestamp and are 100–300 KB. Check VirusTotal via hash.
+# 4. Check network connections from rundll32 or its children in the 60s after
+#    execution — BazaLoader beacons to HTTPS C2 shortly after init.
+# 5. Look for a subsequent mshta.exe, powershell.exe, or cobalt-strike-watermark
+#    beacon process as a second-stage indicator.
+#
+# Atomic Test cleanup command for lab validation:
+#   remove-item "$env:allusersprofile\<name>.dll" -force -erroraction silentlycontinue

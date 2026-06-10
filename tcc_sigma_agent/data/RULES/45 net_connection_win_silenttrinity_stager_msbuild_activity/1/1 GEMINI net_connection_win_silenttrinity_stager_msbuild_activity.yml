@@ -1,0 +1,42 @@
+title: Suspicious WMIC Execution via XSL Format Switch (SILENTTRINITY Stager)
+id: 111867c2-9e8c-4b53-844c-20f5cb684c98
+status: experimental
+description: |
+  Detects the execution of the Windows Management Instrumentation Console (wmic.exe) using the '/format' switch pointing to a remote HTTP/HTTPS URL or an XSL file in a user-writable directory. 
+  This application whitelisting bypass technique is utilized as an initial stager by the SILENTTRINITY C2 framework to load its asynchronous IronPython payload dynamically into memory without dropping compiled executables to disk.
+author: Gemini
+date: 2026/06/08
+references:
+    - https://www.blackhillsinfosec.com/my-first-joyride-with-silenttrinity/
+    - https://lolbas-project.github.io/lolbas/Binaries/Wmic/
+tags:
+    - attack.defense_evasion
+    - attack.execution
+    - attack.t1220
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_img:
+        - Image|endswith: '\wmic.exe'
+        - OriginalFileName: 'wmic.exe'
+    
+    selection_cmd_remote:
+        CommandLine|contains|all:
+            - '/format:'
+            - 'http'
+            
+    selection_cmd_local:
+        CommandLine|contains: '/format:'
+        CommandLine|contains: 
+            - '\Temp\'
+            - '\AppData\'
+            - '\Users\Public\'
+            - 'C:\ProgramData\'
+            - '\Downloads\'
+            
+    condition: selection_img and (selection_cmd_remote or selection_cmd_local)
+falsepositives:
+    - Highly unlikely for the remote (HTTP) trigger. 
+    - Some legacy system administration scripts may use local .xsl files for formatting hardware telemetry output, but executing them from user-writable temporary directories is anomalous and should be investigated.
+level: high

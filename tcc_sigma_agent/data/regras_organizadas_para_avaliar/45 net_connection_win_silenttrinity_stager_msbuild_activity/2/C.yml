@@ -1,0 +1,29 @@
+title: MSBuild Outbound Web Network Connection
+id: 4e5d8a6f-7f4c-4e8a-8b1a-0f9d0b7f2b3c
+status: test
+description: Detects outbound network connections initiated by msbuild.exe to standard HTTP or HTTPS ports, which may indicate abuse of MSBuild for payload execution and C2 communication.
+references:
+
+* [https://www.blackhillsinfosec.com/my-first-joyride-with-silenttrinity/](https://www.blackhillsinfosec.com/my-first-joyride-with-silenttrinity/)
+  logsource:
+  product: windows
+  category: network_connection
+  detection:
+  selection:
+  Image|endswith: '\msbuild.exe'
+  filter:
+  Initiated: true
+  DestinationPort:
+
+  * 80
+  * 443
+    condition: selection and filter
+    falsepositives:
+* Legitimate MSBuild activity downloading packages or contacting internal build services
+  level: medium
+  tags:
+* attack.execution
+* attack.command-and-scripting-interpreter
+* attack.t1127
+* attack.t1105
+

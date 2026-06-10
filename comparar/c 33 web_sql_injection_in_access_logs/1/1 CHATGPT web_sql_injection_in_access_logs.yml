@@ -1,0 +1,64 @@
+title: Potential SQL Injection Payload In Web Requests
+id: 7c4a2f73-5c8f-4b39-8a58-d1f7d7c0d9a2
+status: experimental
+description: >
+  Detects common SQL injection payload patterns in web server, WAF, proxy,
+  or application logs. The rule focuses on reconnaissance and exploitation
+  techniques frequently observed in UNION-based, boolean-based, error-based,
+  and time-based SQL injection attacks.
+references:
+  - https://www.acunetix.com/blog/articles/exploiting-sql-injection-example/
+  - https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/
+  - https://brightsec.com/blog/sql-injection-payloads/
+  - https://github.com/payloadbox/sql-injection-payload-list
+  - https://book.hacktricks.xyz/pentesting-web/sql-injection/mysql-injection
+author: OpenAI
+date: 2026-06-06
+tags:
+  - attack.initial_access
+  - attack.t1190
+  - attack.reconnaissance
+logsource:
+  category: webserver
+detection:
+  selection_union:
+    cs-uri-query|contains:
+      - 'union select'
+      - 'union all select'
+      - 'group_concat('
+      - 'information_schema'
+  selection_boolean:
+    cs-uri-query|contains:
+      - "' or '1'='1"
+      - '" or "1"="1'
+      - "' or 1=1"
+      - '" or 1=1'
+  selection_time:
+    cs-uri-query|contains:
+      - 'sleep('
+      - 'benchmark('
+      - 'waitfor delay'
+      - 'pg_sleep('
+  selection_file_access:
+    cs-uri-query|contains:
+      - 'load_file('
+      - 'into outfile'
+      - 'into dumpfile'
+  selection_urlencoded:
+    cs-uri-query|contains:
+      - '%27%20or%201%3d1'
+      - '%22%20or%201%3d1'
+      - '%20union%20select%20'
+  condition: 1 of selection_*
+fields:
+  - c-ip
+  - cs-method
+  - cs-uri-stem
+  - cs-uri-query
+  - cs-user-agent
+  - sc-status
+falsepositives:
+  - Web application security testing
+  - Authorized penetration tests
+  - Vulnerability scanner activity
+level: high

@@ -1,0 +1,25 @@
+title: Successful Duo Authentication Using Bypass Code
+id: f8a9b0c1-d2e3-45f4-96a7-b8c9d0e1f2a3
+status: experimental
+description: Detects successful Cisco Duo MFA authentication completed using a bypass code, a temporary admin-issued passcode that adversaries may use to defeat MFA without compromising enrolled devices.
+references:
+    - https://duo.com/docs/adminapi#logs
+    - https://help.duo.com/s/article/6327?language=en_US
+author: Senior Threat Detection Engineer
+date: 2026-06-06
+logsource:
+    product: cisco
+    service: duo
+detection:
+    selection:
+        event_type: 'authentication'
+        auth_result: 'SUCCESS'
+        auth_reason|contains: 'bypass code'
+    condition: selection
+falsepositives:
+    - Legitimate administrative MFA bypass for user recovery or device enrollment
+level: high
+tags:
+    - attack.defense_evasion
+    - attack.t1098
+    - attack.t1556

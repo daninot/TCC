@@ -1,0 +1,142 @@
+title: Persistence Indicators Related to BZAR Tooling and Generic Persistence Techniques
+id: 2026-000-bzar-persistence
+status: experimental
+description: Detects persistence techniques and artifacts associated with the BZAR toolkit and common attacker persistence methods: service installs with non-standard image paths, scheduled task creation, Run/RunOnce registry entries pointing to user-writable locations, DLL sideloading via regsvr32/rundll32, startup folder placements, and creation of files or processes containing "bzar" or known BZAR component names. Correlate across file, process, registry and service/task events to raise confidence.
+author: Detection Engineer
+date: 2026-06-08
+references:
+  - https://github.com/mitre-attack/bzar#indicators-for-attck-persistence
+logsource:
+  product: windows
+  service: sysmon,security
+  category: process_creation,file_event,registry,service_installation
+detection:
+  selection_service_install_unusual_path:
+    EventID: 7045
+    ServiceFileName|re:
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\'
+      - '(?i)\\AppData\\Local\\Temp\\'
+      - '(?i)\\AppData\\Roaming\\'
+      - '(?i)\\.*\\Downloads\\'
+      - '(?i)\\ProgramData\\'
+  selection_schtask_create:
+    EventID: 4698
+    TaskName|re:
+      - '(?i).*bzar.*'
+      - '(?i).*persist.*'
+      - '(?i).*update.*'
+  selection_registry_run_keys:
+    EventID: 13
+    RegistryKey|re:
+      - '(?i)HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+      - '(?i)HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+      - '(?i)HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce'
+      - '(?i)HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce'
+      - '(?i)HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServices'
+      - '(?i)HKLM\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Run'
+    RegistryValueData|re:
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\'
+      - '(?i)\\AppData\\Local\\Temp\\'
+      - '(?i)\\AppData\\Roaming\\'
+      - '(?i)\\.*\\Downloads\\'
+      - '(?i)\\ProgramData\\'
+  selection_startup_folder_file:
+    EventID: 11
+    TargetFilename|re:
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\'
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\Start Menu\\Programs\\Startup\\'
+  selection_dll_sideloading:
+    EventID: 1
+    Image|re:
+      - '(?i)\\regsvr32\.exe$'
+      - '(?i)\\rundll32\.exe$'
+    CommandLine|re:
+      - '(?i)\.dll'
+      - '(?i)\\.*\
+
+\[^\\]
+
+{1,100}\.dll'
+  selection_bzar_filenames_written:
+    EventID: 11
+    TargetFilename|re:
+      - '(?i)\\bzar(\.exe|\.dll|\.ps1|\.py|_agent\.exe|_service\.exe)?$'
+      - '(?i)\\.*\\bzar[-_a-z0-9]{0,40}\.(exe|dll|ps1|py)$'
+  selection_bzar_process:
+    EventID: 1
+    Image|re:
+      - '(?i)\\bzar(\.exe|\.py|\.ps1)$'
+    CommandLine|re:
+      - '(?i)bzar'
+  selection_unusual_parent_for_service_install:
+    EventID: 1
+    ParentImage|re:
+      - '(?i)\\(msedge|chrome|firefox|iexplore|outlook|winword|excel|powerpnt)\.exe$'
+  correlation_file_then_service:
+    - when: selection_bzar_filenames_written
+      then: selection_service_install_unusual_path
+      within: "2m"
+  correlation_registry_then_exec:
+    - when: selection_registry_run_keys
+      then: selection_bzar_process
+      within: "2m"
+  condition: >
+    selection_service_install_unusual_path
+    or selection_schtask_create
+    or selection_registry_run_keys
+    or selection_startup_folder_file
+    or selection_dll_sideloading
+    or selection_bzar_filenames_written
+    or selection_bzar_process
+    or selection_unusual_parent_for_service_install
+    or correlation_file_then_service
+    or correlation_registry_then_exec
+fields:
+  - timestamp
+  - EventID
+  - ComputerName
+  - SubjectUserName
+  - ServiceName
+  - ServiceFileName
+  - TaskName
+  - RegistryKey
+  - RegistryValueName
+  - RegistryValueData
+  - TargetFilename
+  - Image
+  - ParentImage
+  - CommandLine
+  - ProcessId
+falsepositives:
+  - Legitimate software installers, developer tools, or packaging processes that stage or install services/tasks from non-standard locations (whitelist known deployment and build hosts).
+  - User-installed portable applications placed intentionally in user directories or Startup folders.
+  - Administrative automation that creates scheduled tasks or registry run keys as part of legitimate management workflows.
+level: high
+tags:
+  - persistence
+  - attack.t1547
+  - attack.t1053
+  - attack.t1543
+  - bzar
+  - detection.windows
+notes: |
+  - Tuning: whitelist known deployment/CI hosts, signed installers, and authorized admin/service accounts; require correlation across multiple signals (e.g., file write + service install or registry entry + process execution) to reduce noise.
+  - Investigation: collect the service binary, scheduled task XML, registry value data, full process trees, command lines, and file hashes; check digital signatures and search for identical artifacts across the environment.
+  - Response: if malicious, stop and disable services/tasks, remove persistence artifacts, isolate affected hosts, rotate credentials if exposed, and perform a broader hunt for additional BZAR components or related persistence mechanisms.
+

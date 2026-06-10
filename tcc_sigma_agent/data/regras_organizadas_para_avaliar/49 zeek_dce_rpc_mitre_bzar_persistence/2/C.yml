@@ -1,0 +1,39 @@
+title: Remote Persistence via DCE-RPC Calls
+id: f6a7b8c9-d0e1-42f3-84a5-6b7c8d9e0f1a
+status: experimental
+description: Detects DCE-RPC calls indicating remote persistence techniques, such as installing print monitors/processors or creating processes under another user's logon session on a remote host (MITRE BZAR).
+references:
+    - https://github.com/mitre-attack/bzar#indicators-for-attck-persistence
+author: Senior Threat Detection Engineer
+date: 2026-06-08
+logsource:
+    product: zeek
+    service: dce_rpc
+detection:
+    op1:
+        endpoint: 'spoolss'
+        operation: 'RpcAddMonitor'
+    op2:
+        endpoint: 'spoolss'
+        operation: 'RpcAddPrintProcessor'
+    op3:
+        endpoint: 'IRemoteWinspool'
+        operation: 'RpcAsyncAddMonitor'
+    op4:
+        endpoint: 'IRemoteWinspool'
+        operation: 'RpcAsyncAddPrintProcessor'
+    op5:
+        endpoint: 'ISecLogon'
+        operation: 'SeclCreateProcessWithLogonW'
+    op6:
+        endpoint: 'ISecLogon'
+        operation: 'SeclCreateProcessWithLogonExW'
+    condition: 1 of op*
+falsepositives:
+    - Legitimate administrative actions installing printers or using runas on remote systems
+level: high
+tags:
+    - attack.persistence
+    - attack.t1547
+    - attack.t1136
+    - attack.t1547.010
