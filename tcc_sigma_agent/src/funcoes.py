@@ -201,3 +201,23 @@ def busca_duckduckgo(termo: str, max_resultados: int = 5):
     except Exception:
         pass
     return None
+
+def extrair_urls_de_referencias(texto: str):
+    """
+    Extrai URLs que estão na seção '# References' de um prompt estruturado.
+    Se não houver seção References, retorna None (sinaliza para usar o fallback:
+    todas as URLs do texto).
+    """
+    # localiza o bloco da seção References (até a próxima seção '#' ou fim do texto)
+    match = re.search(
+        r"^#\s*references\s*\n(.*?)(?=^#\s|\Z)",
+        texto,
+        flags=re.MULTILINE | re.IGNORECASE | re.DOTALL
+    )
+    if not match:
+        return None  # não há seção References; o chamador usa o fallback
+
+    bloco_refs = match.group(1)
+    urls = re.findall(r"https?://[^\s]+", bloco_refs)
+    urls_limpas = [u.rstrip(r".,;!?)\]}>'\"") for u in urls]
+    return urls_limpas

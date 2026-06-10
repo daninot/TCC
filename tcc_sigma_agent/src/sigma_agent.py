@@ -35,6 +35,7 @@ from funcoes import (
     extrair_referencias,
     extrair_palavras_chave_url,
     extrair_secoes_tecnicas,
+    extrair_urls_de_referencias,
     consulta_mitre,
     consulta_nvd,
     validar_tags_attack,
@@ -63,8 +64,18 @@ def no_1_classificador(state: GraphState) -> GraphState: #recebe um state como a
     print("\n[Nó 1] Classificando input...")
     texto = state.get("input_usuario", "")              
     
-    urls_brutas = re.findall(r"https?://[^\s]+", texto)     #encontra TODAS as URLs (retorna uma lista de strings)
-    urls_limpas = [u.rstrip(r".,;!?)\]}>'\"") for u in urls_brutas]      #limpa a pontuação do final de CADA URL encontrada
+    #urls_brutas = re.findall(r"https?://[^\s]+", texto)     #encontra TODAS as URLs (retorna uma lista de strings)
+    #urls_limpas = [u.rstrip(r".,;!?)\]}>'\"") for u in urls_brutas]      #limpa a pontuação do final de CADA URL encontrada
+
+    # tenta extrair só as URLs da seção References; se não houver, pega todas
+    urls_das_refs = extrair_urls_de_referencias(texto)
+    if urls_das_refs is not None:
+        urls_limpas = urls_das_refs
+        print(" -> URLs extraídas da seção '# References'.")
+    else:
+        urls_brutas = re.findall(r"https?://[^\s]+", texto)
+        urls_limpas = [u.rstrip(r".,;!?)\]}>'\"") for u in urls_brutas]
+        print(" -> Sem seção '# References'; usando todas as URLs do texto.")
 
     #remove TODAS as URLs do texto antes de buscar CVE/hash
     texto_sem_url = texto       
@@ -225,13 +236,13 @@ def no_3_api(state: GraphState) -> GraphState:
                 if resposta_url.status_code == 200:
                     soup = BeautifulSoup(resposta_url.text, "html.parser")
                     # pega só parágrafos e títulos, que costumam ter o conteúdo principal
-                    elementos = soup.find_all(["p", "h1", "h2", "h3", "article"])
+                    elementos = soup.find_all(["p","article"])
                     texto_limpo = " ".join(
                         e.get_text(separator=" ", strip=True) for e in elementos
                     )
                     if not texto_limpo:   # fallback se a página não usa tags semânticas
                         texto_limpo = soup.get_text(separator=" ", strip=True)
-                    trechos.append(f"Conteúdo da URL {url}:\n{texto_limpo[:3000]}")
+                    trechos.append(f"Conteúdo da URL {url}:\n{texto_limpo[:1500]}")
                     print(" -> Conteúdo da URL extraído com sucesso.")
                     acesso_ok = True
                 else:
