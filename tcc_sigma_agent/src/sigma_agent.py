@@ -338,9 +338,23 @@ def no_4_gerador(state: GraphState) -> GraphState:
     #llm = ChatOllama(model="qwen2.5:1.5b", temperature=0.1)
     llm = ChatOllama(model="llama3.1", temperature=0.1)
 
+# ~* Lista explícita de URLs permitidas para 'references:' ~*
+    urls_permitidas = state.get("url_fornecida", [])
+    if urls_permitidas:
+        bloco_urls = "USER-PROVIDED REFERENCES (use EXACTLY these URLs in 'references:', no others):\n"
+        bloco_urls += "\n".join(f"- {u}" for u in urls_permitidas)
+    else:
+        bloco_urls = (
+            "USER-PROVIDED REFERENCES: None.\n"
+            "Either omit the 'references:' field entirely OR set it to an empty list. "
+            "Do NOT fabricate URLs."
+        )
+
     #USER PROMPT:
     user_prompt = f"""USER REQUEST:
 {state['input_usuario']}
+
+{bloco_urls}
 
 FORMATTING TEMPLATE - base the YAML structure on these real Sigma rules: 
 {state['contexto_rag']}
@@ -352,7 +366,7 @@ OUTPUT REQUIREMENTS:
 1. Return ONLY the YAML code, no markdown fences, no explanations.
 2. If the USER REQUEST contains URLs, put them in 'references:'.
 3. Do NOT copy URLs from the FORMATTING TEMPLATE.
-4. Do NOT invent URLs that are not in the user request.
+4. Do NOT invent URLs.
 """
     
     # caso hajam novas tentativas:

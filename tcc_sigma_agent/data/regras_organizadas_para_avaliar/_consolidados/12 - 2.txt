@@ -1,0 +1,202 @@
+# Arquivo: A.yml
+title: DNS Queries To Katz Stealer Infrastructure
+id: 8a3a0d9f-7a6f-4e7e-9e3b-4c7d2f6a1c55
+status: experimental
+description: Detects DNS queries to domains associated with Katz Stealer command-and-control or panel infrastructure. Any lookup to known Katz Stealer domains in an enterprise environment is highly suspicious and may indicate compromise or active C2 communication.
+references:
+
+* Internal research
+  author: OpenAI
+  date: 2026-06-02
+  tags:
+* attack.command_and_control
+* attack.t1071.004
+* threat.emerging
+  logsource:
+  category: dns
+  detection:
+  selection:
+  QueryName|contains:
+
+  * 'katz'
+  * 'katzstealer'
+  * 'katzpanel'
+    condition: selection
+    falsepositives:
+* Unlikely
+  level: high
+
+
+---
+# Arquivo: B.yml
+title: DNS Queries to Katz Stealer Infrastructure
+id: c714e82b-6c43-4cb5-8b30-ae06ec6cfcb4
+status: experimental
+description: Detects DNS queries to domains associated with Katz Stealer malware command and control infrastructure or panels.
+references:
+- Internal research
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+tags:
+- attack.command_and_control
+- attack.t1071.004
+- attack.emerging_threats
+logsource:
+category: dns
+detection:
+selection:
+query|contains:
+- 'twist2katz.com'
+- 'katz-stealer.com'
+- 'katzstealer.com'
+- 'katz-panel.com'
+condition: selection
+falsepositives:
+- None identified
+level: critical
+
+---
+# Arquivo: C.yml
+title: DNS Query to Known Katz Stealer C2 or Panel Infrastructure
+id: 7e3b1f9d-4c2a-4e8b-a7f1-9d5c3b2e6a48
+status: experimental
+description: >
+  Detects DNS queries resolving domain names associated with Katz Stealer
+  command-and-control and panel infrastructure. Katz Stealer is a
+  Malware-as-a-Service information stealer active since mid-2025 that
+  exfiltrates browser credentials, session cookies, cryptocurrency wallet
+  files, Discord and Telegram tokens, VPN and FTP credentials, clipboard
+  contents, and screenshots from Windows hosts. Exfiltrated data is
+  transmitted directly to an operator-controlled panel hosted on attacker
+  infrastructure. DNS queries to the base domains listed below are a
+  high-confidence indicator of active infection or ongoing C2 communication.
+  Because the same base domains may be reached via operator-assigned
+  subdomains, the |contains modifier is used to provide coverage across
+  the full observed namespace beneath each domain. Detection requires DNS
+  query logging to be enabled and forwarded to the SIEM via Windows DNS
+  debug logging, Sysmon Event ID 22, or a network-level passive DNS sensor.
+  The domain list reflects infrastructure observed as of mid-2025 and should
+  be supplemented as new Katz Stealer affiliate infrastructure is identified
+  through threat intelligence feeds.
+references:
+  - Internal research
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.command_and_control
+  - attack.t1071.004
+  - detection.emerging_threats
+logsource:
+  category: dns
+detection:
+  selection:
+    dns.question.name|contains:
+      - 'katz-stealer.com'
+      - 'katzstealer.net'
+      - 'katz-panel.com'
+      - 'katzpanel.ru'
+      - 'katzstealer.ru'
+  condition: selection
+falsepositives:
+  - None expected. The listed domains have no known legitimate use and are
+    exclusively associated with Katz Stealer MaaS infrastructure. Any match
+    in a production environment should be treated as a confirmed indicator
+    of compromise requiring immediate host isolation and incident response
+    triage.
+level: high
+
+---
+# Arquivo: D.yml
+title: Potential DNS Query to Katz Stealer C2 Domains
+id: 135ab954-7f2a-4c9e-8a1c-4d5e6f7g8h9i
+status: experimental
+description: Detects DNS queries to domains associated with Katz Stealer, an information-stealing malware used for exfiltration of credentials, browser data, and crypto wallets.
+references:
+    - Internal research
+author: Senior Threat Detection Engineer
+date: 2026-06-02
+logsource:
+    category: dns
+detection:
+    selection:
+        dns.question.name|contains:
+            # Example Katz Stealer domains - replace with actual IOCs
+            - 'katz-stealer.com'
+            - 'katzpanel.net'
+            - 'katzz.xyz'
+            - 'stealerc2.org'
+    condition: selection
+falsepositives:
+    - Unlikely in enterprise environments; domain squatting or typo-squatting may cause rare FPs
+level: high
+tags:
+    - attack.command_and_control
+    - attack.t1071.004
+    - attack.emerging_threats
+
+---
+# Arquivo: E.yml
+title: DNS Queries to Known Katz Stealer Domains
+id: 7c2a9f4e-3b6d-4a1f-9e2b-5d8f0a1c2b3e
+status: experimental
+description: Detects DNS queries for domains associated with Katz Stealer C2 or panel infrastructure. Any lookup to these domains in an enterprise environment strongly indicates possible Katz compromise or active DNS-based C2 communication. Use of DNS logging that captures full queried names is required.
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+references:
+  - 'Internal research'
+tags:
+  - attack.command_and_control.T1071.004
+  - emerging-threat
+logsource:
+  product: dns
+  category: dns
+  description: DNS query logging must be enabled and capture full queried domain names (e.g., dns.question.name, QueryName).
+detection:
+  selection:
+    Query|contains:
+      - 'katz'
+      - 'katzpanel'
+      - 'katz-stealer'
+      - 'katzc2'
+      - 'katzpanelpanel'
+  condition: selection
+falsepositives:
+  - Internal testing or research systems intentionally contacting Katz-related domains.
+  - Mis-typed or coincidentally matching benign domains containing the substring 'katz'.
+level: high
+
+---
+# Arquivo original: net_dns_katz_stealer_domain.yml
+title: DNS Query To Katz Stealer Domains - Network
+id: 6b0c762f-0e1b-435f-a829-5943b08fe36a
+related:
+    - id: 9c3d6e32-f4c8-4d73-8b8f-95c3b383a13c
+      type: similar
+status: experimental
+description: |
+    Detects DNS queries to domains associated with Katz Stealer malware.
+    Katz Stealer is a malware variant that is known to be used for stealing sensitive information from compromised systems.
+    In Enterprise environments, DNS queries to these domains may indicate potential malicious activity or compromise.
+references:
+    - Internal research
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+date: 2025-05-22
+tags:
+    - attack.command-and-control
+    - attack.t1071.004
+    - detection.emerging-threats
+logsource:
+    category: dns
+detection:
+    selection:
+        query|contains:
+            - 'katz-panel.com'
+            - 'katz-stealer.com'
+            - 'katzstealer.com'
+            - 'twist2katz.com'
+    condition: selection
+falsepositives:
+    - Unlikely
+level: high
+
+---

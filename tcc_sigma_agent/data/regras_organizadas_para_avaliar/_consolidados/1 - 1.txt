@@ -1,0 +1,210 @@
+# Arquivo: A.yml
+title: Unauthorized Full Data Export Triggered
+id: 3a2e1c4d-5b6f-4a8b-9c0d-1e2f3a4b5c6d
+status: experimental
+description: Detects when a user attempts to trigger a full data export from an Atlassian Bitbucket instance without proper authorization, which may indicate data exfiltration, insider threat, or compromised admin credentials.
+references:
+  - https://confluence.atlassian.com/bitbucketserver/audit-log-events-776640423.html
+  - https://confluence.atlassian.com/bitbucketserver/secret-scanning-1157471613.html
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.ta0010
+  - attack.t1048
+  - bitbucket
+  - data_exfiltration
+logsource:
+  product: bitbucket
+  category: audit
+detection:
+  selection:
+    action: 'Unauthorized full data export triggered'
+  condition: selection
+falsepositives:
+  - Legitimate administrative exports performed for backup, migration, or compliance purposes.
+level: critical
+
+---
+# Arquivo: B.yml
+title: Bitbucket Server Secret Scanning Detection
+id: 12345678-90ab-cdef-1234-567890abcdef
+status: experimental
+description: Detects when Bitbucket Server audit logs report a secret scanning event (e.g., secret detected in repository).
+author: Copilot
+date: 2026/05/25
+references:
+  - https://confluence.atlassian.com/bitbucketserver/audit-log-events-776640423.html
+  - https://confluence.atlassian.com/bitbucketserver/secret-scanning-1157471613.html
+logsource:
+  product: bitbucket
+  service: audit
+detection:
+  selection:
+    eventType: "SECRET_SCANNING"
+    action: "SECRET_DETECTED"
+  condition: selection
+fields:
+  - timestamp
+  - user
+  - repository
+  - project
+  - eventType
+  - action
+  - details
+falsepositives:
+  - Test repositories with intentionally committed dummy secrets
+level: high
+tags:
+  - attack.credential_access
+  - attack.t1552
+
+
+---
+# Arquivo: C.yml
+title: Bitbucket Secret Scanning Detection Event
+id: 8d0d91d7-9a24-4d87-8d7e-4c1d5c6c9e2a
+status: experimental
+description: >
+  Detects Bitbucket Data Center audit log events generated when the
+  built-in secret scanning feature identifies a leaked secret in a commit
+  or repository file. This may indicate credential exposure, accidental
+  secret disclosure, or malicious activity involving hardcoded secrets.
+references:
+  - https://confluence.atlassian.com/bitbucketserver/audit-log-events-776640423.html
+  - https://confluence.atlassian.com/bitbucketserver/secret-scanning-1157471613.html
+author: OpenAI
+date: 2026-05-25
+tags:
+  - attack.credential_access
+  - attack.t1552
+  - attack.t1552.001
+  - attack.exfiltration
+  - attack.t1567
+logsource:
+  product: bitbucket
+  service: audit
+detection:
+  selection_action:
+    auditType.action: "Secret detected"
+  selection_i18n:
+    auditType.actionI18nKey: "bitbucket.secretscanning.audit.action.secretdetected"
+  condition: selection_action or selection_i18n
+fields:
+  - auditType.action
+  - auditType.actionI18nKey
+  - initiatingUser
+  - commitId
+  - path
+  - ruleId
+  - nodeId
+falsepositives:
+  - Developers accidentally committing credentials or secrets
+  - Internal testing repositories containing mock secrets
+level: high
+
+---
+# Arquivo: D.yml
+title: Bitbucket - Secret Detected in Repository Push
+id: 7c3e1a9f-84b2-4d56-a031-fc29e8d50712
+status: experimental
+description: |
+    Detects when the Bitbucket secret scanning engine finds a leaked
+    secret (password, token, API key, private key, etc.) inside a
+    repository commit push. The event is recorded in the audit log
+    at Base coverage level (Security > Security category).
+    Any match should be treated as a potential credential exposure.
+references:
+    - https://confluence.atlassian.com/bitbucketserver/secret-scanning-1157471613.html
+    - https://confluence.atlassian.com/bitbucketserver/audit-log-events-776640423.html
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.credential_access
+    - attack.t1552
+    - attack.t1552.001
+logsource:
+    product: bitbucket
+    category: audit
+detection:
+    selection:
+        auditType.action: 'Secret detected'
+    selection_i18n:
+        auditType.actionI18nKey: 'bitbucket.secretscanning.audit.action.secretdetected'
+    condition: 1 of selection*
+fields:
+    - auditType.action
+    - initiatingUser
+    - commitId
+    - path
+    - line
+    - ruleId
+falsepositives:
+    - Test or sandbox repositories with intentional dummy secrets
+    - Overly permissive scanning regex causing false positives
+    - Migration of legacy repositories with known historical exposure
+level: high
+
+---
+# Arquivo: E.yml
+title: Bitbucket Secret Scanning Configuration Modified
+id: 59aef46e-1da5-429a-840f-7b7e3bd260a9
+status: experimental
+description: Detects global, project, or repository-level modifications to Bitbucket secret scanning rules and allowlists. Unauthorized deletion or relaxation of these patterns allows credentials to pass into source control blindly.
+references:
+    - https://confluence.atlassian.com/bitbucketserver/audit-log-events-776640423.html
+    - https://confluence.atlassian.com/bitbucketserver/secret-scanning-1157471613.html
+author: Security Operations Center
+date: 2026/05/25
+tags:
+    - attack.defense_evasion
+    - attack.t1562.001 # Impair Defenses: Disable or Modify Tools
+logsource:
+    product: bitbucket
+    service: audit
+detection:
+    selection_actions:
+        auditType.action:
+            - 'Global secret scanning deleted'
+            - 'Global secret scanning rule created'
+            - 'Global secret scanning rule updated'
+            - 'Repository secret scanning rule created'
+            - 'Repository secret scanning rule deleted'
+            - 'Repository secret scanning rule updated'
+            - 'Repository secret scanning allowlist rule added'
+            - 'Repository secret scanning allowlist rule deleted'
+            - 'Repository secret scanning allowlist rule updated'
+    condition: selection_actions
+falsepositives:
+    - Legitimate configuration adjustments, false-positive reductions, and allowlist updates carried out by authorized DevOps teams or Security Administrators.
+level: medium
+
+---
+# Arquivo original: bitbucket_audit_unauthorized_full_data_export_triggered.yml
+title: Bitbucket Unauthorized Full Data Export Triggered
+id: 34d81081-03c9-4a7f-91c9-5e46af625cde
+status: test
+description: Detects when full data export is attempted an unauthorized user.
+references:
+    - https://confluence.atlassian.com/bitbucketserver/audit-log-events-776640423.html
+    - https://confluence.atlassian.com/bitbucketserver/secret-scanning-1157471613.html
+author: Muhammad Faisal (@faisalusuf)
+date: 2024-02-25
+tags:
+    - attack.collection
+    - attack.resource-development
+    - attack.t1213.003
+    - attack.t1586
+logsource:
+    product: bitbucket
+    service: audit
+    definition: 'Requirements: "Advance" log level is required to receive these audit events.'
+detection:
+    selection:
+        auditType.category: 'Data pipeline'
+        auditType.action: 'Unauthorized full data export triggered'
+    condition: selection
+falsepositives:
+    - Unlikely
+level: critical
+
+---

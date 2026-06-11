@@ -1,0 +1,221 @@
+# Arquivo: A.yml
+title: Addition of Federated Domain in Microsoft 365
+id: 9d2f4b6a-3c7e-4a1b-8f2d-5e6c7a9b0d1f
+status: experimental
+description: Detects audit events indicating a new domain was added or a domain federation configuration was created in Microsoft 365. Adversaries may add a federated domain to enable forged SAML tokens and persistent backdoor access that bypasses tenant MFA and password controls. Requires Microsoft 365 audit logging (Unified Audit Log) to be enabled and forwarded to the SIEM.
+author: Senior Threat Detection Engineer
+date: 2026/06/04
+references:
+  - [https://research.splunk.com/cloud/e155876a-6048-11eb-ae93-0242ac130002/](https://research.splunk.com/cloud/e155876a-6048-11eb-ae93-0242ac130002/)
+  - [https://o365blog.com/post/aadbackdoor/](https://o365blog.com/post/aadbackdoor/)
+tags:
+  - attack.persistence
+  - attack.credential_access
+  - attack.t1098
+  - m365
+logsource:
+  product: m365
+  service: audit
+  category: audit
+  description: Microsoft 365 Unified Audit Log must be enabled and collected; ensure Azure AD and tenant-level federation events are included.
+detection:
+  selection_domain:
+    Operation|contains:
+      - 'domain'
+      - 'federation'
+      - 'federated'
+  selection_action:
+    Operation|contains:
+      - 'Add'
+      - 'Added'
+      - 'Create'
+      - 'Created'
+      - 'New'
+      - 'Register'
+  condition: all of selection_*
+falsepositives:
+  - Legitimate tenant administration when adding or federating new corporate domains.
+  - Automated onboarding or tenant configuration workflows performed by IT or identity teams.
+level: high
+
+---
+# Arquivo: B.yml
+title: Microsoft 365 New Federated Domain Added
+id: 6c1e8b4f-3d7a-4f2e-b9c5-4a2d1e7f3c86
+status: experimental
+description: >
+  Detects the addition of a new federated domain in a Microsoft 365 or Azure
+  Active Directory tenant as recorded in the Unified Audit Log. Domain
+  federation establishes a trust relationship between a Microsoft 365 tenant
+  and an external identity provider, causing authentication requests for the
+  federated domain to be handled by the external IdP via SAML assertions.
+  Adversaries — including the UNC2452/NOBELIUM group behind the SolarWinds
+  campaign — abuse this capability to establish a persistent backdoor by
+  adding a rogue federated domain and configuring an attacker-controlled
+  token-signing certificate. This Golden SAML technique allows the adversary
+  to forge arbitrary SAML responses and authenticate as any user in the
+  tenant, including privileged accounts, without knowing credentials and
+  without triggering MFA. The operation field is matched with |contains on
+  both the domain indicator and the creation verb so that variant operation
+  names such as Add-FederatedDomain, Set-MsolDomainFederationSettings, and
+  New-Domain are all captured by the combined condition.
+references:
+  - https://research.splunk.com/cloud/e155876a-6048-11eb-ae93-0242ac130002/
+  - https://o365blog.com/post/aadbackdoor/
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.persistence
+  - attack.defense_evasion
+  - attack.privilege_escalation
+  - attack.t1484.002
+  - attack.t1136.003
+logsource:
+  product: m365
+  service: audit
+detection:
+  selection_domain:
+    Operation|contains: 'domain'
+  selection_action:
+    Operation|contains:
+      - 'add'
+      - 'new'
+  condition: selection_domain and selection_action
+falsepositives:
+  - Legitimate IT or identity team operations that intentionally federate
+    a new corporate domain with a sanctioned enterprise identity provider
+    as part of an approved SSO rollout or merger and acquisition integration
+    workflow. These events should still be investigated and correlated with
+    a corresponding change-management record before being dismissed.
+level: high
+
+---
+# Arquivo: C.yml
+title: Suspicious Federated Domain Addition in Microsoft 365
+id: b7c8d9e0-f1a2-4b3c-8d4e-5f6a7b8c9d0e
+status: experimental
+description: Detects addition of a new federated domain in Microsoft 365, which adversaries may use to establish persistent backdoor access via forged SAML tokens, bypassing MFA and password controls.
+references:
+    - https://research.splunk.com/cloud/e155876a-6048-11eb-ae93-0242ac130002/
+    - https://o365blog.com/post/aadbackdoor/
+author: Senior Threat Detection Engineer
+date: 2026-06-04
+logsource:
+    product: m365
+    service: audit
+detection:
+    selection_operation_domain:
+        Operation|contains: 'domain'
+    selection_operation_add:
+        Operation|contains:
+            - 'add'
+            - 'set'
+    condition: selection_operation_domain and selection_operation_add
+falsepositives:
+    - Legitimate domain federation configuration by administrators
+level: high
+tags:
+    - attack.persistence
+    - attack.t1098
+    - attack.t1484
+    - attack.t1550.001
+
+---
+# Arquivo: D.yml
+title: Microsoft 365 Federated Domain Addition
+id: 2f3b9c7e-6d21-4f3a-9f1b-3e8a1d4c5b72
+status: experimental
+description: Detects Microsoft 365 audit log activity consistent with the creation or addition of a new federated domain, which may be abused to establish persistent backdoor access via forged SAML tokens.
+references:
+
+* [https://research.splunk.com/cloud/e155876a-6048-11eb-ae93-0242ac130002/](https://research.splunk.com/cloud/e155876a-6048-11eb-ae93-0242ac130002/)
+* [https://o365blog.com/post/aadbackdoor/](https://o365blog.com/post/aadbackdoor/)
+  author: OpenAI
+  date: 2026-06-04
+  tags:
+* attack.persistence
+* attack.defense_evasion
+* attack.t1484.002
+  logsource:
+  product: m365
+  service: audit
+  detection:
+  selection_domain:
+  Operation|contains: 'Domain'
+  selection_create:
+  Operation|contains:
+
+  * 'Add'
+  * 'Create'
+    condition: all of selection_*
+    falsepositives:
+* Legitimate federation setup or domain onboarding by authorized administrators
+  level: high
+
+
+---
+# Arquivo: E.yml
+title: M365 Federated Domain Added
+id: 5b4d7c1e-913a-4ef4-9e12-c2cb4e3db899
+status: stable
+description: Detects the addition or creation of a federated domain within a Microsoft 365 tenant. Adversaries can abuse domain federation to establish persistent backdoor access via forged SAML tokens, bypassing MFA and password controls.
+references:
+
+* [https://research.splunk.com/cloud/e155876a-6048-11eb-ae93-0242ac130002/](https://research.splunk.com/cloud/e155876a-6048-11eb-ae93-0242ac130002/)
+* [https://o365blog.com/post/aadbackdoor/](https://o365blog.com/post/aadbackdoor/)
+author: Senior Threat Detection Engineer
+date: 2026/06/04
+tags:
+* attack.persistence
+* attack.t1484.002
+logsource:
+product: m365
+service: audit
+detection:
+selection_domain:
+Operation|contains: 'domain'
+selection_action:
+Operation|contains:
+* 'add'
+* 'create'
+condition: all of selection_*
+falsepositives:
+
+
+* Legitimate administrative actions involving the addition or federation of a new organizational domain.
+level: high
+
+---
+# Arquivo original: microsoft365_new_federated_domain_added_audit.yml
+title: New Federated Domain Added
+id: 58f88172-a73d-442b-94c9-95eaed3cbb36
+related:
+    - id: 42127bdd-9133-474f-a6f1-97b6c08a4339
+      type: similar
+status: test
+description: Detects the addition of a new Federated Domain.
+references:
+    - https://research.splunk.com/cloud/e155876a-6048-11eb-ae93-0242ac130002/
+    - https://o365blog.com/post/aadbackdoor/
+author: Splunk Threat Research Team (original rule), Harjot Singh @cyb3rjy0t (sigma rule)
+date: 2023-09-18
+tags:
+    - attack.privilege-escalation
+    - attack.defense-impairment
+    - attack.t1484.002
+logsource:
+    service: audit
+    product: m365
+detection:
+    selection_domain:
+        Operation|contains: 'domain'
+    selection_operation:
+        Operation|contains:
+            - 'add'
+            - 'new'
+    condition: all of selection_*
+falsepositives:
+    - The creation of a new Federated domain is not necessarily malicious, however these events need to be followed closely, as it may indicate federated credential abuse or backdoor via federated identities at a similar or different cloud provider.
+level: medium
+
+---

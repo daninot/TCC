@@ -1,0 +1,467 @@
+# Arquivo: A.yml
+title: System File Copied to Unusual Location
+id: 7e8f5a6b-4c3d-4e2f-9a1b-2c3d4e5f6a7b
+status: experimental
+description: Detects a copy operation of a system executable from a protected system directory (e.g., System32, SysWOW64) to a non-system location. This behavior may indicate an attempt to evade security monitoring and execute binaries from untrusted paths.
+references:
+  - https://twitter.com/ffforward/status/1481672378639912960
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1036/T1036.md#atomic-test-1---system-file-copied-to-unusual-location
+author: Sigma Rule Generator
+date: 2026-06-08
+tags:
+  - attack.defense-evasion
+  - attack.t1036
+  - attack.execution
+  - attack.t1059.001
+logsource:
+  product: windows
+  category: file_event
+detection:
+  selection:
+    TargetFilename|contains:
+      - ':\Users\'
+      - ':\Temp\'
+      - ':\Windows\Temp\'
+      - ':\ProgramData\'
+    Image|endswith:
+      - '\cmd.exe'
+      - '\xcopy.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+    SourceFilename|contains:
+      - ':\Windows\System32\'
+      - ':\Windows\SysWOW64\'
+      - ':\Windows\WinSxS\'
+  filter:
+    TargetFilename|contains: ':\Windows\'
+  condition: selection and not filter
+falsepositives:
+  - Legitimate administrative actions such as copying system tools for debugging or portable execution.
+level: medium
+
+---
+# Arquivo: B.yml
+title: System Binary Copied To Unusual Location (Masquerading / T1036)
+id: 3b9f1d2e-2026-windows-system-file-copied-unusual-location
+status: experimental
+description: Detects creation or placement of common Windows system binaries (e.g., svchost.exe, lsass.exe, cmd.exe, powershell.exe, explorer.exe, services.exe) outside of expected system directories. Attackers often copy legitimate system files to user-writable or non-standard locations to masquerade malicious payloads or evade detection (Atomic Test: system file copied to unusual location). Tune allowlists for legitimate software deployment and developer activity.
+author: Detection Engineer
+date: 2026-06-08
+references:
+  - https://twitter.com/ffforward/status/1481672378639912960
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1036/T1036.md#atomic-test-1---system-file-copied-to-unusual-location
+logsource:
+  product: windows
+  service: sysmon
+  category: file_event
+detection:
+  selection_system_binaries_created:
+    EventID: 11
+    TargetFilename|re:
+      - '(?i)\\(svchost|lsass|lsm|services|winlogon|explorer|cmd|powershell|pwsh|rundll32|taskhostw|conhost|wuauclt|mshta|regsvr32)\.(exe|dll)$'
+  selection_expected_system_paths:
+    TargetFilename|not_re:
+      - '(?i)\\Windows\\System32\\'
+      - '(?i)\\Windows\\SysWOW64\\'
+      - '(?i)\\Program Files\\'
+      - '(?i)\\Program Files \(x86\)\\'
+      - '(?i)\\Windows\\winsxs\\'
+  selection_user_writable_locations:
+    TargetFilename|re:
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\AppData\\Local\\'
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\AppData\\Roaming\\'
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\Downloads\\'
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\Desktop\\'
+      - '(?i)\\AppData\\Local\\Temp\\'
+      - '(?i)\\ProgramData\\'
+      - '(?i)\\Users\\Public\\'
+      - '(?i)\\.*\\Startup\\'
+  selection_copy_tools_process:
+    EventID: 1
+    Image|re:
+      - '(?i)\\(cmd\.exe|powershell\.exe|pwsh\.exe|xcopy\.exe|robocopy\.exe|copy\.exe|bitsadmin\.exe|certutil\.exe|bitsadmin\.exe|mshta\.exe)\$'
+    CommandLine|re:
+      - '(?i)\b(copy|xcopy|robocopy|bitsadmin|certutil|Invoke-WebRequest|Invoke-RestMethod|Start-BitsTransfer)\b'
+  selection_suspicious_parent:
+    EventID: 1
+    ParentImage|re:
+      - '(?i)\\(explorer|msedge|chrome|firefox|iexplore|powershell|cmd)\.exe$'
+  condition: selection_system_binaries_created and selection_expected_system_paths and (selection_user_writable_locations or selection_copy_tools_process or selection_suspicious_parent)
+fields:
+  - timestamp
+  - EventID
+  - ComputerName
+  - SubjectUserName
+  - TargetFilename
+  - Image
+  - ParentImage
+  - CommandLine
+  - ProcessId
+falsepositives:
+  - Legitimate software installers, developer tools, or packaging processes that stage system-named binaries in non-system locations (whitelist known build servers and deployment tools).
+  - Forensic or backup operations that intentionally copy system files for analysis or imaging.
+level: high
+tags:
+  - attack.defense_evasion
+  - attack.persistence
+  - attack.t1036
+  - detection.windows.sysmon
+notes: |
+  - Tuning: add allowlists for known deployment/CI hosts, signed installers, and administrative accounts; consider requiring additional context (e.g., unsigned binary, unusual parent process, or network C2 activity) to reduce noise.
+  - Investigation: collect the created file (preserve), compute hashes, check digital signature, examine parent/child process tree, review command line and source path, search for similar artifacts across the estate, and check for subsequent persistence or execution.
+  - Response: isolate affected host if malicious, remove unauthorized copies, block source URLs/IPs, revoke compromised credentials, and perform a broader hunt for other masquerading artifacts.
+
+
+---
+# Arquivo: C.yml
+title: BazaLoader Masquerading - PDF File Renamed to DLL and Executed via rundll32
+id: 8c3f1e72-5b04-4d9a-a618-3e7f2d094c5a
+status: experimental
+description: |
+    Detects the BazaLoader delivery technique first reported by @ffforward
+    (January 2022) and codified in Atomic Red Team T1036 Atomic Test #2.
+
+    The technique works as follows:
+
+      Step 1 — A phishing email delivers a ZIP archive containing two files:
+                 README.cmd   — a batch script masquerading as documentation
+                 <name>.pdf   — the BazaLoader DLL with a .pdf extension
+                               (passes mail gateway inspection since .pdf is benign)
+
+      Step 2 — The victim extracts the ZIP and opens README.cmd, which executes
+                two key commands:
+                  a) ren <name>.pdf <name>.dll   (rename the disguised payload)
+                  b) rundll32 <name>.dll,<export> (execute the now-renamed DLL)
+
+      Step 3 — BazaLoader initialises, beacons to C2, and fetches Cobalt Strike
+                or a second-stage ransomware payload.
+
+    The detection has two complementary branches:
+
+    BRANCH A (file_rename): A file with .pdf extension is renamed to .dll. This
+    combination — not a .pdf being opened, not a .dll being written fresh, but
+    specifically a .pdf renamed to .dll — has no known legitimate use case. The
+    rename event is the earliest possible detection point, before any code runs.
+
+    BRANCH B (process_creation): rundll32.exe is executed with a command line
+    that references a DLL in a user-writable directory (Downloads, Temp, AppData,
+    Desktop, or a path matching %USERPROFILE%) by an ancestor cmd.exe process.
+    This catches the execution even if the rename event is missed (e.g., on hosts
+    without file-rename telemetry).
+
+    Both branches are high-confidence in isolation; together they form a kill
+    chain correlation that eliminates virtually all false positives.
+
+    Malware family context:
+      BazaLoader (aka BazarLoader) was developed by the TrickBot group and widely
+      used from 2020–2022 as an initial-access loader delivering Cobalt Strike,
+      Ryuk, Conti, and other ransomware families. This specific delivery variant
+      abuses the .pdf extension to bypass mail filters and endpoint AV that rely
+      on extension-based inspection without reading file magic bytes.
+
+    References:
+      - https://twitter.com/ffforward/status/1481672378639912960
+      - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1036/T1036.md#atomic-test-2---malware-masquerading-and-execution-from-zip-file
+      - https://attack.mitre.org/techniques/T1036/   (Masquerading)
+      - https://attack.mitre.org/techniques/T1218/011/ (Signed Binary Proxy: Rundll32)
+
+author: Claude (based on @ffforward reporting and Red Canary Atomic Red Team)
+date: 2026-06-06
+modified: 2026-06-06
+tags:
+    - attack.defense-evasion
+    - attack.t1036                # Masquerading
+    - attack.t1036.008            # Masquerading: Masquerade File Type
+    - attack.execution
+    - attack.t1218.011            # System Binary Proxy Execution: Rundll32
+    - attack.initial-access
+    - attack.t1566.001            # Phishing: Spearphishing Attachment
+    - tlp:white
+
+# ─── BRANCH A: file_rename logsource ──────────────────────────────────────────
+# Requires a SIEM/EDR that captures file rename events with both old and new
+# filename. Sysmon EventID 11 captures creation; for rename specifically use
+# EventID 11 with TargetFilename showing the new name OR a dedicated rename event.
+# CrowdStrike: RenameFile event. MDE: DeviceFileEvents with ActionType=FileRenamed.
+# If your platform does not emit rename events, rely on Branch B alone.
+
+---
+# NOTE: SIGMA does not natively support multi-logsource rules in a single file.
+# This file uses the conventional approach of placing Branch A and Branch B as
+# separate rule documents separated by '---'. Feed both to your SIEM; correlate
+# them on host + timestamp (within 30s) for the highest-fidelity alert.
+# Many detection engineers inline both branches under process_creation using
+# the CommandLine approach (Branch B) since file-rename telemetry is less
+# universally available.
+---
+
+title: BazaLoader - PDF Renamed to DLL (File Rename Indicator)
+id: 8c3f1e72-5b04-4d9a-a618-3e7f2d094c5a
+status: experimental
+description: >
+    Branch A — file rename event: a file with .pdf extension is renamed to .dll.
+    This has no legitimate use case and is the earliest detection point for the
+    BazaLoader PDF-masquerade delivery technique (@ffforward, Jan 2022).
+    Correlate with rule 1d94b7a3-... (rundll32 execution from user dir) within 30s
+    on the same host for confirmed kill-chain match.
+tags:
+    - attack.defense-evasion
+    - attack.t1036.008
+logsource:
+    category: file_rename          # Sysmon EID 11 + rename semantics; MDE FileRenamed
+    product: windows
+detection:
+    selection:
+        # Old name ends with .pdf, new name ends with .dll on the same file object.
+        # Field names vary by EDR — adjust as needed:
+        #   Sysmon:  TargetFilename (new), PreviousTargetFilename (old name before rename)
+        #   MDE:     FolderPath + FileName (new), PreviousFileName (old)
+        #   Falcon:  TargetFileName, OldFileName
+        PreviousTargetFilename|endswith: '.pdf'
+        TargetFilename|endswith: '.dll'
+    filter_system_paths:
+        # Exclude renames in system-managed directories where legitimate
+        # software update chains (very rarely) swap versioned files.
+        TargetFilename|startswith:
+            - 'C:\Windows\'
+            - 'C:\Program Files\'
+            - 'C:\Program Files (x86)\'
+    condition: selection and not filter_system_paths
+falsepositives:
+    - Intentional developer file manipulation (local dev environment) — extremely rare
+    - No known legitimate software performs this rename in user-writable directories
+level: high
+
+---
+
+title: BazaLoader - rundll32 Executing DLL From User-Writable Directory via cmd.exe
+id: 1d94b7a3-8e52-4f0b-c729-5a3b1e806d8f
+status: experimental
+description: >
+    Branch B — process creation: rundll32.exe executing a DLL from a user-writable
+    path (Downloads, Temp, AppData, Desktop) where the parent or grandparent process
+    is cmd.exe. This matches the README.cmd → rundll32 execution step of the
+    BazaLoader PDF-masquerade delivery chain. High-confidence standalone; correlate
+    with Branch A (PDF→DLL rename) for kill-chain confirmation.
+tags:
+    - attack.execution
+    - attack.t1218.011
+    - attack.defense-evasion
+    - attack.t1036
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_rundll32:
+        Image|endswith: '\rundll32.exe'
+        # DLL executed from a user-writable path — not from System32/SysWOW64
+        CommandLine|contains:
+            - '\Downloads\'
+            - '\AppData\'
+            - '\Temp\'
+            - '\Desktop\'
+            - '\Users\'
+        CommandLine|endswith: '.dll'
+
+    selection_cmd_parent:
+        # The .cmd script spawns rundll32 directly or via a child cmd.exe
+        ParentImage|endswith: '\cmd.exe'
+
+    selection_cmd_grandparent:
+        # Alternative: grandparent is cmd.exe (cmd → cmd → rundll32)
+        # Use if your EDR provides ParentOfParentImage
+        ParentImage|endswith: '\cmd.exe'
+
+    # Secondary signal: the CommandLine contains the classic ren .pdf .dll pattern
+    # This catches the rename command itself as it appears in cmd.exe's CommandLine
+    # when the parent cmd.exe process is logged (Sysmon EID 1 for cmd spawning ren).
+    selection_rename_cmdline:
+        Image|endswith: '\cmd.exe'
+        CommandLine|contains|all:
+            - '.pdf'
+            - '.dll'
+            - 'ren'         # ren or rename builtin
+
+    filter_legitimate_rundll32:
+        # Known-good rundll32 invocations from user paths (tune to your environment)
+        CommandLine|contains:
+            - 'printui.dll'
+            - 'shell32.dll'
+            - 'dfshim.dll'      # ClickOnce
+        ParentImage|endswith:
+            - '\msiexec.exe'
+            - '\svchost.exe'
+
+    condition: >
+        (
+          ( selection_rundll32 and selection_cmd_parent )
+          or selection_rename_cmdline
+        )
+        and not filter_legitimate_rundll32
+
+falsepositives:
+    - Custom in-house deployment scripts that invoke rundll32 from user directories
+      (address by extending filter_legitimate_rundll32 with known script hashes)
+    - Developer workflows running DLLs from local build output directories
+level: high
+
+# ── Analyst triage workflow ────────────────────────────────────────────────────
+# 1. Is there a corresponding file_rename event (Branch A) on the same host
+#    within 30 seconds? If yes, confirmed BazaLoader pattern — escalate.
+# 2. Check the directory for a ZIP file or .cmd file extracted recently
+#    (file_create events with .zip / .cmd extension in the same parent directory).
+# 3. Examine the DLL's PE header: BazaLoader DLLs typically have a very recent
+#    compile timestamp and are 100–300 KB. Check VirusTotal via hash.
+# 4. Check network connections from rundll32 or its children in the 60s after
+#    execution — BazaLoader beacons to HTTPS C2 shortly after init.
+# 5. Look for a subsequent mshta.exe, powershell.exe, or cobalt-strike-watermark
+#    beacon process as a second-stage indicator.
+#
+# Atomic Test cleanup command for lab validation:
+#   remove-item "$env:allusersprofile\<name>.dll" -force -erroraction silentlycontinue
+
+---
+# Arquivo: D.yml
+title: System Binary Executed From Non-System Location
+id: 8f5c0a9d-2f61-4f57-b4c6-6c9f0f6e4d41
+status: experimental
+description: Detects execution of a Windows system binary from a non-standard directory after being copied from System32 or SysWOW64, a technique associated with ATT&CK T1036 Masquerading.
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1036/T1036.md
+  - https://attack.mitre.org/techniques/T1036/
+author: OpenAI
+date: 2026-06-08
+tags:
+  - attack.defense_evasion
+  - attack.t1036
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+    Image|endswith:
+      - '\cmd.exe'
+      - '\powershell.exe'
+      - '\rundll32.exe'
+      - '\regsvr32.exe'
+      - '\cscript.exe'
+      - '\wscript.exe'
+  filter_system_paths:
+    Image|contains:
+      - '\Windows\System32\'
+      - '\Windows\SysWOW64\'
+      - '\Windows\WinSxS\'
+  condition: selection_img and not filter_system_paths
+falsepositives:
+  - Administrator troubleshooting activities
+  - Software packaging or application virtualization solutions
+  - Legitimate copies of Windows binaries used by enterprise software
+level: medium
+
+---
+# Arquivo: E.yml
+title: Windows System Binary Execution From Unusual Location
+id: b349f82d-1a2c-493e-bd9f-2a1748291a99
+status: experimental
+description: |
+  Detects the execution of core Windows system utilities (such as cmd.exe or powershell.exe) from non-standard, unusual, or world-writable paths. 
+  Adversaries copy legitimate system binaries to arbitrary paths to masquerade malicious activities, evade path-focused detection engineering, or bypass application whitelisting limits.
+author: Gemini
+date: 2026/06/08
+references:
+    - https://twitter.com/ffforward/status/1481672378639912960
+    - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1036/T1036.md#atomic-test-1---system-file-copied-to-unusual-location
+tags:
+    - attack.defense_evasion
+    - attack.t1036.003
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_image:
+        Image|endswith:
+            - '\cmd.exe'
+            - '\powershell.exe'
+            - '\calc.exe'
+            - '\wscript.exe'
+            - '\cscript.exe'
+            - '\regsrv32.exe'
+            - '\rundll32.exe'
+    filter_legitimate_paths:
+        Image|startswith:
+            - 'C:\Windows\System32\'
+            - 'C:\Windows\SysWOW64\'
+            - 'C:\Windows\WinSxS\'
+    condition: selection_image and not filter_legitimate_paths
+falsepositives:
+    - Legacy, proprietary, or poorly developed commercial enterprise software suites that deploy localized copies of native command-line shells within their application folders.
+    - Automated administrative scripting toolkits that pack standalone utility binaries inside specific staging shares.
+level: high
+
+---
+# Arquivo original: file_rename_win_non_dll_to_dll_ext.yml
+title: Non-DLL Extension File Renamed With DLL Extension
+id: bbfd974c-248e-4435-8de6-1e938c79c5c1
+status: test
+description: |
+    Detects rename operations of files with non-DLL extensions to files with a DLL extension. This is often performed by malware in order to avoid initial detections based on extensions.
+references:
+    - https://twitter.com/ffforward/status/1481672378639912960
+    - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1036/T1036.md#atomic-test-1---system-file-copied-to-unusual-location
+author: frack113
+date: 2022-02-19
+modified: 2023-11-11
+tags:
+    - attack.stealth
+    - attack.t1036.008
+    - detection.threat-hunting
+logsource:
+    product: windows
+    category: file_rename
+    definition: 'Requirements: Microsoft-Windows-Kernel-File Provider with at least the KERNEL_FILE_KEYWORD_RENAME_SETLINK_PATH keyword'
+detection:
+    selection:
+        TargetFilename|endswith: '.dll'
+    filter_main_dll:
+        # Note: To avoid file renames
+        SourceFilename|endswith: '.dll'
+    filter_main_installers:
+        SourceFilename|endswith: '.tmp'
+    filter_main_empty_source:
+        SourceFilename: ''
+    filter_main_null_source:
+        SourceFilename: null
+    filter_main_tiworker:
+        Image|contains: ':\Windows\WinSxS\'
+        Image|endswith: '\TiWorker.exe'
+    filter_main_upgrade:
+        - Image|endswith: ':\Windows\System32\wuauclt.exe'
+        - TargetFilename|contains: ':\$WINDOWS.~BT\Sources\'
+    filter_main_generic:
+        Image|contains:
+            - ':\Program Files (x86)\'
+            - ':\Program Files\'
+    filter_optional_squirrel:
+        SourceFilename|contains: '\SquirrelTemp\temp'
+    condition: selection and not 1 of filter_main_* and not 1 of filter_optional_*
+falsepositives:
+    - Likely from installers and temporary locations
+level: medium
+
+---

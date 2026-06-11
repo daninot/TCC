@@ -1,0 +1,200 @@
+# Arquivo: A.yml
+title: Registry Run Key Modification by WINEKEY / Team9 Backdoor
+id: 5b3c9d2e-1f4a-4e6b-9c7d-2a1f0e8b6c3d
+status: experimental
+description: Detects registry write events that create or modify Run key entries consistent with persistence by the WINEKEY or Team9 backdoor. Matches writes to standard Run key paths and looks for value names or data that reference known backdoor identifiers or that attempt to masquerade as backup manager applications.
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+references:
+  - [https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html](https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html)
+tags:
+  - attack.persistence
+  - attack.t1547.001
+  - malware.winekey
+  - malware.team9
+logsource:
+  product: windows
+  category: registry_event
+  description: Windows registry write events (create/modify) that include RegistryKey, RegistryValueName, and RegistryValueData.
+detection:
+  selection_runkey:
+    RegistryKey|endswith:
+      - '\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+      - '\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Run'
+  selection_malicious_name:
+    RegistryValueName|contains:
+      - 'WINEKEY'
+      - 'WineKey'
+      - 'Team9'
+      - 'team9'
+      - 'Backup'
+      - 'backup'
+      - 'BackupManager'
+      - 'BackupMgr'
+  selection_malicious_data:
+    RegistryValueData|contains:
+      - 'winekey'
+      - 'winekey.exe'
+      - 'team9'
+      - 'team9.exe'
+      - '\\AppData\\'
+      - '\\Temp\\'
+      - '.exe'
+  condition: selection_runkey and (selection_malicious_name or selection_malicious_data)
+falsepositives:
+  - Legitimate backup or management software that creates Run entries (e.g., vendor-signed backup agents).
+  - Endpoint management or deployment tools that register autostart entries.
+level: high
+
+---
+# Arquivo: B.yml
+title: WINEKEY or Team9 Backdoor Persistence via Run Key Backup Mgr
+id: e9f2c3a7-1b4d-4e8f-b5c2-7d3a1e6f9b24
+status: stable
+description: >
+  Detects the creation or modification of a Windows registry Run key entry
+  named Backup Mgr under the CurrentVersion\Run hive, a persistence mechanism
+  documented as characteristic of the WINEKEY backdoor, also tracked as
+  CORKBOT, BazarBackdoor, and Team9. WINEKEY is a post-compromise backdoor
+  deployed as part of a ransomware-enabling kill chain alongside the
+  KEGTAP/BazarLoader dropper. Mandiant observed this family throughout 2020
+  in campaigns that culminated in the deployment of Ryuk and Conti ransomware,
+  sometimes within 24 hours of initial access. The Run key value name Backup
+  Mgr is chosen to masquerade as a legitimate backup management application,
+  blending into the noise of enterprise startup entries. The endswith modifier
+  on TargetObject covers both HKCU and HKLM hive paths as well as per-user
+  paths logged under HKU\<SID>, providing full coverage regardless of which
+  hive the malware targets on a given host.
+references:
+  - https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.persistence
+  - attack.defense_evasion
+  - attack.t1547.001
+  - attack.t1112
+logsource:
+  category: registry_event
+  product: windows
+detection:
+  selection:
+    TargetObject|endswith: '\Software\Microsoft\Windows\CurrentVersion\Run\Backup Mgr'
+  condition: selection
+falsepositives:
+  - A legitimate third-party backup management application that registers
+    itself under the exact Run key name Backup Mgr during installation.
+    This is considered highly unlikely given the specificity of the value
+    name; any match should be investigated and the backing executable
+    verified against a known-good application catalogue before dismissal.
+level: high
+
+---
+# Arquivo: C.yml
+title: Potential WINEKEY or Team9 Backdoor Persistence Via Run Key
+id: d4e2f3a1-5b6c-7d8e-9f0a-1b2c3d4e5f6a
+status: experimental
+description: Detects registry modifications to a Run key entry that may indicate persistence established by the WINEKEY or Team9 backdoor, often disguised as a legitimate backup manager application.
+references:
+    - https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html
+author: Senior Threat Detection Engineer
+date: 2026-06-02
+logsource:
+    product: windows
+    category: registry_event
+detection:
+    selection:
+        TargetObject|endswith:
+            - '\Software\Microsoft\Windows\CurrentVersion\Run\BackupManager'
+            - '\Software\Microsoft\Windows\CurrentVersion\Run\WindowsBackup'
+            - '\Software\Microsoft\Windows\CurrentVersion\Run\SystemBackup'
+            - '\Software\Microsoft\Windows\CurrentVersion\Run\CloudBackup'
+            - '\Software\Microsoft\Windows\CurrentVersion\Run\OneDriveBackup'
+    condition: selection
+falsepositives:
+    - Legitimate backup software using similar key names (e.g., genuine BackupManager).
+    - Administrative scripts or monitoring tools.
+level: high
+tags:
+    - attack.persistence
+    - attack.t1547.001
+    - attack.ransomware
+
+---
+# Arquivo: D.yml
+title: WINEKEY Or Team9 Run Key Persistence
+id: 3d2d5ec3-7c8d-4a25-b8bc-2a7f61a1e9cf
+status: experimental
+description: Detects registry Run key modification used by the WINEKEY or Team9 backdoor to persist via a value disguised as a legitimate backup manager application.
+references:
+
+* [https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html](https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html)
+  author: OpenAI
+  date: 2026-06-02
+  tags:
+* attack.persistence
+* attack.privilege_escalation
+* attack.t1547.001
+  logsource:
+  product: windows
+  category: registry_event
+  detection:
+  selection:
+  TargetObject|endswith: '\Software\Microsoft\Windows\CurrentVersion\Run\Backup Mgr'
+  condition: selection
+  falsepositives:
+* Unlikely
+  level: high
+
+
+---
+# Arquivo: E.yml
+title: WINEKEY or Team9 Backdoor Run Key Persistence
+id: 3c5e8b4e-4f7d-4a1e-8e8d-8a2b5c6d7e8f
+status: experimental
+description: Detects registry Run key modifications associated with the WINEKEY or Team9 backdoor, where an entry is created under the Run key disguised as a backup manager application to achieve persistence.
+references:
+- [https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html](https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html)
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+tags:
+- attack.persistence
+- attack.t1547.001
+logsource:
+product: windows
+category: registry_event
+detection:
+selection:
+TargetObject|endswith: '\Software\Microsoft\Windows\CurrentVersion\Run\Backup Manager'
+condition: selection
+falsepositives:
+- Legitimate installation or configuration of an enterprise backup application named Backup Manager.
+level: high
+
+---
+# Arquivo original: registry_event_runkey_winekey.yml
+title: WINEKEY Registry Modification
+id: b98968aa-dbc0-4a9c-ac35-108363cbf8d5
+status: test
+description: Detects potential malicious modification of run keys by winekey or team9 backdoor
+references:
+    - https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html
+author: omkar72
+date: 2020-10-30
+modified: 2021-11-27
+tags:
+    - attack.privilege-escalation
+    - attack.persistence
+    - attack.t1547
+logsource:
+    category: registry_event
+    product: windows
+detection:
+    selection:
+        TargetObject|endswith: 'Software\Microsoft\Windows\CurrentVersion\Run\Backup Mgr'
+    condition: selection
+falsepositives:
+    - Unknown
+level: high
+
+---

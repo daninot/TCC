@@ -1,0 +1,313 @@
+# Arquivo: A.yml
+title: Ruby on Rails CSRF Token Bypass Attempt - Repeated InvalidAuthenticityToken Errors
+id: c3f72a18-5e04-4b91-bd37-9e8d1f0c4452
+status: experimental
+description: |
+    Detects a high volume of HTTP 422 Unprocessable Entity responses within a short
+    time window from a single source IP against a Ruby on Rails application, indicative
+    of automated CSRF token bypass attempts or form-replay attacks.
+
+    Rails maps ActionController::InvalidAuthenticityToken exclusively to HTTP 422
+    (via ActionDispatch::ExceptionWrapper rescue_responses). A legitimate user rarely
+    triggers this exception; repeated 422s from one source suggest scripted requests
+    that omit or forge the authenticity_token parameter, a cross-site request forgery
+    probe, or a stolen-session replay attack.
+
+    Rails also maps ActionController::InvalidCrossOriginRequest to 422, so this rule
+    also fires on cross-origin JavaScript XHR abuse attempts (Ajax injection as
+    described in the Rails security guide).
+
+references:
+    - https://edgeguides.rubyonrails.org/security.html#cross-site-request-forgery-csrf
+    - https://guides.rubyonrails.org/action_controller_overview.html
+    - https://stackoverflow.com/questions/25892194/does-rails-come-with-a-not-authorized-exception
+    - https://github.com/rails/rails/blob/cd08e6bcc4cd8948fe01e0be1ea0c7ca60373a25/actionpack/lib/action_dispatch/middleware/exception_wrapper.rb
+author: Generated from Ruby on Rails security documentation and ActionDispatch::ExceptionWrapper source
+date: 2024-01-01
+tags:
+    - attack.initial_access
+    - attack.t1189     # Drive-by Compromise
+    - attack.credential_access
+    - attack.t1539     # Steal Web Session Cookie
+    - attack.defense_evasion
+    - attack.t1550.004 # Use Alternate Authentication Material: Web Session Cookie
+    - tlp:white
+logsource:
+    category: webserver
+    # Targets any web server / reverse proxy access log in front of a Rails app.
+    # Tested field names match the common W3C / combined log format used by nginx,
+    # Apache, and Rails' own Rack::CommonLogger middleware.
+    product: generic
+detection:
+    selection_status:
+        # HTTP 422 is the Rails-canonical response for both
+        # ActionController::InvalidAuthenticityToken and
+        # ActionController::InvalidCrossOriginRequest (exception_wrapper.rb rescue_responses).
+        sc-status: 422
+
+    selection_rails_indicators:
+        # Scope to requests that carry Rails session cookies or target typical
+        # state-mutating methods — GET never triggers CSRF protection in Rails.
+        cs-method:
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+
+    condition: selection_status and selection_rails_indicators
+
+    # Aggregate / threshold layer (apply in your SIEM):
+    # Alert when the same c-ip produces >= 10 events matching the above
+    # within a 5-minute window.
+    #
+    # Example for Splunk:
+    #   | stats count by c-ip | where count >= 10
+    # Example for Elastic (use bucket aggregation with min_doc_count: 10 / 5m)
+
+falsepositives:
+    - Misconfigured API clients that omit the CSRF token on legitimate state-changing
+      requests (common when SPA frontends are not wired up to Rails' csrf_meta_tags helper).
+    - Load-balancer health checks using POST with no session context.
+    - Penetration testing or DAST scanners running against the application.
+    # Tune the threshold upward (e.g. >= 20) and exclude known scanner IPs/user-agents
+    # to reduce noise in CI/CD environments.
+level: medium
+
+---
+# Arquivo: B.yml
+title: Suspicious Rails Exception - Not Authorized or CSRF Failure
+id: 7a2e1c4d-5b6f-4a8b-9c0d-1e2f3a4b5c6d
+status: experimental
+description: Detects 'not authorized' exceptions in Rails application logs, which may indicate unauthorized access attempts, parameter tampering, or automated scanning activities.
+references:
+  - http://edgeguides.rubyonrails.org/security.html
+  - http://guides.rubyonrails.org/action_controller_overview.html
+  - https://stackoverflow.com/questions/25892194/does-rails-come-with-a-not-authorized-exception
+  - https://github.com/rails/rails/blob/cd08e6bcc4cd8948fe01e0be1ea0c7ca60373a25/actionpack/lib/action_dispatch/middleware/exception_wrapper.rb
+author: Senior Threat Detection Engineer
+date: 2026-06-04
+tags:
+  - attack.initial-access
+  - attack.t1078
+  - attack.t1190
+  - attack.defense-evasion
+  - attack.t1027
+logsource:
+  product: rails
+  category: application
+detection:
+  selection:
+    message|re:
+      - 'ActionController::InvalidAuthenticityToken'
+      - 'AbstractController::ActionNotFound'
+      - 'ActionController::RoutingError'
+      - 'ActionController::UnknownFormat'
+      - 'ActionController::UnknownHttpMethod'
+      - 'ActionController::MethodNotAllowed'
+      - 'ActionController::NotImplemented'
+      - 'ActiveRecord::RecordNotFound'
+      - 'ActionPolicy::Unauthorized'
+      - 'Pundit::NotAuthorizedError'
+      - 'CanCan::AccessDenied'
+      - 'NotAuthorizedError'
+      - 'Completed 401 Unauthorized'
+    status:
+      - 401
+      - 403
+      - 422
+  condition: selection
+falsepositives:
+  - Legitimate user errors such as expired sessions or malformed requests.
+  - Automated security scanning tools.
+  - Internal testing or debugging with DEBUG=true.
+level: high
+
+---
+# Arquivo: C.yml
+title: Ruby on Rails Web Application Attack Indicators
+id: ad84b391-7294-4d8e-be89-1fc3e59074bf
+status: experimental
+description: Detects specific security-relevant and malformed request exceptions thrown by the Ruby on Rails Action Dispatch middleware framework. These exceptions (such as CSRF token failures, unknown HTTP methods, parse errors, and missing parameters) often surface during web application scanning, fuzzing, or direct exploitation attempts against Rails endpoints.
+references:
+    - http://edgeguides.rubyonrails.org/security.html
+    - http://guides.rubyonrails.org/action_controller_overview.html
+    - https://stackoverflow.com/questions/25892194/does-rails-come-with-a-not-authorized-exception
+    - https://github.com/rails/rails/blob/cd08e6bcc4cd8948fe01e0be1ea0c7ca60373a25/actionpack/lib/action_dispatch/middleware/exception_wrapper.rb
+author: Security Operations Center
+date: 2026/06/05
+tags:
+    - attack.initial_access
+    - attack.t1190 # Exploit Public-Facing Application
+logsource:
+    category: application
+    product: rails
+detection:
+    selection:
+        Message|contains:
+            # CSRF and Cross-Origin Protections
+            - 'ActionController::InvalidAuthenticityToken'
+            - 'ActionController::InvalidCrossOriginRequest'
+            # Request and Protocol Anomalies (Fuzzing)
+            - 'ActionController::UnknownHttpMethod'
+            - 'ActionController::MethodNotAllowed'
+            # Malformed payloads / Parameter Tampering
+            - 'ActionDispatch::Http::Parameters::ParseError'
+            - 'ActionController::BadRequest'
+            - 'ActionController::ParameterMissing'
+    condition: selection
+falsepositives:
+    - End-users with expired or stale sessions submitting forms, resulting in genuine `InvalidAuthenticityToken` errors.
+    - Legacy API clients or integration tools sending outdated web hooks or improperly formatted parameters following an application update.
+level: medium
+
+---
+# Arquivo: D.yml
+title: Rails Exception Wrapper - NotAuthorized and Sensitive Exception Exposure
+id: 2a7d9f4b-rails-exception-wrapper-2026
+status: experimental
+description: Detects application log entries and HTTP responses that indicate Rails exceptions handled by ActionDispatch::ExceptionWrapper (for example NotAuthorized, routing errors, invalid authenticity token, or full stack traces returned in responses). These events can indicate probing for authorization weaknesses, attempted access to protected resources, or accidental exposure of sensitive application internals.
+author: Detection Engineer
+date: 2026-06-05
+references:
+  - http://edgeguides.rubyonrails.org/security.html
+  - http://guides.rubyonrails.org/action_controller_overview.html
+  - https://stackoverflow.com/questions/25892194/does-rails-come-with-a-not-authorized-exception
+  - https://github.com/rails/rails/blob/cd08e6bcc4cd8948fe01e0be1ea0c7ca60373a25/actionpack/lib/action_dispatch/middleware/exception_wrapper.rb
+logsource:
+  product: webserver
+  service: rails
+  category: web_access
+detection:
+  selection_exception_messages:
+    Message|contains:
+      - "NotAuthorized"
+      - "NotAuthorizedError"
+      - "ActionController::RoutingError"
+      - "ActionController::InvalidAuthenticityToken"
+      - "ActionController::ParameterMissing"
+      - "ActionController::UnknownFormat"
+      - "ActiveRecord::RecordNotFound"
+  selection_stacktrace_in_response:
+    ResponseBody|re:
+      - "(?i)stacktrace"
+      - "(?i)app/controllers/"
+      - "(?i)action_dispatch/middleware/exception_wrapper"
+  selection_http_5xx:
+    Status:
+      - 500
+      - 502
+      - 503
+      - 504
+  selection_repeated_from_ip:
+    CountByClientIP: ">5"
+    Timeframe: "5m"
+  condition: (selection_exception_messages and (selection_stacktrace_in_response or selection_http_5xx)) or (selection_exception_messages and selection_repeated_from_ip)
+fields:
+  - timestamp
+  - ClientIP
+  - HttpMethod
+  - Uri
+  - Status
+  - Message
+  - ResponseBody
+  - UserAgent
+  - Controller
+  - Action
+falsepositives:
+  - Development or staging environments with verbose error pages enabled
+  - Legitimate application behavior where controllers intentionally raise these exceptions for normal control flow
+  - Automated health checks or scanners that trigger routing errors against non-existent endpoints
+level: medium
+tags:
+  - web.application
+  - rails
+  - attack.discovery
+  - attack.initial_access
+  - detection.logging
+notes: |
+  - Tuning: whitelist known internal scanners, CI/CD probes, and developer hosts; suppress alerts from non-production environments.
+  - Investigation: capture full request/response, reproduce the request if safe, review controller/action and parameters, and search for correlated authentication or privilege escalation attempts from the same client IP or account.
+  - Mitigation: ensure production Rails apps do not expose stack traces to end users, validate and harden authorization checks, and apply secure error handling per Rails security guidance.
+
+
+---
+# Arquivo: E.yml
+title: Ruby on Rails Authorization and Request Validation Exceptions
+id: 0e7f5f5d-9db8-4f84-b8b0-6b4afdfd3d7d
+status: experimental
+description: Detects Ruby on Rails exception messages associated with authorization failures, request forgery validation, and routing errors.
+references:
+  - http://edgeguides.rubyonrails.org/security.html
+  - http://guides.rubyonrails.org/action_controller_overview.html
+  - https://stackoverflow.com/questions/25892194/does-rails-come-with-a-not-authorized-exception
+  - https://github.com/rails/rails/blob/cd08e6bcc4cd8948fe01e0be1ea0c7ca60373a25/actionpack/lib/action_dispatch/middleware/exception_wrapper.rb
+author: OpenAI
+date: 2026-06-04
+tags:
+  - attack.initial_access
+  - attack.defense_evasion
+  - attack.t1110
+logsource:
+  category: application
+detection:
+  selection_exception:
+    message|contains:
+      - 'User::NotAuthorized'
+      - 'ActionController::InvalidAuthenticityToken'
+      - 'ActionController::RoutingError'
+      - 'ActiveRecord::RecordNotFound'
+      - 'ActionController::ParameterMissing'
+  selection_logger:
+    logger|contains:
+      - 'rails'
+      - 'action_controller'
+      - 'action_dispatch'
+  condition: selection_exception and 1 of selection_logger*
+fields:
+  - logger
+  - message
+  - exception
+  - error.class
+  - error.message
+  - path
+  - request_method
+  - user_id
+falsepositives:
+  - Legitimate authorization denials
+  - CSRF protection blocking normal browser requests
+  - Missing-route probes from health checks or scanners
+level: medium
+
+---
+# Arquivo original: appframework_ruby_on_rails_exceptions.yml
+title: Ruby on Rails Framework Exceptions
+id: 0d2c3d4c-4b48-4ac3-8f23-ea845746bb1a
+status: stable
+description: Detects suspicious Ruby on Rails exceptions that could indicate exploitation attempts
+references:
+    - http://edgeguides.rubyonrails.org/security.html
+    - http://guides.rubyonrails.org/action_controller_overview.html
+    - https://stackoverflow.com/questions/25892194/does-rails-come-with-a-not-authorized-exception
+    - https://github.com/rails/rails/blob/cd08e6bcc4cd8948fe01e0be1ea0c7ca60373a25/actionpack/lib/action_dispatch/middleware/exception_wrapper.rb
+author: Thomas Patzke
+date: 2017-08-06
+modified: 2020-09-01
+tags:
+    - attack.initial-access
+    - attack.t1190
+logsource:
+    category: application
+    product: ruby_on_rails
+detection:
+    keywords:
+        - ActionController::InvalidAuthenticityToken
+        - ActionController::InvalidCrossOriginRequest
+        - ActionController::MethodNotAllowed
+        - ActionController::BadRequest
+        - ActionController::ParameterMissing
+    condition: keywords
+falsepositives:
+    - Application bugs
+level: medium
+
+---

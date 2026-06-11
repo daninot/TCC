@@ -1,0 +1,348 @@
+# Arquivo: A.yml
+title: Sha1-Hulud npm Supply Chain - Malicious File Drop During Package Install
+id: 7f3e9a2c-4d81-4b07-ae56-1c8f6d903b4e
+status: experimental
+description: |
+    Detects files characteristic of the Sha1-Hulud 2.0 npm supply chain campaign
+    being written to disk. The malware executes during the npm preinstall lifecycle
+    hook and drops a fixed set of payload and exfiltration staging files:
+    setup_bun.js, bun_environment.js, cloud.json, contents.json, environment.json,
+    truffleSecrets.json, and a backdoor GitHub Actions workflow (discussion.yaml).
+    These filenames are hardcoded in the payload and have not been observed in
+    legitimate npm packages. The rule triggers on any process creating one of these
+    files where the parent process chain includes a Node.js or npm-related binary,
+    consistent with install-time lifecycle script execution.
+
+    References:
+      - https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack
+      - https://www.aikido.dev/blog/shai-hulud-strikes-again-hitting-zapier-ensdomains
+      - https://semgrep.dev/blog/2025/digging-for-secrets-sha1-hulud-the-second-coming-of-the-npm-worm/
+
+author: Claude (based on Wiz Research / Aikido / Semgrep public reporting)
+date: 2026-06-06
+modified: 2026-06-06
+tags:
+    - attack.execution
+    - attack.t1059.006        # Command and Scripting Interpreter: JavaScript
+    - attack.exfiltration
+    - attack.t1020            # Automated Exfiltration
+    - attack.persistence
+    - attack.t1053.005        # Scheduled Task/Job (GitHub Actions used as persistence)
+    - attack.credential_access
+    - attack.t1552.001        # Unsecured Credentials: Credentials In Files
+    - tlp:white
+
+logsource:
+    category: file_event
+    # Tested against Sysmon (EventID 11), Elastic Endpoint, Falcon, and
+    # auditd with FILE_CREATE/FILE_MODIFY syscall rules. Adjust field names
+    # to match your EDR's schema if necessary.
+
+detection:
+    selection_filenames:
+        # Hardcoded payload and staging filenames written by the malware.
+        # All five data files can appear in any working directory; discussion.yaml
+        # will appear under .github/workflows/ relative to the repo root.
+        TargetFilename|endswith:
+            - '\setup_bun.js'
+            - '/setup_bun.js'
+            - '\bun_environment.js'
+            - '/bun_environment.js'
+            - '\cloud.json'
+            - '/cloud.json'
+            - '\contents.json'
+            - '/contents.json'
+            - '\truffleSecrets.json'
+            - '/truffleSecrets.json'
+            - '\.github\workflows\discussion.yaml'
+            - '/.github/workflows/discussion.yaml'
+
+    selection_process:
+        # The file must be written by a process consistent with npm lifecycle
+        # script execution. Legitimate preinstall/postinstall hooks run under
+        # node, npm, npx, or their wrappers. Adjust paths as needed for your OS.
+        Image|endswith:
+            - '\node.exe'
+            - '/node'
+            - '\npm.cmd'
+            - '/npm'
+            - '\npx.cmd'
+            - '/npx'
+
+    # environment.json is a common enough filename to generate noise on its own.
+    # Require the parent-process filter when matching it in isolation.
+    selection_environment_json_only:
+        TargetFilename|endswith:
+            - '\environment.json'
+            - '/environment.json'
+
+    condition: >
+        ( selection_filenames and selection_process )
+        or ( selection_environment_json_only and selection_process )
+
+falsepositives:
+    - Legitimate tooling that also uses the filename cloud.json or contents.json
+      in a node_modules context is theoretically possible but has not been
+      observed at meaningful scale. Scope the rule to build/CI hosts and
+      developer workstations rather than production servers to reduce noise.
+    - The discussion.yaml path match is very specific to this campaign and is
+      unlikely to produce false positives.
+
+level: high
+
+fields:
+    - TargetFilename
+    - Image
+    - ParentImage
+    - User
+    - ProcessId
+    - ParentProcessId
+    - CommandLine
+
+# ── IOC reference (do not rely on these alone; the filenames are the primary
+#    signal since the hashes cover only known variants) ───────────────────────
+# SHA1 hashes of known malicious payload files (Wiz Research):
+#   bun_environment.js  d60ec97eea19fffb4809bc35b91033b52490ca11
+#   bun_environment.js  3d7570d14d34b0ba137d502f042b27b0f37a59fa  (variant)
+#   setup_bun.js        d1829b4708126dcc7bea7437c04d1f10eacd4a16
+
+---
+# Arquivo: B.yml
+title: Shai-Hulud Malware Indicators - setup_bun.js or bun_environment.js Creation
+id: 11111111-1111-1111-1111-111111111111
+status: test
+description: Detects creation of setup_bun.js or bun_environment.js files, which are malicious files injected by the Shai-Hulud supply chain worm into compromised npm packages.
+references:
+    - https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack
+    - https://www.aikido.dev/blog/shai-hulud-strikes-again-hitting-zapier-ensdomains
+    - https://semgrep.dev/blog/2025/digging-for-secrets-sha1-hulud-the-second-coming-of-the-npm-worm/
+author: Nasreddine Bencherchali (Nextron Systems)
+date: 2026-06-05
+tags:
+    - attack.t1195.001
+    - attack.s9008
+logsource:
+    category: file_event
+    product: linux
+detection:
+    selection:
+        TargetFilename|endswith:
+            - 'setup_bun.js'
+            - 'bun_environment.js'
+    condition: selection
+falsepositives:
+    - Unknown
+level: high
+
+---
+# Arquivo: C.yml
+title: Shai-Hulud Supply Chain Indicators — Malicious NPM/Git Activity
+id: 2c9b7f4e-2026-shai-hulud-0001
+status: experimental
+description: Detects indicators consistent with the Shai‑Hulud supply‑chain campaign: malicious or unexpected NPM package activity, postinstall/prepare scripts that fetch and execute remote code, .npmrc registry redirection, git commits introducing obfuscated payloads or long hex/sha1 blobs, and installs pulling packages from suspicious GitHub URLs. These patterns help identify typosquatting, repo compromise, or injected build/install-time execution used to propagate a worm-like supply chain infection.
+author: Detection Engineer
+date: 2026-06-06
+references:
+  - https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack
+  - https://www.aikido.dev/blog/shai-hulud-strikes-again-hitting-zapier-ensdomains
+  - https://semgrep.dev/blog/2025/digging-for-secrets-sha1-hulud-the-second-coming-of-the-npm-worm/
+logsource:
+  product: code_repository
+  service: git/npm/ci
+  category: code_change
+detection:
+  selection_package_json_postinstall:
+    FilePath|endswith:
+      - "package.json"
+    FileContent|re:
+      - '(?i)"(postinstall|prepare|install|preinstall)"\s*:\s*".{0,200}(curl|wget|powershell|Invoke-WebRequest|node\s+-e|npm\s+run|bash|sh)\b'
+  selection_npm_process_fetch_github:
+    EventType: process_creation
+    Image|re:
+      - '(?i)\\(npm|node|npx)(\.exe)?$'
+    CommandLine|re:
+      - '(?i)\binstall\b.*(github\.com|raw\.githubusercontent\.com|gitlab\.com|bitbucket\.org)'
+      - '(?i)(npm\s+install\s+[^ ]+@git\+https?:\/\/|npm\s+install\s+https?:\/\/github\.com)'
+  selection_npmrc_registry_redirect:
+    FilePath|re:
+      - '(?i)(^|/)\.npmrc$'
+    FileContent|re:
+      - '(?i)registry\s*=\s*(http:\/\/|https?:\/\/)(?!registry\.npmjs\.org)'
+  selection_git_commit_obfuscated_blob:
+    EventType: git_commit
+    CommitMessage|re:
+      - '(?i)(postinstall|prepare|added\s+package|typo|fix\spackage|supply[-_ ]chain)'
+    FileDiff|re:
+      - '(?i)([A-Fa-f0-9]{40,}|base64,[A-Za-z0-9+/=]{200,})'
+  selection_sha1_like_secret_in_repo:
+    FileContent|re:
+      - '(?i)(secret|token|key|private_key|api_key|password).{0,60}([a-f0-9]{40})'
+  selection_suspicious_dependency_name:
+    FilePath|endswith:
+      - "package.json"
+    FileContent|re:
+      - '(?i)"dependencies"\s*:\s*{[^}]*"(?:[a-z0-9\-_]*hulud|shai[-_ ]hulud|shaihulud|shai[-_ ]h[a0o]lud|shai[-_ ]h[a0o]lud[a-z0-9\-_]*)"\s*:'
+  condition: selection_package_json_postinstall or selection_npm_process_fetch_github or selection_npmrc_registry_redirect or selection_git_commit_obfuscated_blob or selection_sha1_like_secret_in_repo or selection_suspicious_dependency_name
+fields:
+  - timestamp
+  - Repository
+  - CommitHash
+  - CommitAuthor
+  - CommitMessage
+  - FilePath
+  - FileContentSnippet
+  - Image
+  - CommandLine
+  - User
+falsepositives:
+  - Legitimate packages that use postinstall scripts for build steps or native module compilation (node-gyp) — verify publisher and script contents.
+  - Internal registries or mirrors configured via .npmrc by DevOps teams.
+  - Large binary blobs or encoded assets intentionally committed by developers (media, build artifacts) — validate with development teams.
+level: high
+tags:
+  - attack.supply_chain
+  - attack.persistence
+  - malware.npm
+  - detection.code_repo
+  - threat.shai-hulud
+notes: |
+  - Tuning: whitelist known build scripts, internal registries, and trusted package names; restrict detection to changes from non‑trusted authors or to production branches.
+  - Investigation: retrieve full commit diffs and package.json contents, verify package publisher and signatures, inspect postinstall/prepare scripts for remote fetch-and-execute patterns, check .npmrc for registry redirection, and search the environment for installed packages with matching names or hashes.
+  - Response: if malicious activity is confirmed, remove compromised packages, rotate affected credentials, revoke tokens exposed in repos, block malicious registries/URLs, and perform a tenant-wide hunt for other infected repositories or CI artifacts.
+
+
+---
+# Arquivo: D.yml
+title: Shai-Hulud 2.0 npm Worm Script Execution
+id: 9f2c6d1a-0b4c-4a7d-8e1a-8f2f9b6a4b71
+status: experimental
+description: Detects execution patterns associated with the Shai-Hulud 2.0 npm supply-chain worm, including the setup_bun.js staging script and bun_environment.js payload execution.
+references:
+  - https://www.wiz.io/blog/shai-hulud-npm-supply-chain-attack
+  - https://www.aikido.dev/blog/shai-hulud-strikes-again-hitting-zapier-ensdomains
+  - https://semgrep.dev/blog/2025/digging-for-secrets-sha1-hulud-the-second-coming-of-the-npm-worm
+  - https://www.elastic.co/blog/shai-hulud-worm-2-0-updated-response
+  - https://www.microsoft.com/en-us/security/blog/2025/12/09/shai-hulud-2-0-guidance-for-detecting-investigating-and-defending-against-the-supply-chain-attack/
+author: OpenAI
+date: 2026-06-06
+tags:
+  - attack.execution
+  - attack.credential_access
+  - attack.t1059
+  - attack.supply_chain
+logsource:
+  category: process_creation
+detection:
+  selection_setup_bun:
+    CommandLine|contains:
+      - 'setup_bun.js'
+      - 'preinstall'
+      - 'node setup_bun.js'
+  selection_bun_environment:
+    CommandLine|contains:
+      - 'bun_environment.js'
+      - 'bun '
+  selection_bun_invocation:
+    Image|endswith:
+      - '\bun.exe'
+      - '/bun'
+    CommandLine|contains:
+      - 'bun_environment.js'
+  condition: selection_setup_bun or (selection_bun_environment and selection_bun_invocation)
+fields:
+  - Image
+  - ParentImage
+  - CommandLine
+  - CurrentDirectory
+  - User
+  - Computer
+falsepositives:
+  - Legitimate package installation scripts using similarly named files
+  - Internal development and testing environments
+  - Build pipelines that intentionally execute npm lifecycle hooks
+level: high
+
+---
+# Arquivo: E.yml
+title: Shai-Hulud Supply Chain Malware File Indicators
+id: 5e638b9d-bc11-4217-ba5d-ee8146e2f114
+status: experimental
+description: Detects file creation or modifications associated with the Shai-Hulud (including Shai-Hulud 2.0 and Mini Shai-Hulud) supply chain malware family. The worm target npm/PyPI environments to steal cloud, CI/CD, and local developer credentials, creates malicious GitHub backdoor workflows, and plants persistence mechanisms like the "kitty-monitor" daemon.
+references:
+    - https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack
+    - https://www.aikido.dev/blog/shai-hulud-strikes-again-hitting-zapier-ensdomains
+    - https://semgrep.dev/blog/2025/digging-for-secrets-sha1-hulud-the-second-coming-of-the-npm-worm/
+    - https://snyk.io/blog/mini-shai-hulud-antv-npm-supply-chain-attack/
+author: Security Operations Center
+date: 2026/06/06
+tags:
+    - attack.initial_access
+    - attack.persistence
+    - attack.credential_access
+    - attack.t1195.002 # Supply Chain Compromise: Compromise Software Dependencies
+    - attack.t1053.006 # Scheduled Task/Job: Systemd Timers
+    - attack.t1543.001 # Create or Modify System Process: Launch Agent
+logsource:
+    category: file_event
+detection:
+    selection:
+        TargetFilename|endswith:
+            # Malware components and exfiltration dumps
+            - '/truffleSecrets.json'
+            - '\truffleSecrets.json'
+            - '/setup_bun.js'
+            - '\setup_bun.js'
+            - '/bun_environment.js'
+            - '\bun_environment.js'
+            # Persistence scripts and configurations (TeamPCP variants)
+            - '/gh-token-monitor.sh'
+            - '\gh-token-monitor.sh'
+            - '/kitty-monitor.service'
+            - '/com.user.kitty-monitor.plist'
+            - '\com.user.kitty-monitor.plist'
+            # Injected backdoor workflows
+            - '/.github/workflows/discussion.yaml'
+            - '/.github/workflows/discussion.yml'
+            - '\.github\workflows\discussion.yaml'
+            - '\.github\workflows\discussion.yml'
+    condition: selection
+falsepositives:
+    - Security research or authorized penetration testing replicating open-source Shai-Hulud worm indicators in a staging environment.
+level: critical
+
+---
+# Arquivo original: proc_creation_lnx_mal_shai_hulud_indicator.yml
+title: Shai-Hulud Malware Indicators - Linux
+id: 11bb9b26-4179-4a06-afcb-1ec31fce1627
+related:
+    - id: 540703fb-a874-4385-a9d6-7cd1bfab268c
+      type: similar
+    - id: 8f2a9c3b-7e5d-4f1a-9b8e-2c4d6a8f9e1b
+      type: similar
+status: experimental
+description: |
+    Detects potential Shai-Hulud malware indicators based on specific command line arguments associated with its execution.
+references:
+    - https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack
+    - https://www.aikido.dev/blog/shai-hulud-strikes-again-hitting-zapier-ensdomains
+    - https://semgrep.dev/blog/2025/digging-for-secrets-sha1-hulud-the-second-coming-of-the-npm-worm/
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+date: 2025-11-25
+tags:
+    - attack.execution
+    - attack.t1059
+    - detection.emerging-threats
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection:
+        CommandLine|contains:
+            - 'Shai-Hulud'
+            - 'SHA1HULUD'
+    condition: selection
+falsepositives:
+    - Legitimate software containing similar strings
+level: high
+
+---

@@ -18,3 +18,4 @@ pysigma
 requests
 pyyaml
 beautifulsoup4
+ddgs

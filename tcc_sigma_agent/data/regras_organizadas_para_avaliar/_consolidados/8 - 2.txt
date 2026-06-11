@@ -1,0 +1,238 @@
+# Arquivo: A.yml
+title: Internet Explorer ZoneMap Trusted Sites Modification
+id: 9b1d842b-7c72-46a4-9dfc-27943c22b9c1
+status: experimental
+description: Detects modifications to the Internet Explorer ZoneMap Domains registry key that add domains to untrusted or trusted zones, while excluding legitimate zones like My Computer, Local Intranet, or empty values.
+references:
+- [https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone](https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone)
+- [https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries](https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries)
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+tags:
+- attack.defense_evasion
+- attack.persistence
+- attack.t1112
+logsource:
+product: windows
+category: registry_set
+detection:
+selection:
+TargetObject|contains: '\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains'
+exclusion:
+Details:
+- 'DWORD (0x00000000)'
+- 'DWORD (0x00000001)'
+- ''
+- null
+condition: selection and not exclusion
+falsepositives:
+- Legitimate enterprise group policy deployments or administrative configurations.
+level: medium
+
+---
+# Arquivo: B.yml
+title: Potential Internet Explorer Trusted Sites Zone Modification
+id: 9b2f5e1a-4c3d-4a7e-8c9d-1a2b3c4d5e6f
+status: experimental
+description: Detects registry modifications that add a domain to Internet Explorer Trusted Sites zone (ZoneMap), potentially lowering security controls for attacker-controlled domains.
+references:
+    - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone
+    - https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries
+author: Senior Threat Detection Engineer
+date: 2026-06-02
+logsource:
+    product: windows
+    category: registry_set
+detection:
+    selection:
+        TargetObject|contains: '\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains\'
+        Details: 'DWORD (0x00000002)'
+    exclusion:
+        Details|endswith: '0x00000000'  # My Computer zone
+        Details|endswith: '0x00000001'  # Local Intranet zone
+    condition: selection and not exclusion
+falsepositives:
+    - Legitimate administrative configuration adding internal sites to Trusted Sites zone (e.g., for compatibility).
+    - Software installers that modify Trusted Sites for proper functionality.
+level: medium
+tags:
+    - attack.defense_evasion
+    - attack.t1112
+    - attack.persistence
+    - attack.t1112.001
+
+---
+# Arquivo: C.yml
+title: Internet Explorer ZoneMap Trusted Site Domain Added via Registry
+id: c6d2f4a1-8b7e-4c3f-a9d5-2e1b6f4c8d71
+status: experimental
+description: >
+  Detects registry write operations that insert a new domain entry under the
+  Internet Explorer ZoneMap Domains hive with a zone value that is neither
+  My Computer (DWORD 0x00000000) nor Local Intranet (DWORD 0x00000001) and
+  is not empty. Adding a domain to the Trusted Sites zone (DWORD 0x00000002)
+  via this path silently lowers IE security restrictions for the target
+  domain, disabling Protected Mode, enabling automatic NTLM authentication,
+  and permitting elevated-privilege ActiveX and scripted content execution.
+  Adversaries use this technique to pre-stage attacker-controlled domains as
+  trusted before delivering browser-based payloads, credential-harvesting
+  pages, or malicious ActiveX components, achieving both defense evasion and
+  a persistence-supporting trust relationship that survives user logon.
+  The exclusion of zone values 0x00000000, 0x00000001, and empty suppresses
+  the large baseline of legitimate enterprise policy deployments that assign
+  internal domains to the Local Intranet zone via GPO or management tooling.
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone
+  - https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.defense_evasion
+  - attack.persistence
+  - attack.t1112
+  - attack.t1553
+logsource:
+  category: registry_set
+  product: windows
+detection:
+  selection:
+    TargetObject|contains: '\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains\'
+  filter_legitimate_zones:
+    Details:
+      - 'DWORD (0x00000000)'
+      - 'DWORD (0x00000001)'
+      - '(Empty)'
+  condition: selection and not filter_legitimate_zones
+falsepositives:
+  - Group Policy or endpoint-management tooling (e.g., SCCM, Intune,
+    Ansible) that programmatically populates ZoneMap\Domains with internal
+    hostnames assigned to zone values other than 0 or 1, such as assigning
+    internal web applications to the Trusted Sites zone (0x00000002) as an
+    approved browser compatibility measure.
+  - Browser-helper, SSO, or Kerberos integrated-authentication software that
+    adds internal service hostnames to the Trusted Sites zone during
+    installation to enable silent authentication.
+level: high
+
+---
+# Arquivo: D.yml
+title: Internet Explorer ZoneMap Trusted Sites Domain Added
+id: 8e2a9c2e-3b91-4f8d-9d5f-6a7c1d4b9e11
+status: experimental
+description: Detects registry modifications that add domains to Internet Explorer ZoneMap Domains, potentially adding attacker-controlled sites to trusted browser zones. Excludes legitimate zone assignments for My Computer (0), Local Intranet (1), and empty values.
+references:
+
+* [https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone](https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone)
+* [https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries](https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries)
+  author: OpenAI
+  date: 2026-06-02
+  tags:
+* attack.defense-evasion
+* attack.persistence
+* attack.t1112
+  logsource:
+  product: windows
+  category: registry_set
+  detection:
+  selection:
+  TargetObject|contains: '\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains'
+  filter_legitimate:
+  Details:
+
+  * 'DWORD (0x00000000)'
+  * 'DWORD (0x00000001)'
+  * ''
+    condition: selection and not filter_legitimate
+    falsepositives:
+* Administrative configuration of browser security zones
+* Enterprise software adding approved domains to Trusted Sites
+  level: medium
+
+
+---
+# Arquivo: E.yml
+title: Internet Explorer ZoneMap Trusted Sites Domain Added
+id: 1d9f3b2e-8c4a-4f2b-9a6e-2b7f4c5a9e3d
+status: experimental
+description: Detects registry writes that add a domain under the Internet Explorer ZoneMap Domains path with a zone assignment of Trusted Sites (zone 2). Excludes common legitimate assignments such as My Computer, Local Intranet and empty values.
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+references:
+  - [https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone](https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone)
+  - [https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries](https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries)
+tags:
+  - attack.persistence
+  - attack.defense_evasion
+  - attack.t1112
+logsource:
+  product: windows
+  category: registry_set
+detection:
+  selection:
+    RegistryKey|contains: 'Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ZoneMap\\Domains\\'
+    # ValueData equals 2 (Trusted Sites). Cover common field names used by different collectors.
+    ValueData:
+      - '2'
+    Value:
+      - '2'
+    Data:
+      - '2'
+  exclusion:
+    # Exclude legitimate zone assignments and empty values
+    ValueName:
+      - ''
+      - 'My Computer'
+      - 'Local Intranet'
+    ValueData:
+      - ''
+    Value:
+      - ''
+    Data:
+      - ''
+  condition: selection and not exclusion
+falsepositives:
+  - Administrative changes by IT to add corporate trusted sites.
+  - Group Policy or management tools that legitimately add trusted domains.
+level: high
+
+---
+# Arquivo original: registry_set_change_security_zones.yml
+title: IE Change Domain Zone
+id: 45e112d0-7759-4c2a-aa36-9f8fb79d3393
+related:
+    - id: d88d0ab2-e696-4d40-a2ed-9790064e66b3
+      type: derived
+status: test
+description: Hides the file extension through modification of the registry
+references:
+    - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone
+    - https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries
+author: frack113
+date: 2022-01-22
+modified: 2023-08-17
+tags:
+    - attack.persistence
+    - attack.t1137
+logsource:
+    category: registry_set
+    product: windows
+detection:
+    selection_domains:
+        TargetObject|contains: \SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains\
+    filter:
+        Details:
+            - DWORD (0x00000000) # My Computer
+            - DWORD (0x00000001) # Local Intranet Zone
+            - '(Empty)'
+    condition: selection_domains and not filter
+falsepositives:
+    - Administrative scripts
+level: medium
+regression_tests_path: regression_data/rules/windows/registry/registry_set/registry_set_change_security_zones/info.yml
+simulation:
+    - type: atomic-red-team
+      name: Add Domain to Trusted Sites Zone
+      technique: T1112
+      atomic_guid: cf447677-5a4e-4937-a82c-e47d254afd57
+
+---

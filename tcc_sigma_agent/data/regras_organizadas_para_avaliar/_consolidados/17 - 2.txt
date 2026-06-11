@@ -1,0 +1,232 @@
+# Arquivo: A.yml
+title: GitHub Audit Log Deletion Of Codespaces Environments Projects And Repositories
+id: 0b6f2d4c-2d69-4aa0-9d85-3e2d1a4f7c91
+status: experimental
+description: Detects deletion-related GitHub audit log events for codespaces, environments, projects, and repositories, which may indicate destructive activity or unauthorized resource removal.
+references:
+
+* [https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions](https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions)
+* [https://docs.github.com/en/codespaces/managing-codespaces-for-your-organization/reviewing-your-organizations-audit-logs-for-github-codespaces](https://docs.github.com/en/codespaces/managing-codespaces-for-your-organization/reviewing-your-organizations-audit-logs-for-github-codespaces)
+* [https://docs.github.com/enterprise-cloud%40latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise](https://docs.github.com/enterprise-cloud%40latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise)
+  author: OpenAI
+  date: 2026-06-02
+  tags:
+* attack.impact
+* attack.t1485
+  logsource:
+  product: github
+  service: audit
+  detection:
+  selection_codespace:
+  action: codespaces.destroy
+  selection_environment:
+  action: environment.delete
+  selection_project:
+  action: project.delete
+  selection_repository:
+  action: repo.destroy
+  condition: 1 of selection_*
+  falsepositives:
+* Authorized administrative cleanup
+* Planned migration or decommissioning activities
+  level: high
+  notes: GitHub audit log streaming must be enabled to collect these events. See the streaming setup documentation at [https://docs.github.com/enterprise-cloud%40latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise](https://docs.github.com/enterprise-cloud%40latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise).
+
+
+---
+# Arquivo: B.yml
+title: GitHub Destructive Delete Actions
+id: 7cf7df0e-c4a3-4886-af34-4bc972e3916b
+status: stable
+description: Detects delete actions in GitHub audit logs targeting codespaces, environments, projects, and repositories, which can indicate destructive activity or unauthorized resource removal. This rule requires GitHub audit log streaming to be enabled (setup documentation available at [https://docs.github.com/en/enterprise-cloud@latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise](https://docs.github.com/en/enterprise-cloud@latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise)).
+references:
+
+* [https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions](https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions)
+* [https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/security-log-events#codespaces](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/security-log-events#codespaces)
+author: Senior Threat Detection Engineer
+date: 2026/06/03
+tags:
+* attack.impact
+* attack.t1485
+logsource:
+product: github
+service: audit
+detection:
+selection:
+action:
+* 'codespaces.delete'
+* 'environment.delete'
+* 'project.delete'
+* 'repo.delete'
+condition: selection
+falsepositives:
+
+
+* Legitimate administrative cleanup, decommissioning of projects, or authorized removal of stale codespaces, repositories, and environments by repository owners.
+level: medium
+
+---
+# Arquivo: C.yml
+title: GitHub Audit Log Deletion Events for Codespaces, Environments, Projects, and Repositories
+id: 6a9f2c3d-8b4e-4f1a-9c7d-2e5f0a7b8c9d
+status: experimental
+description: Detects destructive delete actions in GitHub audit logs targeting codespaces, environments, projects, and repositories. Any such deletion may indicate unauthorized resource removal or malicious activity. Requires GitHub audit log streaming to be enabled. See setup documentation at [https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions](https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions).
+author: Senior Threat Detection Engineer
+date: 2026/06/02
+references:
+  - [https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions](https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions)
+  - [https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/security-log-events#codespaces](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/security-log-events#codespaces)
+tags:
+  - attack.impact
+  - attack.t1485
+  - github
+  - destructive-activity
+logsource:
+  product: github
+  service: audit
+  description: GitHub audit log streaming must be enabled to capture these events. See [https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions](https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions) for setup.
+detection:
+  selection:
+    action|in:
+      - 'codespaces.delete'
+      - 'environment.delete'
+      - 'project.delete'
+      - 'repository.delete'
+  condition: selection
+falsepositives:
+  - Legitimate administrative actions removing unused codespaces, environments, projects, or repositories.
+level: high
+
+---
+# Arquivo: D.yml
+title: GitHub Audit Log Destructive Action - Resource Deletion
+id: a2b3c4d5-e6f7-8901-2345-67890abcdef1
+status: experimental
+description: Detects delete actions in GitHub audit logs targeting codespaces, environments, projects, and repositories, indicating potential destructive activity or unauthorized resource removal.
+references:
+    - https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions
+    - https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/security-log-events#codespaces
+author: Senior Threat Detection Engineer
+date: 2026-06-03
+logsource:
+    product: github
+    service: audit
+    # Documentation: Requires GitHub audit log streaming to be enabled
+    # Setup: https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/audit-log-streaming
+detection:
+    selection:
+        action|endswith:
+            - '.delete'
+            - '.destroy'
+            - '.remove'
+        action|startswith:
+            - 'codespace.'
+            - 'environment.'
+            - 'project.'
+            - 'repo.'
+    condition: selection
+falsepositives:
+    - Legitimate administrative cleanup of unused resources.
+    - Automated lifecycle management scripts.
+level: medium
+tags:
+    - attack.impact
+    - attack.t1485
+
+---
+# Arquivo: E.yml
+This is a legitimate defensive detection engineering request. Let me fetch the actual audit log actions reference for the specific deletion action strings.  The confirmed GitHub audit log action strings for deletion events are `codespaces.delete`, `environment.delete`, `project.delete`, and `repo.destroy`, with the `action` field as the structured key in streamed audit log events.
+
+title: GitHub Audit Log Delete Action Invoked on Critical Resource
+id: 4e2b8f3a-7c1d-4a9e-b5f3-1d8c2e4a7b96
+status: experimental
+description: >
+  Detects delete actions recorded in the GitHub organization audit log
+  targeting codespaces, deployment environments, projects, and repositories.
+  These four action strings represent the highest-impact destructive
+  operations available to organization members: repo.destroy permanently
+  removes a repository and all its history; project.delete eliminates a
+  project board and associated metadata; environment.delete removes a
+  deployment environment and its associated secrets and protection rules;
+  and codespaces.delete terminates a cloud development environment.
+  When performed outside an approved change-management workflow — or by
+  an account that should not hold the necessary permissions — these
+  actions indicate insider threat activity, a compromised developer or
+  admin account conducting a destructive attack, or an adversary preparing
+  the environment by removing security controls or audit artifacts prior
+  to further activity. Repository and environment deletion can also be
+  used to disrupt CI/CD pipelines or destroy the forensic record of
+  prior malicious commits. Requires GitHub audit log streaming to be
+  enabled and the event stream forwarded to the SIEM. Setup documentation:
+  https://docs.github.com/en/enterprise-cloud@latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise#setting-up-audit-log-streaming
+references:
+  - https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions
+  - https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/security-log-events#codespaces
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.impact
+  - attack.collection
+  - attack.t1485
+  - attack.t1213.003
+logsource:
+  product: github
+  service: audit
+  definition: >
+    Requirements: GitHub audit log streaming must be enabled for the
+    organization or enterprise and the event stream must be forwarded to
+    the SIEM. Without streaming enabled, audit events are only accessible
+    via the GitHub web UI or REST API and will not be available for
+    real-time detection. Enable streaming following the documentation at
+    https://docs.github.com/en/enterprise-cloud@latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise#setting-up-audit-log-streaming
+detection:
+  selection:
+    action:
+      - 'codespaces.delete'
+      - 'environment.delete'
+      - 'project.delete'
+      - 'repo.destroy'
+  condition: selection
+falsepositives:
+  - Authorized repository archival or decommissioning workflows in which
+    a repository owner or organization administrator intentionally removes
+    end-of-life repositories, environments, or codespaces as part of a
+    documented housekeeping or offboarding process.
+  - Automated CI/CD pipelines or Infrastructure-as-Code tooling that
+    programmatically creates and tears down ephemeral environments or
+    repositories as part of a review-app or preview-deployment lifecycle.
+level: medium
+
+---
+# Arquivo original: github_delete_action_invoked.yml
+title: Github Delete Action Invoked
+id: 16a71777-0b2e-4db7-9888-9d59cb75200b
+status: test
+description: Detects delete action in the Github audit logs for codespaces, environment, project and repo.
+author: Muhammad Faisal (@faisalusuf)
+date: 2023-01-19
+modified: 2026-03-09
+references:
+    - https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#audit-log-actions
+    - https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/security-log-events#codespaces
+tags:
+    - attack.impact
+    - attack.collection
+    - attack.t1213.003
+logsource:
+    product: github
+    service: audit
+    definition: 'Requirements: The audit log streaming feature must be enabled to be able to receive such logs. You can enable following the documentation here: https://docs.github.com/en/enterprise-cloud@latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/streaming-the-audit-log-for-your-enterprise#setting-up-audit-log-streaming'
+detection:
+    selection:
+        action:
+            - 'codespaces.destroy'
+            - 'environment.delete'
+            - 'project.delete'
+            - 'repo.destroy'
+    condition: selection
+falsepositives:
+    - Validate the deletion activity is permitted. The "actor" field need to be validated.
+level: medium
+
+---

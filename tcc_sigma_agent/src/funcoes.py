@@ -180,26 +180,50 @@ def validar_tags_attack(tags: list):
 
 def busca_duckduckgo(termo: str, max_resultados: int = 5):
     """
-    Faz uma busca livre no DuckDuckGo e retorna um texto consolidado
-    com títulos e resumos. Falha graciosamente se a lib não estiver
-    instalada ou se houver erro de rede.
+    Busca livre no DuckDuckGo, filtrando domínios que servem regras Sigma.
+    Falha graciosamente em qualquer erro.
     """
+    DDGS = None
     try:
-        from duckduckgo_search import DDGS
+        from ddgs import DDGS
     except ImportError:
-        return None
+        try:
+            from duckduckgo_search import DDGS
+        except ImportError:
+            return None
+
+    # domínios que servem/republicam regras Sigma — evitar contaminação
+    DOMINIOS_BLOQUEADOS = (
+        ".github.com/sigmahq",
+        ".github.com/sigmahq/sigma",
+        ".raw.githubusercontent.com/sigmahq",
+        ".sigmahq.io/rules",
+        ".detection.fyi",
+        ".sigma-rules.io",
+        ".uncoder.io/catalog",
+    )
 
     try:
         resultados = []
+        descartados = 0
         with DDGS() as ddgs:
-            for r in ddgs.text(termo, max_results=max_resultados):
+            # pede mais resultados que o necessário, para compensar os filtrados
+            for r in ddgs.text(termo, max_results=max_resultados * 2):
+                url_res = r.get("href", "").lower()
+                if any(d in url_res for d in DOMINIOS_BLOQUEADOS):
+                    descartados += 1
+                    continue
                 titulo = r.get("title", "")
                 corpo = r.get("body", "")
                 resultados.append(f"{titulo}: {corpo}")
+                if len(resultados) >= max_resultados:
+                    break
+        if descartados:
+            print(f"    (DuckDuckGo: {descartados} resultado(s) de fonte Sigma filtrado(s))")
         if resultados:
             return "\n".join(resultados)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"    (DuckDuckGo indisponível: {e})")
     return None
 
 def extrair_urls_de_referencias(texto: str):

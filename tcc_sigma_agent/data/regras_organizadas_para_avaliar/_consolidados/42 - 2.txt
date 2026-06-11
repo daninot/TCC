@@ -1,0 +1,192 @@
+# Arquivo: A.yml
+title: Okta Policy Rule Modification or Deletion
+id: 0c97c1d3-4057-45c9-b148-1de94b631931
+status: test
+description: Detects modification or deletion of Okta policy rules, which may indicate weakening or removal of security controls such as MFA, sign-on, or access policies. References: Okta System Log event types policy.rule.update and policy.rule.delete.
+references:
+
+* [https://developer.okta.com/docs/reference/api/system-log/](https://developer.okta.com/docs/reference/api/system-log/)
+* [https://developer.okta.com/docs/reference/api/event-types/](https://developer.okta.com/docs/reference/api/event-types/)
+  logsource:
+  product: okta
+  service: okta
+  detection:
+  selection:
+  eventType:
+
+  * policy.rule.update
+  * policy.rule.delete
+    condition: selection
+    falsepositives:
+* Authorized administrative changes to Okta policy rules
+  level: medium
+  tags:
+* attack.persistence
+* attack.privilege-escalation
+* attack.t1098
+* attack.t1556
+* attack.t1484.001
+
+
+---
+# Arquivo: B.yml
+title: Okta Policy Rule Modification or Deletion
+id: e7f8a9b0-c1d2-43e4-95f6-a7b8c9d0e1f2
+status: experimental
+description: Detects modification or deletion of an Okta policy rule, which may indicate an attacker weakening security policies (MFA enforcement, sign-on rules, access controls) for persistence or privilege escalation.
+references:
+    - https://developer.okta.com/docs/reference/api/system-log/
+    - https://developer.okta.com/docs/reference/api/event-types/
+author: Senior Threat Detection Engineer
+date: 2026-06-06
+logsource:
+    product: okta
+    service: okta
+detection:
+    selection:
+        eventType|contains:
+            - 'policy.rule.update'
+            - 'policy.rule.delete'
+    condition: selection
+falsepositives:
+    - Legitimate administrative changes to policies
+level: high
+tags:
+    - attack.persistence
+    - attack.t1098
+    - attack.t1484
+    - attack.t1556
+
+---
+# Arquivo: C.yml
+title: Okta Policy Rule Modified or Deleted
+id: 2f8c4e1a-7d3b-4f9a-c6e8-1b5d7a3f9c2e
+status: experimental
+description: |
+    Detects modification or deletion of Okta policy rules. Attackers with
+    administrative access may weaken or remove security policies such as MFA
+    enforcement, sign-on rules, and access controls to facilitate persistent
+    access or privilege escalation.
+references:
+    - https://developer.okta.com/docs/reference/api/system-log/
+    - https://developer.okta.com/docs/reference/api/event-types/
+author: Senior Threat Detection Engineer
+date: 2024-03-01
+tags:
+    - attack.defense-evasion
+    - attack.t1562.001
+    - attack.persistence
+    - attack.t1556
+logsource:
+    service: okta
+    product: okta
+detection:
+    selection:
+        eventType|contains:
+            - 'policy.rule.update'
+            - 'policy.rule.delete'
+    condition: selection
+falsepositives:
+    - Legitimate administrative policy rule changes by authorized security
+      personnel during maintenance windows
+    - Automated policy management tooling performing scheduled updates
+level: high
+
+---
+# Arquivo: D.yml
+title: Okta Policy Rule Modification or Deletion
+id: c4e99fbc-89e4-4df1-86e5-4ef5647a83d4
+status: experimental
+description: Detects when an Okta policy rule is modified or deleted. Attackers with administrative privileges may weaken or remove security policies like MFA enforcement or sign-on controls to maintain persistent access or escalate privileges.
+references:
+- [https://developer.okta.com/docs/reference/api/system-log/](https://developer.okta.com/docs/reference/api/system-log/)
+- [https://developer.okta.com/docs/reference/api/event-types/](https://developer.okta.com/docs/reference/api/event-types/)
+author: Senior Threat Detection Engineer
+date: 2026/06/07
+tags:
+- attack.persistence
+- attack.defense_evasion
+- attack.t1562.001
+logsource:
+product: okta
+service: okta
+detection:
+selection:
+eventType:
+- 'policy.rule.update'
+- 'policy.rule.delete'
+condition: selection
+falsepositives:
+- Legitimate administrative changes to Okta policies or rule cleanup.
+level: medium
+
+---
+# Arquivo: E.yml
+title: Okta Policy Rule Modification or Deletion
+id: 3b6f9a2e-8c4d-4f7a-9b1e-2d3c4a5b6e7f
+status: experimental
+description: Detects modifications or deletions of Okta policy rules. Adversaries with administrative access may weaken or remove security policies (MFA enforcement, sign-on rules, access controls) to facilitate persistent access or privilege escalation. Requires Okta System Log ingestion and monitoring of eventType values for policy rule update and delete operations.
+author: Senior Threat Detection Engineer
+date: 2026/06/12
+references:
+  - [https://developer.okta.com/docs/reference/api/system-log/](https://developer.okta.com/docs/reference/api/system-log/)
+  - [https://developer.okta.com/docs/reference/api/event-types/](https://developer.okta.com/docs/reference/api/event-types/)
+tags:
+  - identity
+  - okta
+  - tampering
+  - privilege_escalation
+logsource:
+  product: okta
+  service: okta
+  category: identity_management
+  description: Okta System Log events (system.log) containing eventType, actor, target, and outcome fields.
+detection:
+  selection_event:
+    eventType|in:
+      - 'policy.rule.update'
+      - 'policy.rule.delete'
+      - 'policy.rule.lifecycle.update'
+      - 'policy.rule.lifecycle.delete'
+  condition: selection_event
+  fields:
+    - eventType
+    - actor.displayName
+    - actor.alternateId
+    - target.displayName
+    - target.id
+    - outcome.result
+falsepositives:
+  - Legitimate administrative changes by authorized identity or security teams during policy updates or maintenance windows.
+  - Automated policy management or orchestration tools performing expected rule rotations or cleanups.
+level: high
+
+---
+# Arquivo original: okta_policy_rule_modified_or_deleted.yml
+title: Okta Policy Rule Modified or Deleted
+id: 0c97c1d3-4057-45c9-b148-1de94b631931
+status: test
+description: Detects when an Policy Rule is Modified or Deleted.
+references:
+    - https://developer.okta.com/docs/reference/api/system-log/
+    - https://developer.okta.com/docs/reference/api/event-types/
+author: Austin Songer @austinsonger
+date: 2021-09-12
+modified: 2026-04-27
+tags:
+    - attack.impact
+logsource:
+    product: okta
+    service: okta
+detection:
+    selection:
+        eventType:
+            - policy.rule.update
+            - policy.rule.delete
+    condition: selection
+falsepositives:
+    - Unknown
+
+level: medium
+
+---

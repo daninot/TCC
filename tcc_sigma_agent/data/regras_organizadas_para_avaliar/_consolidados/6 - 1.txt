@@ -1,0 +1,303 @@
+# Arquivo: A.yml
+title: Cisco IOS BGP - Passive OPEN from Non-Configured Peer or MD5 Brute Force
+id: 2c8f4a1d-7e93-4b62-a507-d3f5e96c8241
+status: test
+description: |
+    Detects unauthorized inbound BGP session attempts against Cisco IOS routers,
+    covering three related attacks documented in Black Hat USA 2003 by Convery
+    and Franz (Cisco CIAG):
+
+    1. BGP Reconnaissance / Active ISP Survey — attacker probes port 179 and
+       sends a BGP OPEN using an unused AS number to enumerate permissive BGP
+       speakers. The survey found 4,602 routers responding to unauthorized OPENs.
+
+    2. Online MD5 Brute Force (bgpcrack) — repeated BGP OPENs with different
+       passwords targeting the same peer, generating rapid authentication failure
+       NOTIFICATIONs. All information to compute RFC2385 MD5 is visible in-packet
+       except the secret itself.
+
+    3. Unauthorized BGP Session Establishment — a permissive (misconfigured)
+       router completes BGP ESTABLISHED state with an attacker-controlled peer,
+       enabling update flooding (pyupdate) or route injection (tcphijack).
+
+    The keyword "passive" in Cisco IOS BGP syslog identifies connections initiated
+    by the remote side (attacker), not by the local router — the key discriminator
+    between legitimate outbound peering and suspicious inbound connections.
+references:
+    - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+    - https://attack.mitre.org/techniques/T1046/
+    - https://attack.mitre.org/techniques/T1110/
+    - https://attack.mitre.org/techniques/T1557/
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.reconnaissance
+    - attack.t1046      # Network Service Discovery (BGP speaker enumeration)
+    - attack.credential_access
+    - attack.t1110      # Brute Force (bgpcrack MD5 online attack)
+    - attack.collection
+    - attack.t1557      # Adversary-in-the-Middle (precursor to route injection)
+logsource:
+    product: cisco
+    service: ios
+detection:
+    selection_auth_fail:          # bgpcrack online mode OR unauthorized OPEN
+        message|contains|all:
+            - 'BGP-3-NOTIFICATION'
+            - 'passive'         # connection was inbound (attacker-initiated)
+            - 'authentication failure'
+    selection_bad_peer_as:         # Active ISP Survey: probe with unused/wrong AS
+        message|contains|all:
+            - 'BGP-3-NOTIFICATION'
+            - 'passive'
+            - 'bad peer as'
+    selection_unexpected_adj_up:   # CRITICAL: permissive router accepted unknown peer
+        message|contains|all:
+            - 'BGP-5-ADJCHANGE'
+            - 'passive'
+            - 'Up'
+    filter_maintenance:
+        # Suppress during approved BGP provisioning windows.
+        # In production: add known peer IPs here, e.g.:
+        # message|contains:
+        #     - '10.0.0.1'   # ISP Peer A
+        #     - '10.0.0.2'   # ISP Peer B
+        message: null   # placeholder — replace with environment-specific peer IPs
+    condition: (1 of selection_*) and not filter_maintenance
+fields:
+    - message
+    - hostname
+    - src
+    - dst
+falsepositives:
+    - Legitimate BGP peers misconfigured with wrong MD5 key after key rotation
+    - New BGP peering sessions being provisioned (use filter_maintenance)
+    - BGP session recovery after link flap where peer reconnects passively
+    - Route server clients at IXPs connecting with passive TCP behavior
+level: medium
+
+---
+# Arquivo: B.yml
+title: Missing or Failed BGP MD5 Authentication
+id: f6b33fea-4b35-4fba-93e5-792c0b6d808d
+status: experimental
+description: |
+    Detects missing MD5 digests or failed MD5 authentication on BGP sessions.
+    This may indicate a missing security configuration or a brute force attack
+    against the BGP routing protocol.
+references:
+    - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+    - https://attack.mitre.org/techniques/T1598/
+author: Detection Engineering
+date: 2024-05-24
+tags:
+    - attack.initial-access
+    - attack.t1598
+logsource:
+    product: juniper
+    service: bgp
+    definition: 'Requirements: Juniper BGP logs must be enabled and ingested.'
+detection:
+    keywords_juniper:
+        - ':179'     # BGP protocol port
+        - 'missing MD5 digest'
+    condition: keywords_juniper
+falsepositives:
+    - Legitimate BGP session misconfigurations.
+level: low
+---
+title: Missing or Failed BGP MD5 Authentication
+id: 77c62405-df7a-4e44-8590-cd7cbca198e4
+status: experimental
+description: |
+    Detects missing MD5 digests or failed MD5 authentication on BGP sessions.
+    This may indicate a missing security configuration or a brute force attack
+    against the BGP routing protocol.
+references:
+    - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+    - https://attack.mitre.org/techniques/T1598/
+author: Detection Engineering
+date: 2024-05-24
+tags:
+    - attack.initial-access
+    - attack.t1598
+logsource:
+    product: cisco
+    service: bgp
+    definition: 'Requirements: Cisco BGP logs must be enabled and ingested.'
+detection:
+    keywords_cisco:
+        - ':179'                # BGP protocol port
+        - 'IP-TCP-3-BADAUTH'    # Cisco specific error code
+    condition: keywords_cisco
+falsepositives:
+    - Legitimate BGP session misconfigurations.
+level: low
+
+---
+# Arquivo: C.yml
+title: Suspicious IPv6 Tunneling Usage (Covert Channel)
+id: 5a9c2d3e-4d1e-11ef-9a2d-0242ac120002
+status: experimental
+description: Detects potential abuse of IPv6 tunneling mechanisms (Teredo, ISATAP, 6to4) that can be used as covert channels to bypass security controls.
+author: Copilot
+date: 2026/05/26
+references:
+  - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+logsource:
+  product: windows
+  service: system
+  category: network_connection
+detection:
+  selection_tunnel_processes:
+    Image|endswith:
+      - "\\teredo.exe"
+      - "\\isatap.exe"
+      - "\\6to4svc.exe"
+  selection_event_ids:
+    EventID:
+      - 5156   # Windows Filtering Platform permitted connection
+      - 5157   # Windows Filtering Platform blocked connection
+  condition: selection_tunnel_processes and selection_event_ids
+fields:
+  - timestamp
+  - EventID
+  - Image
+  - SourceIp
+  - DestinationIp
+  - Protocol
+falsepositives:
+  - Legitimate IPv6 transition use in enterprise networks
+  - Testing or lab environments enabling tunneling for compatibility
+level: high
+tags:
+  - attack.defense_evasion
+  - attack.command_and_control
+  - attack.t1090.003
+
+
+---
+# Arquivo: D.yml
+title: Suspicious BGP Neighbor Configuration Modification
+id: 91d7f0e2-4f95-4d1d-9d17-6e9b4c0c2f55
+status: experimental
+description: >
+  Detects suspicious modifications to BGP neighbor or peering configurations
+  on network infrastructure devices. Unauthorized BGP changes may indicate
+  route hijacking attempts, traffic interception, denial of service activity,
+  or persistence by an attacker targeting core routing infrastructure.
+references:
+  - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+  - https://www.blackhat.com/html/bh-media-archives/bh-archives-2003.html
+author: OpenAI
+date: 2026-05-26
+tags:
+  - attack.persistence
+  - attack.network
+  - attack.impact
+  - attack.t1498
+  - attack.t1565
+logsource:
+  product: network
+  service: syslog
+detection:
+  selection_bgp_change:
+    message|contains:
+      - 'neighbor'
+      - 'remote-as'
+      - 'router bgp'
+      - 'BGP neighbor added'
+      - 'BGP peer changed'
+      - 'BGP configuration changed'
+  selection_config_activity:
+    message|contains:
+      - 'configured from'
+      - 'commit complete'
+      - 'configuration update'
+      - 'write memory'
+  condition: selection_bgp_change and selection_config_activity
+fields:
+  - hostname
+  - src_ip
+  - username
+  - message
+falsepositives:
+  - Authorized network maintenance
+  - ISP or datacenter routing changes
+  - Automated infrastructure deployments
+level: high
+
+---
+# Arquivo: E.yml
+title: Potential BGP Session Exploitation and Fuzzing Attacks
+id: ed6b88b7-4c07-4e63-95fa-bb2b17a1a2f6
+status: experimental
+description: Detects Border Gateway Protocol (BGP) authentication failures, bad MD5 digests, or unexpected session terminations due to malformed packets (e.g., OPEN or UPDATE message parsing errors). This pattern is highly indicative of blind TCP injection, denial-of-service attempts, or routing protocol fuzzing as detailed in the Convery-Franz Black Hat research.
+references:
+    - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+author: Security Operations Center
+date: 2026/05/26
+tags:
+    - attack.impact
+    - attack.t1498.001 # Network Denial of Service: Direct Robustness Attack
+logsource:
+    product: generic
+    service: syslog
+detection:
+    selection_vendor_logs:
+        Message|contains:
+            - '%TCP-6-BADAUTH'      # Cisco IOS MD5 authentication failure
+            - '%BGP-3-NOTIFICATION' # Cisco IOS BGP error notification sent/received
+            - 'BGP_AUTH_FAIL'       # Huawei BGP authentication failure flag
+            - 'bgp_auth_failed'     # Juniper/generic BGP daemon alert
+    selection_keywords:
+        Message|contains|all:
+            - 'BGP'
+        Message|contains:
+            - 'MD5 authentication failed'
+            - 'invalid MD5 digest'
+            - 'malformed packet'
+            - 'OPEN message error'
+            - 'UPDATE message error'
+    condition: 1 of selection_*
+falsepositives:
+    - Network administrators configuring new BGP peers or rotating MD5 keys with mismatched passwords.
+    - Bad physical layer links or flaky MTU configurations causing intermittent packet corruption or checksum failures.
+level: high
+
+---
+# Arquivo original: huawei_bgp_auth_failed.yml
+title: Huawei BGP Authentication Failures
+id: a557ffe6-ac54-43d2-ae69-158027082350
+status: test
+description: Detects BGP failures which may be indicative of brute force attacks to manipulate routing.
+references:
+    - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+author: Tim Brown
+date: 2023-01-09
+modified: 2023-01-23
+tags:
+    - attack.initial-access
+    - attack.persistence
+    - attack.privilege-escalation
+    - attack.credential-access
+    - attack.collection
+    - attack.stealth
+    - attack.t1078
+    - attack.t1110
+    - attack.t1557
+logsource:
+    product: huawei
+    service: bgp
+    definition: 'Requirements: huawei bgp logs need to be enabled and ingested'
+detection:
+    keywords_bgp_huawei:
+        '|all':
+            - ':179' # Protocol
+            - 'BGP_AUTH_FAILED'
+    condition: keywords_bgp_huawei
+falsepositives:
+    - Unlikely. Except due to misconfigurations
+level: low
+
+---

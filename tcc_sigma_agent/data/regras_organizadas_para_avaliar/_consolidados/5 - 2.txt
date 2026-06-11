@@ -1,0 +1,220 @@
+# Arquivo: A.yml
+title: Windows Firewall Allow Rule Added by WmiPrvSE.EXE
+id: d5f8b2c4-1e3a-4d7f-b9c1-6e4a2d8f3b57
+status: experimental
+description: >
+  Detects the addition of a new inbound Allow rule to the Windows Firewall
+  exception list where the modifying process is the WMI Provider Host
+  (WmiPrvSE.EXE) running from its canonical system path. Adversaries,
+  including the Rhysida ransomware group, abuse WMI-based firewall modification
+  (e.g., New-NetFirewallRule, MSFT_NetFirewallRule CIM class) to open inbound
+  ports for C2 communication, lateral movement, or data exfiltration. Because
+  the change is executed inside the WMI provider host rather than a user-facing
+  shell, it bypasses common process-lineage detections and appears as a
+  legitimate system process in the firewall audit log. The detection requires
+  all three signals to fire simultaneously: an addition event (EventID 2004),
+  an Allow action (Action = 2), and WmiPrvSE.EXE as the modifying application.
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule
+  - https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170
+  - https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.defense_evasion
+  - attack.t1562.004
+logsource:
+  product: windows
+  service: firewall-as
+detection:
+  selection_event:
+    EventID: 2004
+  selection_action:
+    Action: '2'
+  selection_process:
+    ModifyingApplication|endswith: '\WmiPrvSE.exe'
+  condition: selection_event and selection_action and selection_process
+falsepositives:
+  - Legitimate administrator automation scripts and configuration management
+    tooling (e.g., Ansible WinRM modules, SCCM compliance baselines, DSC
+    resources) that manage firewall rules via WMI or PowerShell CIM cmdlets
+    as part of a documented, approved change-management workflow.
+  - Enterprise monitoring agents or endpoint security products that use WMI
+    internally to register self-exception firewall rules during installation
+    or update cycles.
+level: medium
+
+---
+# Arquivo: B.yml
+title: Windows Firewall Allow Rule Added via WmiPrvSE.exe
+id: 8e7d6c5b-4a3f-2e1d-9c8b-7a6f5e4d3c2b
+status: experimental
+description: Detects when a new "Allow" rule is added to the Windows Firewall exception list by the WMI provider host process (WmiPrvSE.exe). Adversaries, including ransomware groups like Rhysida, abuse this to open inbound ports for lateral movement, C2, or data exfiltration by invoking PowerShell cmdlets or WMI CIM classes, causing the change to be performed under WmiPrvSE.exe context.
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule
+  - https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170
+  - https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/
+author: Senior Threat Detection Engineer
+date: 2026-05-26
+tags:
+  - attack.defense-evasion
+  - attack.t1562.004
+logsource:
+  product: windows
+  service: firewall-as
+detection:
+  selection_event:
+    EventID:
+      - 2006
+  selection_action:
+    Action: Allow
+  selection_process:
+    ModifyingApplication|endswith: \Windows\System32\wbem\WmiPrvSE.exe
+  condition: selection_event and selection_action and selection_process
+falsepositives:
+  - Legitimate administrative scripts or configuration management tools that create firewall allow rules via WMI or PowerShell cmdlets (e.g., New-NetFirewallRule) executed under WmiPrvSE.exe context
+level: medium
+
+---
+# Arquivo: C.yml
+title: New Firewall Rule Added via WmiPrvSE
+id: a8f430b2-70b1-419b-ad7a-51df83cfa617
+status: stable
+description: Detects the addition of a new "Allow" firewall rule by the WMI provider host process (WmiPrvSE.exe). This activity is common in ransomware campaigns, such as Rhysida, where adversaries use PowerShell or WMI classes to execute firewall modifications under a system process context to facilitate lateral movement or command and control.
+references:
+
+* [https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule](https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule)
+* [https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170](https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170)
+* [https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/](https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/)
+author: Senior Threat Detection Engineer
+date: 2026/05/26
+tags:
+* attack.defense_evasion
+* attack.t1562.004
+logsource:
+product: windows
+service: firewall_as
+detection:
+selection:
+EventID:
+* 2004
+* 2071
+* 2097
+Action: 3
+ModifyingApplication|endswith: '\Windows\System32\wbem\WmiPrvSE.exe'
+condition: selection
+falsepositives:
+
+
+* Legitimate administrative scripts, orchestration platforms, or automated deployment frameworks updating Windows Firewall configuration via WMI/PowerShell.
+level: medium
+
+---
+# Arquivo: D.yml
+title: Firewall Allow Rule Added via WmiPrvSE.EXE  
+id: 8d2f1a6b-3c4e-4f7a-9b2d-6a1e5c9d7f42  
+status: experimental  
+description: Detects when a new "Allow" rule is added to the Windows Firewall exception list by the WMI provider host process (WmiPrvSE.EXE). Adversaries, including ransomware groups such as Rhysida, abuse this technique to open inbound ports for lateral movement, command and control, or data exfiltration.  
+references:  
+  - [https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule](https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule)  
+  - [https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170](https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170)  
+  - [https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/](https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/)  
+author: Senior Threat Detection Engineer  
+date: 2026-05-26  
+tags:  
+  - attack.defense_evasion  
+  - attack.persistence  
+  - attack.t1562.004  
+logsource:  
+  product: windows  
+  service: firewall  
+  category: configuration_change  
+detection:  
+  selection_event:  
+    EventID:  
+      - 2004  
+      - 2005  
+      - 2006  
+    Action: "Add rule"  
+  selection_allow:  
+    RuleAction: "Allow"  
+  selection_process:  
+    ProcessName|endswith: "\\WmiPrvSE.exe"  
+  condition: selection_event and selection_allow and selection_process  
+falsepositives:  
+  - Legitimate administrator or automation scripts that configure firewall rules via WMI or PowerShell for enterprise management.  
+level: medium  
+
+---
+# Arquivo: E.yml
+title: Windows Firewall Allow Rule Added Via WMI Provider Host
+id: 2b0d2c48-8d62-48cf-a8df-5bb3f2d7f14a
+status: stable
+description: Detects a new Windows Firewall exception rule configured with the Allow action where the modification was performed by the WMI Provider Host process (WmiPrvSE.EXE). Adversaries and ransomware operators may abuse PowerShell firewall cmdlets or WMI CIM classes to create inbound firewall exceptions under the WmiPrvSE.EXE security context for lateral movement, command and control, or data exfiltration.
+references:
+
+* [https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule](https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule)
+* [https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170](https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170)
+* [https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/](https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/)
+  author: OpenAI
+  date: 2026/05/25
+  tags:
+* attack.defense-evasion
+* attack.lateral-movement
+* attack.persistence
+* attack.t1562.004
+  logsource:
+  product: windows
+  service: security
+  detection:
+  selection_event:
+  EventID:
+
+  * 4946
+  * 4947
+    selection_action:
+    Action: 'Allow'
+    selection_process:
+    Application|endswith: '\Windows\System32\wbem\WmiPrvSE.exe'
+    condition: selection_event and selection_action and selection_process
+    falsepositives:
+* Legitimate administrator automation using PowerShell New-NetFirewallRule cmdlets.
+* Enterprise configuration management and orchestration tooling using WMI or CIM.
+* Authorized remote administration and endpoint management workflows.
+  level: medium
+
+
+---
+# Arquivo original: win_firewall_as_add_rule_wmiprvse.yml
+title: New Firewall Rule Added In Windows Firewall Exception List Via WmiPrvSE.EXE
+id: eca81e8d-09e1-4d04-8614-c91f44fd0519
+status: test
+description: |
+    Detects the addition of a new "Allow" firewall rule by the WMI process (WmiPrvSE.EXE).
+    This can occur if an attacker leverages PowerShell cmdlets such as "New-NetFirewallRule", or directly uses WMI CIM classes such as "MSFT_NetFirewallRule".
+references:
+    - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule
+    - https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170
+    - https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/
+author: frack113, Nasreddine Bencherchali (Nextron Systems)
+date: 2024-05-10
+tags:
+    - attack.defense-impairment
+    - attack.t1686.003
+logsource:
+    product: windows
+    service: firewall-as
+detection:
+    selection:
+        EventID:
+            - 2004 # A rule has been added to the Windows Defender Firewall exception list
+            - 2071 # A rule has been added to the Windows Defender Firewall exception list. (Windows 11)
+            - 2097
+        Action: 3 # Allow
+        ModifyingApplication|endswith: ':\Windows\System32\wbem\WmiPrvSE.exe'
+    condition: selection
+falsepositives:
+    - Administrator scripts or activity.
+level: medium
+
+---

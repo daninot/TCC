@@ -1,0 +1,262 @@
+# Arquivo: A.yml
+title: Windows - New Firewall Rule via PowerShell Masquerading as Windows Service (Rhysida)
+id: f7d9e3b2-4a56-4c81-9f0d-7b28e5ac6314
+status: test
+description: |
+    Detects creation of Windows Firewall rules via the New-NetFirewallRule PowerShell
+    cmdlet where the display name impersonates a legitimate Windows service, or where
+    an outbound Allow rule is created from a suspicious execution context.
+    Rhysida ransomware (linked to Vice Society) was observed creating a firewall rule
+    named "Windows Update" to allow outbound C2 traffic for the SystemBC backdoor.
+    The masquerade display name is designed to blend into legitimate Windows
+    infrastructure and evade manual triage.
+    Two selections cover both the high-confidence IOC (masquerade name) and the
+    broader C2-enablement pattern (outbound Allow from PowerShell).
+references:
+    - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule
+    - https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170
+    - https://research.checkpoint.com/2023/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/
+    - https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.defense_evasion
+    - attack.command_and_control
+    - attack.t1562.004    # Impair Defenses: Disable or Modify System Firewall
+    - attack.t1036.005    # Masquerading: Match Legitimate Name or Location
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_masquerade:               # HIGH — documented Rhysida IOC
+        Image|endswith:
+            - '\powershell.exe'
+            - '\pwsh.exe'
+        CommandLine|contains: 'New-NetFirewallRule'
+        CommandLine|contains:
+            - 'Windows Update'     # Rhysida IOC (Check Point Research)
+            - 'WindowsUpdate'
+            - 'Windows Defender'
+            - 'WindowsDefender'
+            - 'WinDefend'
+            - 'Microsoft Update'
+    selection_outbound_allow:            # BROADER — C2 enablement pattern
+        Image|endswith:
+            - '\powershell.exe'
+            - '\pwsh.exe'
+        CommandLine|contains|all:
+            - 'New-NetFirewallRule'
+            - 'Outbound'
+            - 'Allow'
+    filter_legit_gpo:
+        ParentImage|endswith:
+            - '\gpscript.exe'     # Group Policy startup/logon scripts
+            - '\mmc.exe'          # Firewall MMC snap-in
+        CommandLine|contains: '\Windows\System32\GroupPolicy'
+    condition: (1 of selection_*) and not filter_legit_gpo
+fields:
+    - Image
+    - CommandLine
+    - ParentImage
+    - ParentCommandLine
+    - User
+falsepositives:
+    - Legitimate PowerShell scripts deploying firewall rules in managed environments
+    - IT automation or endpoint management platforms creating outbound allow rules
+    - Security tools registering themselves with Windows Firewall via PowerShell
+level: high
+
+---
+# Arquivo: B.yml
+title: New Firewall Rule Added In Windows Firewall Exception List Via WmiPrvSE.EXE
+id: eca81e8d-09e1-4d04-8614-c91f44fd0519
+status: test
+description: |
+    Detects the addition of a new "Allow" firewall rule by the WMI process (WmiPrvSE.EXE).
+    This can occur if an attacker leverages PowerShell cmdlets such as "New-NetFirewallRule",
+    or directly uses WMI CIM classes such as "MSFT_NetFirewallRule".
+references:
+    - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule
+    - https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170
+    - https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/
+author: frack113, Nasreddine Bencherchali (Nextron Systems)
+date: 2024-05-10
+tags:
+    - attack.defense-evasion
+    - attack.t1562.004
+logsource:
+    product: windows
+    service: firewall-as
+detection:
+    selection:
+        EventID:
+            - 2004  # A rule has been added to the Windows Defender Firewall exception list
+            - 2071  # A rule has been added to the Windows Defender Firewall exception list. (Windows 11)
+            - 2097  # A rule has been added to the Windows Defender Firewall exception list (Windows Server / Windows 10+)
+        Action: 3  # Allow
+        ModifyingApplication|endswith: ':\Windows\System32\wbem\WmiPrvSE.exe'
+    condition: selection
+falsepositives:
+    - Administrator scripts or activity.
+level: medium
+
+---
+# Arquivo: C.yml
+title: Suspicious Firewall Rule Creation (T1562.004 / Rhysida Ransomware)
+id: 4e6a9d1c-4d1e-11ef-9a2d-0242ac120002
+status: experimental
+description: Detects creation of new Windows firewall rules via PowerShell (New-NetFirewallRule), which may indicate defense evasion or ransomware activity such as Rhysida.
+author: Copilot
+date: 2026/05/26
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule
+  - https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170
+  - https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/
+logsource:
+  product: windows
+  service: powershell
+  category: process_creation
+detection:
+  selection_firewall_rule:
+    CommandLine|contains: "New-NetFirewallRule"
+  selection_rhysida_patterns:
+    CommandLine|contains:
+      - "Allow"
+      - "Any"
+      - "Inbound"
+      - "RemoteDesktop"
+  condition: selection_firewall_rule and selection_rhysida_patterns
+fields:
+  - timestamp
+  - CommandLine
+  - User
+  - ComputerName
+  - ProcessId
+falsepositives:
+  - Legitimate administrators configuring firewall rules
+  - Security tools deploying baseline firewall policies
+level: high
+tags:
+  - attack.defense_evasion
+  - attack.t1562.004
+  - ransomware.rhysida
+
+
+---
+# Arquivo: D.yml
+title: Windows Firewall Modification via New-NetFirewallRule
+id: a89694e4-ecde-4841-ba7e-bb89ad5d92e8
+status: experimental
+description: Detects the creation of new Windows firewall rules via PowerShell's 'New-NetFirewallRule' cmdlet. Adversaries, such as Rhysida ransomware operators, leverage this capability to facilitate command and control (C2) traffic relaying (by masquerading the rule name as 'Windows Update') or to open non-standard ports (e.g., port 4000) for lateral movement via RDP, as simulated in Atomic Red Team testing.
+references:
+    - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule
+    - https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170
+    - https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/
+author: Security Operations Center
+date: 2026/05/26
+tags:
+    - attack.defense_evasion
+    - attack.t1562.004 # Impair Defenses: Disable or Modify System Firewall
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    selection_cmdlet:
+        CommandLine|contains: 'New-NetFirewallRule'
+    selection_indicators:
+        CommandLine|contains:
+            - 'Windows Update'   # Rhysida specific masquerading for SystemBC traffic relaying
+            - 'AtomicTest'       # Atomic Red Team default configuration value
+            - '4000'             # Non-standard RDP port used by Rhysida actors
+    condition: selection_cmdlet and selection_indicators
+falsepositives:
+    - Legitimate administration scripts or system software installers configuring customized local firewall parameters (though explicitly using 'Windows Update' as a custom display name inside a manual script is highly anomalous).
+level: high
+
+---
+# Arquivo: E.yml
+title: New Windows Firewall Allow Rule Added Via WmiPrvSE
+id: eca81e8d-09e1-4d04-8614-c91f44fd0519
+status: test
+description: >
+  Detects the addition of a new "Allow" firewall rule to the Windows
+  Defender Firewall exception list by the WMI Provider Host process
+  (WmiPrvSE.exe). This behavior can occur when adversaries leverage
+  PowerShell cmdlets such as New-NetFirewallRule or abuse WMI CIM classes
+  to create inbound firewall exceptions for lateral movement, C2, or
+  ransomware operations such as Rhysida.
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule
+  - https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170
+  - https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/
+  - https://attack.mitre.org/techniques/T1562/004/
+author: OpenAI
+date: 2026-05-26
+tags:
+  - attack.defense_evasion
+  - attack.lateral_movement
+  - attack.t1562.004
+  - attack.t1047
+logsource:
+  product: windows
+  service: firewall-as
+detection:
+  selection:
+    EventID:
+      - 2004
+      - 2071
+      - 2097
+    Action: 3
+    ModifyingApplication|endswith: ':\Windows\System32\wbem\WmiPrvSE.exe'
+  condition: selection
+fields:
+  - EventID
+  - RuleId
+  - RuleName
+  - ModifyingApplication
+  - LocalPorts
+  - RemotePorts
+  - Protocol
+  - Direction
+  - Profile
+  - User
+falsepositives:
+  - Legitimate administrator-created firewall rules
+  - Enterprise management or deployment tools using WMI
+  - Authorized remote management software
+level: medium
+
+---
+# Arquivo original: win_firewall_as_add_rule_wmiprvse.yml
+title: New Firewall Rule Added In Windows Firewall Exception List Via WmiPrvSE.EXE
+id: eca81e8d-09e1-4d04-8614-c91f44fd0519
+status: test
+description: |
+    Detects the addition of a new "Allow" firewall rule by the WMI process (WmiPrvSE.EXE).
+    This can occur if an attacker leverages PowerShell cmdlets such as "New-NetFirewallRule", or directly uses WMI CIM classes such as "MSFT_NetFirewallRule".
+references:
+    - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule
+    - https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170
+    - https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/
+author: frack113, Nasreddine Bencherchali (Nextron Systems)
+date: 2024-05-10
+tags:
+    - attack.defense-impairment
+    - attack.t1686.003
+logsource:
+    product: windows
+    service: firewall-as
+detection:
+    selection:
+        EventID:
+            - 2004 # A rule has been added to the Windows Defender Firewall exception list
+            - 2071 # A rule has been added to the Windows Defender Firewall exception list. (Windows 11)
+            - 2097
+        Action: 3 # Allow
+        ModifyingApplication|endswith: ':\Windows\System32\wbem\WmiPrvSE.exe'
+    condition: selection
+falsepositives:
+    - Administrator scripts or activity.
+level: medium
+
+---

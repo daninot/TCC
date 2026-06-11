@@ -1,0 +1,289 @@
+# Arquivo: A.yml
+title: PowerShell Execution from Alternate Host
+id: c3d4e5f6-a7b8-49c0-1d2e-3f4a5b6c7d8e
+status: experimental
+description: Detects PowerShell execution from non-default hosts (e.g., custom executables embedding the PowerShell runtime) logged via the HostApplication field, bypassing detections focused on powershell.exe.
+references:
+    - https://threathunterplaybook.com/hunts/windows/190815-RemoteServiceInstallation/notebook.html
+author: Senior Threat Detection Engineer
+date: 2026-06-08
+logsource:
+    product: windows
+    category: ps_classic_start
+detection:
+    selection:
+        Data|contains: 'HostApplication='
+    filter_main_ps_paths:
+        Data|contains:
+            - '\System32\WindowsPowerShell\v1.0\powershell.exe'
+            - '\SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
+            - '/System32/WindowsPowerShell/v1.0/powershell.exe'
+            - '/SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+            - '\System32\WindowsPowerShell\v1.0\powershell.exe'
+    filter_main_sdiagnhost:
+        Data|contains: '\System32\sdiagnhost.exe'
+    filter_main_bare_powershell:
+        Data|contains: 'powershell'
+    filter_optional_citrix:
+        Data|contains: 'Citrix.ConfigSync.CommandHost.exe'
+    filter_optional_hexnode:
+        Data|contains: 'Hexnode Agent\bin\HexnodeAgent.exe'
+    condition: selection and not 1 of filter_main_* and not 1 of filter_optional_*
+falsepositives:
+    - Legitimate third-party applications that embed PowerShell runtime (e.g., Citrix, Hexnode) — excluded via optional filters; other custom applications may require additional tuning
+level: medium
+tags:
+    - attack.execution
+    - attack.t1059.001
+    - attack.defense_evasion
+    - attack.t1036.003
+
+---
+# Arquivo: B.yml
+title: PowerShell Execution From Alternate Host Applications
+id: 6a4f2d1b-8c3e-4f7a-9b2d-0e1f2a3c4d5e
+status: experimental
+description: Detects PowerShell engine starts where the HostApplication is an alternate (non-default) host executable. Attackers embed the PowerShell runtime inside custom executables to bypass detections focused on powershell.exe. Matches the HostApplication marker from classic PowerShell event logging and excludes known legitimate hosts and updaters.
+author: Senior Threat Detection Engineer
+date: 2026/06/13
+references:
+  - [https://threathunterplaybook.com/hunts/windows/190815-RemoteServiceInstallation/notebook.html](https://threathunterplaybook.com/hunts/windows/190815-RemoteServiceInstallation/notebook.html)
+tags:
+  - attack.defense_evasion
+  - living-off-the-land
+  - windows
+  - powershell
+logsource:
+  product: windows
+  category: ps_classic_start
+  description: Classic PowerShell engine start events (PowerShell classic event logging). Ensure the HostApplication field from the event Data is collected.
+detection:
+  selection:
+    HostApplication|endswith:
+      - '.exe'
+      - '.EXE'
+  filter_main_paths:
+    HostApplication|contains:
+      - 'WindowsPowerShell\\v1.0\\powershell.exe'
+      - 'WindowsPowerShell/v1.0/powershell.exe'
+      - 'SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe'
+      - 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+      - '\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'
+      - '/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'
+      - '\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe'
+      - '/Windows/SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+      - 'sdiagnhost.exe'
+      - 'SdiagnHost.exe'
+      - 'powershell'
+      - 'PowerShell'
+  filter_optional_thirdparty:
+    HostApplication|contains:
+      - 'ConfigSync'
+      - 'Citrix.ConfigSync'
+      - 'Hexnode'
+      - 'HexnodeAgent'
+  condition: selection and not 1 of filter_main_paths and not 1 of filter_optional_thirdparty
+falsepositives:
+  - Legitimate third-party products that embed PowerShell for automation (e.g., management agents) not listed in optional filters.
+  - Custom internal tooling that intentionally hosts PowerShell for orchestration or automation.
+level: high
+
+---
+# Arquivo: C.yml
+title: PowerShell Execution from Non-Standard Host Application
+id: 9c2e7f4b-1d3a-4f8e-b7c2-6e4a1d9f3c58
+status: experimental
+description: >
+  Detects PowerShell engine invocations where the HostApplication recorded
+  in the classic PowerShell event log is not one of the standard Microsoft
+  PowerShell binaries. The HostApplication field identifies the process that
+  loaded the PowerShell runtime; under normal conditions this is powershell.exe
+  or powershell_ise.exe in their canonical System32 or SysWOW64 paths.
+  Adversaries and C2 frameworks such as SilentTrinity, Empire, and Covenant
+  embed the PowerShell runtime (System.Management.Automation.dll) directly
+  inside a custom executable, causing all PowerShell activity to be logged
+  under the attacker-controlled host process name rather than powershell.exe.
+  This technique bypasses detections and allow-list policies that focus
+  exclusively on the powershell.exe binary. Detection matches the
+  HostApplication marker in the Data field and then excludes all known
+  legitimate host paths across both architecture variants, the Windows
+  diagnostic host, and third-party products known to legitimately embed
+  the PowerShell runtime.
+references:
+  - https://threathunterplaybook.com/hunts/windows/190815-RemoteServiceInstallation/notebook.html
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.defense_evasion
+  - attack.execution
+  - attack.t1059.001
+  - attack.t1027
+logsource:
+  category: ps_classic_start
+  product: windows
+detection:
+  selection:
+    Data|contains: 'HostApplication='
+  filter_main_default_paths:
+    Data|contains:
+      - 'HostApplication=C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      - 'HostApplication=C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
+      - 'HostApplication=C:\Windows\System32\WindowsPowerShell\v1.0\powershell_ise.exe'
+      - 'HostApplication=C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell_ise.exe'
+      - 'HostApplication=C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'
+      - 'HostApplication=C:/Windows/SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+  filter_main_diagnostic:
+    Data|contains:
+      - 'HostApplication=C:\Windows\System32\sdiagnhost.exe'
+      - 'HostApplication=powershell'
+  filter_optional_third_party:
+    Data|contains:
+      - 'HostApplication=C:\Program Files\Citrix\ConfigSync\ConfigSync.exe'
+      - 'HostApplication=C:\Program Files (x86)\Hexnode\MDM Agent\HexnodeMDMAgent.exe'
+  condition: selection and not 1 of filter_main_* and not 1 of filter_optional_*
+falsepositives:
+  - Legitimate third-party software products that embed the PowerShell
+    runtime for configuration or management purposes and are not covered
+    by the optional filter group; add newly discovered hosts to the
+    filter_optional_third_party block after confirming legitimacy.
+  - In-house automation or DevOps tooling built on the PowerShell SDK
+    that invokes the runtime from a custom host process as part of an
+    approved internal platform.
+level: high
+
+---
+# Arquivo: D.yml
+title: PowerShell Execution From Alternate Hosts
+id: 7b4f4f9c-7fb6-4d57-8b4a-4c1d0b8e4f2f
+status: test
+description: Detects PowerShell runtime execution from alternate (non-default) hosts via the HostApplication field in PowerShell classic event logging, which may indicate embedded PowerShell used to bypass application allow-lists.
+references:
+
+* [https://threathunterplaybook.com/hunts/windows/190815-RemoteServiceInstallation/notebook.html](https://threathunterplaybook.com/hunts/windows/190815-RemoteServiceInstallation/notebook.html)
+  logsource:
+  product: windows
+  category: ps_classic_start
+  detection:
+  selection:
+  Data|contains: 'HostApplication='
+  filter_main_standard_powershell_paths:
+  Data|contains:
+
+  * 'HostApplication=C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+  * 'HostApplication=C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'
+  * 'HostApplication=C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
+  * 'HostApplication=C:/Windows/SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+    filter_main_sdiagnhost:
+    Data|contains:
+  * 'HostApplication=C:\Windows\System32\sdiagnhost.exe'
+  * 'HostApplication=C:/Windows/System32/sdiagnhost.exe'
+    filter_main_bare_powershell:
+    Data|contains: 'HostApplication=powershell'
+    filter_optional_citrix_configsync:
+    Data|contains:
+  * 'Citrix'
+  * 'ConfigSync'
+    filter_optional_hexnode_agent:
+    Data|contains:
+  * 'Hexnode'
+  * 'Agent'
+    condition: selection and not 1 of filter_main_* and not 1 of filter_optional_*
+    falsepositives:
+* Legitimate administrative tools that embed PowerShell
+* Citrix ConfigSync activity
+* Hexnode Agent activity
+  level: medium
+  tags:
+* attack.defense-evasion
+* attack.t1059.001
+
+
+---
+# Arquivo: E.yml
+title: PowerShell Execution From Alternate Hosts
+id: 5642ea35-1d4a-4db5-9e63-23a78912e5ac
+status: experimental
+description: Detects PowerShell execution from alternate (non-default) hosts where attackers embed the PowerShell runtime inside custom executables to bypass detections focused on powershell.exe. Logged via the HostApplication field in PowerShell classic event logging.
+references:
+- [https://threathunterplaybook.com/hunts/windows/190815-RemoteServiceInstallation/notebook.html](https://threathunterplaybook.com/hunts/windows/190815-RemoteServiceInstallation/notebook.html)
+author: Senior Threat Detection Engineer
+date: 2026/06/08
+tags:
+- attack.execution
+- attack.t1059.001
+- attack.defense_evasion
+logsource:
+product: windows
+category: ps_classic_start
+detection:
+selection:
+Data|contains: 'HostApplication='
+filter_main_standard:
+Data|contains:
+- '\System32\WindowsPowerShell\v1.0\powershell.exe'
+- '/System32/WindowsPowerShell/v1.0/powershell.exe'
+- '\SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
+- '/SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+filter_main_sdiagnhost:
+Data|contains:
+- '\sdiagnhost.exe'
+- '/sdiagnhost.exe'
+filter_main_bare:
+Data|contains:
+- 'HostApplication=powershell.exe'
+- 'HostApplication=powershell'
+filter_optional_citrix:
+Data|contains: 'ConfigSyncRun.exe'
+filter_optional_hexnode:
+Data|contains: 'Hexnode Agent'
+condition: selection and not 1 of filter_main_* and not 1 of filter_optional_*
+falsepositives:
+- Third-party applications that legitimately embed the PowerShell runtime
+level: high
+
+---
+# Arquivo original: posh_pm_alternate_powershell_hosts.yml
+title: Uncommon PowerShell Hosts
+id: d7326048-328b-4d5e-98af-86e84b17c765
+related:
+    - id: 64e8e417-c19a-475a-8d19-98ea705394cc
+      type: derived
+status: test
+description: Detects alternate PowerShell hosts potentially bypassing detections looking for powershell.exe
+references:
+    - https://threathunterplaybook.com/hunts/windows/190815-RemoteServiceInstallation/notebook.html
+author: Roberto Rodriguez @Cyb3rWard0g
+date: 2019-08-11
+modified: 2025-10-22
+tags:
+    - attack.execution
+    - attack.t1059.001
+    - detection.threat-hunting
+logsource:
+    product: windows
+    category: ps_classic_start
+detection:
+    selection:
+        Data|contains: 'HostApplication='
+    # Note: Powershell Logging Data is localized. Meaning that "HostApplication" field will be translated to a different field on a non english layout. This rule doesn't take this into account due to the sheer ammount of possibilities. It's up to the user to add these cases.
+    filter_main_ps:
+        Data|contains:
+            - 'HostApplication=?:/Windows/System32/WindowsPowerShell/v1.0/powershell' # In some cases powershell was invoked with inverted slashes
+            - 'HostApplication=?:/Windows/SysWOW64/WindowsPowerShell/v1.0/powershell' # In some cases powershell was invoked with inverted slashes
+            - 'HostApplication=?:\Windows\System32\sdiagnhost.exe'
+            - 'HostApplication=?:\Windows\System32\WindowsPowerShell\v1.0\powershell'
+            - 'HostApplication=?:\Windows\SysWOW64\sdiagnhost.exe'
+            - 'HostApplication=?:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell'
+            - 'HostApplication=powershell'
+    filter_optional_citrix:
+        Data|contains: 'Citrix\ConfigSync\ConfigSync.ps1'
+    filter_optional_hexnode:
+        Data|contains: 'HostApplication=C:\Hexnode\Hexnode Agent\Current\HexnodeAgent.exe'
+    condition: selection and not 1 of filter_main_* and not 1 of filter_optional_*
+falsepositives:
+    - Programs using PowerShell directly without invocation of a dedicated interpreter
+    - MSP Detection Searcher
+    - Citrix ConfigSync.ps1
+level: medium
+
+---

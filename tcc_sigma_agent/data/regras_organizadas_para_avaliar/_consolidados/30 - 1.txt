@@ -1,0 +1,396 @@
+# Arquivo: A.yml
+title: MeshAgent / Medusa Campaign — Suspicious Remote-Access and Mass-Encryption Activity
+id: 9f6b2d3a-4c1e-4b7f-9a2d-0b1c2d3e4f5a
+status: experimental
+description: Detects indicators consistent with MeshAgent-based persistent remote access and follow-on mass-encryption/ransomware activity (MeshAgent/MeshCentral implants, unexpected MeshAgent service installs, outbound connections to internet-facing management servers, creation of ransom notes, and rapid high-volume file modifications). Useful for identifying persistent remote access implants and Medusa-like ransomware activity.
+author: Detection Engineer
+date: 2026-06-05
+references:
+  - https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access
+  - https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/
+  - https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/
+  - https://www.security.com/threat-intelligence/medusa-ransomware-attacks
+logsource:
+  product: endpoint
+  service: sysmon
+  category: process_creation
+detection:
+  selection_meshagent_process:
+    EventID: 1
+    Image|re:
+      - '(?i)\\meshagent(\.exe|64\.exe)?$'
+      - '(?i)\\meshcentral(\.exe)?$'
+    CommandLine|re:
+      - '(?i)\bmesh(agent|central)\b'
+  selection_meshagent_service_install:
+    EventID: 7045
+    TargetImage|re:
+      - '(?i)meshagent'
+      - '(?i)meshcentral'
+  selection_meshagent_network:
+    EventID: 3
+    DestinationPort:
+      - 443
+      - 4433
+      - 4434
+      - 8443
+    DestinationIp|not_in_cidr:
+      - "10.0.0.0/8"
+      - "172.16.0.0/12"
+      - "192.168.0.0/16"
+  selection_ransom_note_files:
+    EventID: 11
+    TargetFilename|re:
+      - '(?i)README(_FOR_DECRYPT|_FOR_DECRYPTION|_HOW_TO_DECRYPT|_RECOVER|_DECRYPT)\.(txt|htm|html)$'
+      - '(?i)HOW_TO_DECRYPT\.(txt|html)$'
+      - '(?i).*(_README|README)\.(txt|html)$'
+  selection_mass_file_modification:
+    EventID: 11
+    TargetFilename|re:
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\.*\.(docx|doc|xls|xlsx|pptx|pdf|jpg|png|txt|csv|mdb|sql)$'
+    CountByHost: ">200"
+    Timeframe: "10m"
+  selection_encrypted_extension:
+    EventID: 11
+    TargetFilename|re:
+      - '(?i)\.medusa$'
+      - '(?i)\.locked$'
+      - '(?i)\.enc$'
+  condition: (selection_meshagent_process or selection_meshagent_service_install or (selection_meshagent_process and selection_meshagent_network)) or (selection_ransom_note_files or selection_mass_file_modification or selection_encrypted_extension)
+fields:
+  - timestamp
+  - EventID
+  - ComputerName
+  - SubjectUserName
+  - Image
+  - ParentImage
+  - CommandLine
+  - ProcessId
+  - TargetFilename
+  - TargetImage
+  - DestinationIp
+  - DestinationPort
+falsepositives:
+  - Legitimate use of MeshCentral/MeshAgent by IT/remote management (whitelist known management servers and service accounts).
+  - Bulk file operations from backup, migration, or indexing jobs that legitimately touch many files in short timeframes.
+  - Enterprise software installers or patching systems that create README or support files.
+level: high
+tags:
+  - attack.persistence
+  - attack.command_and_control
+  - attack.impact
+  - malware.meshagent
+  - ransomware.medusa
+  - detection.endpoint
+notes: |
+  - Tuning: whitelist known remote-management hosts, service accounts, and scheduled maintenance windows; adjust file-count thresholds to match environment baseline.
+  - Investigation: collect full process command lines, service creation details, file hashes of created/modified binaries and ransom notes, network connection metadata (SNI, TLS certs, destination hostnames), and EDR memory artifacts for implanted agents.
+  - Response: isolate affected hosts, disable suspected MeshAgent services, block outbound connections to identified management servers, preserve evidence (files, memory), and perform enterprise-wide hunt for other implanted agents or similar encryption activity.
+
+
+---
+# Arquivo: B.yml
+title: MeshAgent Installation from Anomalous Path via -fullinstall Flag
+id: d47f8b23-9e1a-4c02-af83-6b5e0d3f19c8
+status: experimental
+description: |
+    Detects MeshAgent being installed via the -fullinstall command-line argument
+    from a non-canonical path, indicating abuse of the legitimate remote management
+    tool as a backdoor by a threat actor.
+
+    Canonical MeshAgent self-installs to:
+        C:\Program Files\Mesh Agent\MeshAgent.exe
+
+    Three distinct threat actor campaigns install MeshAgent from anomalous locations:
+
+    1. Huntress (Nov 2024) - Threat actor deployed a renamed MeshAgent binary as
+       "C:\Program Files\Windows NT\nvspbind\nvspbind.exe" with the argument
+       "--meshServiceName=nvspbind", masquerading as a Windows network virtualization
+       component. Delivered via PsExec batch file (mimon.bat) across multiple hosts.
+
+    2. UAC-0198 / ANONVNC (Aug 2024, CERT-UA) - MeshAgent delivered as a trojanized
+       MSI (e.g. Scan_docs#40562153.msi) phishing lure targeting Ukrainian government
+       agencies, staging the binary as "%USERPROFILE%\documents\mesh.exe -fullinstall".
+       Compromised over 100 government computers.
+
+    3. Medusa ransomware / Spearwing (Jan 2025, Symantec) - MeshAgent installed in the
+       pre-ransomware persistence phase as "%USERPROFILE%\documents\mesh.exe -fullinstall"
+       alongside SimpleHelp, AnyDesk, KillAV, and PDQ Deploy for lateral movement and
+       defense impairment before deploying gaze.exe (Medusa ransomware).
+
+    The common thread across all three campaigns is the -fullinstall flag being present
+    in the command line of an executable that does NOT reside in the canonical
+    "C:\Program Files\Mesh Agent\" directory, making path-agnostic command-line
+    matching the most resilient detection strategy.
+
+    Note: File hash-based detection is unreliable for MeshAgent because MeshCentral
+    generates a uniquely compiled agent binary per deployment, as documented by Wazuh
+    and confirmed across all three campaigns above.
+
+references:
+    - https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access
+    - https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/
+    - https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/
+    - https://www.security.com/threat-intelligence/medusa-ransomware-attacks
+    - https://cert.gov.ua/article/6280345
+author: Generated from Huntress, CERT-UA/UAC-0198, Wazuh, and Symantec Medusa research
+date: 2025-03-06
+tags:
+    - attack.persistence
+    - attack.t1219        # Remote Access Software
+    - attack.defense_evasion
+    - attack.t1036.005    # Masquerading: Match Legitimate Name or Location
+    - attack.lateral_movement
+    - attack.t1570        # Lateral Tool Transfer
+    - attack.command_and_control
+    - attack.t1219        # Remote Access Software (C2 channel)
+    - tlp:white
+logsource:
+    product: windows
+    category: process_creation
+    # Requires Sysmon Event ID 1 or equivalent EDR process telemetry with full
+    # command-line capture enabled.
+detection:
+    # The -fullinstall flag is the universal installation trigger across all observed
+    # MeshAgent deployments regardless of binary name or path.
+    selection_fullinstall_flag:
+        CommandLine|contains: '-fullinstall'
+
+    # Exclude the single canonical install path that a legitimate managed MeshAgent
+    # deployment would execute from after initial setup. The installer drops itself
+    # to Program Files then re-executes — only the re-execution from Program Files
+    # is benign. Any other path with -fullinstall is anomalous.
+    filter_canonical_install_path:
+        Image|startswith:
+            - 'C:\Program Files\Mesh Agent\'
+            - 'C:\Program Files (x86)\Mesh Agent\'
+
+    # Named-service flag used by the Huntress/nvspbind actor to register the
+    # renamed binary as a service under a cover name. Match regardless of path.
+    selection_meshServiceName_flag:
+        CommandLine|contains: '--meshServiceName='
+
+    # Also catch installations staged from high-risk user-writable locations
+    # documented in the UAC-0198 and Medusa campaigns.
+    selection_suspicious_staging_path:
+        CommandLine|contains: '-fullinstall'
+        Image|contains:
+            - '\documents\mesh'
+            - '\documents\Mesh'
+            - '\Temp\mesh'
+            - '\temp\mesh'
+            - '\AppData\Local\Temp\'
+            - '\Users\Public\'
+            - '\ProgramData\Temp\'
+
+    condition: >
+        (selection_fullinstall_flag and not filter_canonical_install_path)
+        or selection_meshServiceName_flag
+        or selection_suspicious_staging_path
+
+falsepositives:
+    - An administrator manually re-running MeshAgent installation outside the Program
+      Files path during troubleshooting or re-deployment (rare; most legitimate
+      managed deployments execute from the canonical path after the initial installer
+      drops the binary).
+    - An RMM platform that bundles MeshAgent and extracts it to a temp directory
+      before installation — review ParentImage and verify against your asset inventory
+      of approved remote access tools.
+    # Recommended: maintain an allowlist of approved RMM tools via your EDR/application
+    # control policy. MeshAgent appearing on any host not in that allowlist should be
+    # treated as a high-confidence indicator regardless of path.
+level: high
+
+---
+# Arquivo: C.yml
+title: MeshAgent Remote Access Tool Execution
+id: a9d8213e-1b2c-4ef3-90bd-b65fa312984b
+status: experimental
+description: Detects the execution or service installation of MeshAgent, an open-source remote monitoring and management (RMM) tool. While legitimate, MeshAgent is frequently abused by threat actors—such as Medusa ransomware affiliates and adversaries targeting Ukrainian entities—to maintain persistent remote access and command-and-control (C2) within a compromised network.
+references:
+    - https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access
+    - https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/
+    - https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/
+    - https://www.security.com/threat-intelligence/medusa-ransomware-attacks
+author: Security Operations Center
+date: 2026/06/05
+tags:
+    - attack.command_and_control
+    - attack.persistence
+    - attack.t1219 # Remote Access Software
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    selection_image:
+        Image|endswith: '\meshagent.exe'
+    selection_commandline:
+        CommandLine|contains:
+            - '-fullservice'
+            - 'meshagent'
+            - 'meshcentral'
+            - 'node-mesh'
+    condition: 1 of selection_*
+falsepositives:
+    - Legitimate IT department, helpdesk, or Managed Service Provider (MSP) infrastructure intentionally using MeshCentral or MeshAgent for remote device administration.
+level: high
+
+---
+# Arquivo: D.yml
+title: Suspicious MeshAgent Execution and Persistence
+id: 003e8f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a
+status: test
+description: |
+    Detects indicators of MeshAgent (also known as ANONVNC) deployment and execution.
+    MeshAgent is a legitimate remote management tool that can be abused by threat actors
+    to establish persistent backdoors, conduct lateral movement, and exfiltrate data.
+    This rule focuses on known file paths, registry modifications, service creations,
+    and command-line parameters observed in malicious campaigns.
+references:
+    - https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access
+    - https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/
+    - https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/
+    - https://www.security.com/threat-intelligence/medusa-ransomware-attacks
+author: "Sigma Rule Generator (based on research by Huntress, CERT-UA, Wazuh, and Symantec)"
+date: 2024-08-12
+modified: 2025-04-15
+tags:
+    - attack.persistence
+    - attack.t1059.003
+    - attack.t1543.003
+    - attack.t1569.002
+    - attack.t1219
+    - attack.defense-evasion
+    - attack.t1036.005
+    - attack.credential-access
+    - attack.t1003.001
+logsource:
+    product: windows
+    category: process_creation
+    definition: "Requires Sysmon or Windows Security Event Logs (EventID 4688) with command-line logging enabled."
+detection:
+    selection_img:
+        - Image|endswith:
+            - '\MeshAgent.exe'
+            - '\nvspbind.exe'
+            - '\ARestore.exe'
+            - '\ARest1.exe'
+        - OriginalFileName: 'MeshAgent.exe'
+    selection_cli:
+        CommandLine|contains|all:
+            - '-fullinstall'
+        CommandLine|contains:
+            - 'MeshAgent.exe'
+            - 'nvspbind'
+    selection_reg:
+        CommandLine|contains|all:
+            - 'reg'
+            - 'add'
+            - 'HKLM\SYSTEM\CurrentControlSet\Control\LSA'
+            - '/v RunAsPPL'
+            - '/d 0'
+        CommandLine|contains:
+            - 'WDigest'
+            - 'UseLogonCredential'
+    condition: 1 of selection_*
+falsepositives:
+    - Legitimate administrative use of MeshAgent for remote management.
+    - Authorized deployment of remote monitoring and management (RMM) software.
+    - Software developers or IT administrators using nvspbind for network configuration.
+level: high
+
+---
+# Arquivo: E.yml
+title: MeshAgent Service Registry Creation
+id: 4f0f3f3d-5f7d-4f2f-9c7a-2e7adfb4b2a1
+status: experimental
+description: Detects creation or modification of registry keys associated with MeshAgent service installation and safe boot persistence.
+references:
+
+* [https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access](https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access)
+* [https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/](https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/)
+* [https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/](https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/)
+* [https://www.security.com/threat-intelligence/medusa-ransomware-attacks](https://www.security.com/threat-intelligence/medusa-ransomware-attacks)
+  author: OpenAI
+  date: 2026-06-05
+  tags:
+* attack.persistence
+* attack.defense_evasion
+* attack.t1112
+* attack.t1543.003
+  logsource:
+  product: windows
+  category: registry_set
+  detection:
+  selection_service_key:
+  TargetObject|contains:
+
+  * '\System\CurrentControlSet\Services\Mesh Agent'
+  * '\System\CurrentControlSet\Services\MeshAgent'
+    selection_safeboot_key:
+    TargetObject|contains:
+  * '\System\CurrentControlSet\Control\SafeBoot\Network\MeshAgent'
+  * '\System\CurrentControlSet\Control\SafeBoot\Network\Mesh Agent'
+    selection_firewall_key:
+    TargetObject|contains:
+  * '\System\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\FirewallRules'
+    Details|contains:
+  * 'MeshAgent.exe'
+  * 'Action=Allow'
+    condition: 1 of selection_*
+    fields:
+* TargetObject
+* Details
+* Image
+* User
+* Computer
+  falsepositives:
+* Legitimate MeshCentral/MeshAgent administration
+* Authorized remote support tooling
+* Lab or training environments
+  level: high
+
+```
+```
+
+[1]: https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/ "How to detect MeshAgent with Wazuh"
+
+
+---
+# Arquivo original: proc_creation_macos_remote_access_tools_meshagent_arguments.yml
+title: Remote Access Tool - Potential MeshAgent Execution - MacOS
+id: 22c45af6-f590-4d44-bab3-b5b2d2a2b6d9
+related:
+    - id: 2fbbe9ff-0afc-470b-bdc0-592198339968
+      type: similar
+status: experimental
+description: |
+    Detects potential execution of MeshAgent which is a tool used for remote access.
+    Historical data shows that threat actors rename MeshAgent binary to evade detection.
+    Matching command lines with the '--meshServiceName' argument can indicate that the MeshAgent is being used for remote access.
+references:
+    - https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access
+    - https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/
+    - https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/
+    - https://www.security.com/threat-intelligence/medusa-ransomware-attacks
+author: Norbert Jaśniewicz (AlphaSOC)
+date: 2025-05-19
+tags:
+    - attack.command-and-control
+    - attack.t1219.002
+logsource:
+    category: process_creation
+    product: macos
+detection:
+    selection:
+        CommandLine|contains: '--meshServiceName'
+    condition: selection
+falsepositives:
+    - Environments that legitimately use MeshAgent
+level: medium
+
+---

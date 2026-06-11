@@ -1,0 +1,189 @@
+# Arquivo: A.yml
+title: Kerberos TGS Request Using RC4 Encryption
+id: 4b4df834-0f5d-4b0b-aec7-c4a7b9134b0b
+status: stable
+description: Detects Kerberos Ticket Granting Service (TGS) requests using RC4-HMAC encryption in Zeek kerberos logs, which may indicate Kerberoasting activity. The rule excludes common machine-account activity to reduce false positives from normal enterprise operations.
+references:
+
+* [https://adsecurity.org/?p=3458](https://adsecurity.org/?p=3458)
+  author: OpenAI
+  date: 2026/05/25
+  tags:
+* attack.credential-access
+* attack.t1558.003
+  logsource:
+  product: zeek
+  service: kerberos
+  detection:
+  selection:
+  request_type: 'TGS'
+  cipher: 'rc4-hmac'
+  success: true
+  filter_machine_accounts:
+  service|startswith: '$'
+  condition: selection and not filter_machine_accounts
+  falsepositives:
+* Normal enterprise SPN request activity using legacy RC4-compatible service accounts.
+* Legacy applications and services that still require RC4 Kerberos encryption.
+  level: medium
+
+
+---
+# Arquivo: B.yml
+title: Kerberoasting via RC4 TGS Request Detected in Zeek Kerberos Logs
+id: a7b3e1f4-2c8d-4a9e-b5f1-3d7c2e4b8a96
+status: experimental
+description: >
+  Detects a Kerberos Ticket-Granting Service (TGS) request that negotiates the
+  weak RC4-HMAC cipher, as observed in Zeek kerberos.log. Modern Active Directory
+  environments default to AES-256 or AES-128 for Kerberos service tickets; an
+  explicit RC4 request by a user principal is a strong behavioral indicator of a
+  Kerberoasting attack, where the adversary deliberately downgrades encryption to
+  obtain an offline-crackable service ticket. The detection excludes requests
+  originating from machine (computer) accounts — identified by a trailing dollar
+  sign in the client principal — which routinely generate RC4 TGS traffic and
+  represent benign baseline noise. Successful ticket issuance is required to
+  confirm that the downgrade was accepted by the KDC.
+references:
+  - https://adsecurity.org/?p=3458
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.credential_access
+  - attack.t1558.003
+logsource:
+  product: zeek
+  service: kerberos
+detection:
+  selection:
+    request_type: 'TGS'
+    cipher: 'rc4-hmac'
+    success: 'true'
+  filter_machine_accounts:
+    client|endswith: '$'
+  condition: selection and not filter_machine_accounts
+falsepositives:
+  - Legacy applications and services that are explicitly configured to require
+    RC4 Kerberos encryption and have not been migrated to AES, resulting in
+    normal enterprise SPN activity appearing as suspicious.
+  - Network appliances (e.g., NetApp, older NAS devices) or third-party services
+    that do not support AES Kerberos and therefore always negotiate RC4.
+  - Cross-forest Kerberos authentication where inter-forest trusts have not been
+    configured for AES, causing all cross-realm TGS requests to use RC4.
+  - Automated testing or vulnerability scanning tools that probe Kerberos
+    encryption support as part of an authorized assessment.
+level: medium
+
+---
+# Arquivo: C.yml
+title: Zeek Kerberos TGS Request Using RC4 Encryption
+id: a24be982-f5c7-4fc9-b687-beee54f3b890
+status: stable
+description: Detects Kerberos Ticket-Granting Service (TGS) requests using the weak RC4 encryption algorithm from Zeek network logs, which can indicate a Kerberoasting attack.
+references:
+
+* [https://adsecurity.org/?p=3458](https://adsecurity.org/?p=3458)
+author: Senior Threat Detection Engineer
+date: 2026/05/25
+tags:
+* attack.credential_access
+* attack.t1558.003
+logsource:
+product: zeek
+service: kerberos
+detection:
+selection:
+request_type: TGS
+cipher: rc4-hmac
+exclusion:
+client|endswith: '$'
+condition: selection and not exclusion
+falsepositives:
+* Normal enterprise SPN activity involving legacy systems or applications that require fallback to RC4 encryption.
+level: medium
+
+---
+# Arquivo: D.yml
+title: Kerberos TGS Request with RC4 Encryption (Potential Kerberoasting)
+id: 6f2b8a9c-1d3e-4f5a-9b7c-8d1e2f3a4b5c
+status: experimental
+description: Detects Kerberos Ticket-Granting Service (TGS) requests that use the weak RC4 encryption algorithm, which is a classic indicator of a Kerberoasting attack where adversaries request service tickets encrypted with RC4 to crack service account passwords offline.
+references:
+  - https://adsecurity.org/?p=3458
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.credential-access
+  - attack.t1558.003
+logsource:
+  product: zeek
+  service: kerberos
+detection:
+  selection:
+    request_type: "TGS-REQ"
+    cipher: "rc4-hmac"
+  exclude:
+    client|endswith: "$"
+  condition: selection and not exclude
+falsepositives:
+  - Legitimate TGS requests for service accounts that require RC4 due to legacy compatibility
+  - Normal enterprise SPN activity involving older service accounts or applications
+level: medium
+
+---
+# Arquivo: E.yml
+title: Kerberos TGS Request Using RC4 Detected (Kerberoasting Indicator)  
+id: 2c1f4d7a-8b3e-4e2a-9c6d-1a7b9f5d3c42  
+status: experimental  
+description: Detects Kerberos Ticket-Granting Service (TGS) requests using the weak RC4 encryption algorithm in Zeek kerberos logs. This activity is a common indicator of Kerberoasting attacks, where adversaries request RC4-encrypted service tickets to crack service account passwords offline.  
+references:  
+  - [https://adsecurity.org/?p=3458](https://adsecurity.org/?p=3458)  
+author: Senior Threat Detection Engineer  
+date: 2026-05-25  
+tags:  
+  - attack.credential_access  
+  - attack.t1558.003  
+logsource:  
+  product: zeek  
+  service: kerberos  
+  category: network  
+detection:  
+  selection:  
+    request_type: "TGS"  
+    cipher: "rc4-hmac"  
+  exclusion:  
+    client: "*$"  
+  condition: selection and not exclusion  
+falsepositives:  
+  - Normal enterprise SPN activity where legitimate service accounts or machine accounts request tickets using RC4.  
+level: high  
+
+---
+# Arquivo original: zeek_susp_kerberos_rc4.yml
+title: Kerberos Network Traffic RC4 Ticket Encryption
+id: 503fe26e-b5f2-4944-a126-eab405cc06e5
+status: test
+description: Detects kerberos TGS request using RC4 encryption which may be indicative of kerberoasting
+references:
+    - https://adsecurity.org/?p=3458
+author: sigma
+date: 2020-02-12
+modified: 2021-11-27
+tags:
+    - attack.credential-access
+    - attack.t1558.003
+logsource:
+    product: zeek
+    service: kerberos
+detection:
+    selection:
+        request_type: 'TGS'
+        cipher: 'rc4-hmac'
+    computer_acct:
+        service|startswith: '$'
+    condition: selection and not computer_acct
+falsepositives:
+    - Normal enterprise SPN requests activity
+level: medium
+
+---

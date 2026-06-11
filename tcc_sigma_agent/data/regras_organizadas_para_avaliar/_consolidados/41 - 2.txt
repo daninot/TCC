@@ -1,0 +1,212 @@
+# Arquivo: A.yml
+title: Suspicious Spring Security Exception Classes in Application Logs
+id: 1d9f3b6a-4c2e-4b7f-8a1d-0e2f3c4b5a6e
+status: experimental
+description: Detects Spring application log entries that include Spring Security exception class names commonly raised during unauthorized access attempts, CSRF failures, cookie tampering, malformed requests, or other exploitation attempts. These exceptions often indicate probing or attempted abuse of authentication and authorization controls.
+author: Senior Threat Detection Engineer
+date: 2026/06/12
+references:
+  - [https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html](https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html)
+tags:
+  - web
+  - spring
+  - security
+  - detection
+logsource:
+  product: spring
+  category: application
+  description: Spring application logs (e.g., application.log) containing exception class names and stack traces. Ensure application logging captures exception class names and stack traces.
+detection:
+  selection_exception:
+    Message|contains:
+      - 'AccessDeniedException'
+      - 'AuthenticationCredentialsNotFoundException'
+      - 'BadCredentialsException'
+      - 'InsufficientAuthenticationException'
+      - 'DisabledException'
+      - 'LockedException'
+      - 'AccountExpiredException'
+      - 'CredentialsExpiredException'
+      - 'CsrfException'
+      - 'InvalidCsrfTokenException'
+      - 'MissingCsrfTokenException'
+      - 'RequestRejectedException'
+      - 'AuthenticationServiceException'
+      - 'SessionAuthenticationException'
+  condition: selection_exception
+falsepositives:
+  - Legitimate authentication or authorization failures from misconfigured clients, expired credentials, or expected access control enforcement.
+  - Automated testing, health checks, or integration tests that intentionally trigger security exceptions.
+level: medium
+
+---
+# Arquivo: B.yml
+title: Suspicious Spring Security Exception Classes
+id: d6e7f8a9-b0c1-42d3-94e5-f6a7b8c9d0e1
+status: experimental
+description: Detects suspicious Spring Security exception classes in application logs, indicating potential exploitation attempts such as unauthorized access, CSRF token abuse, cookie tampering, or rejected requests.
+references:
+    - https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html
+author: Senior Threat Detection Engineer
+date: 2026-06-06
+logsource:
+    product: spring
+    category: application
+detection:
+    selection:
+        exception_class|contains:
+            - 'AccessDeniedException'
+            - 'AuthenticationCredentialsNotFoundException'
+            - 'AuthenticationServiceException'
+            - 'BadCredentialsException'
+            - 'InsufficientAuthenticationException'
+            - 'InvalidBearerTokenException'
+            - 'LockedException'
+            - 'DisabledException'
+            - 'AccountExpiredException'
+            - 'CredentialsExpiredException'
+            - 'CsrfException'
+            - 'InvalidCsrfTokenException'
+            - 'MissingCsrfTokenException'
+            - 'SessionAuthenticationException'
+            - 'UsernameNotFoundException'
+            - 'ConcurrentSessionControlException'
+            - 'MaximumSessionsExceededException'
+            - 'SessionFixedException'
+            - 'ProviderNotFoundException'
+    condition: selection
+falsepositives:
+    - Legitimate authentication failures or expired sessions
+level: medium
+tags:
+    - attack.initial_access
+    - attack.t1190
+    - attack.t1557
+
+---
+# Arquivo: C.yml
+title: Suspicious Spring Security Exceptions
+id: fb9b8e23-722a-4a25-9c92-d9223e7dc112
+status: experimental
+description: Detects suspicious Spring framework security exception classes in application logs, which may indicate exploitation attempts including unauthorized access, CSRF token abuse, cookie tampering, and rejected malformed requests.
+references:
+- [https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html](https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html)
+author: Senior Threat Detection Engineer
+date: 2026/06/07
+tags:
+- attack.initial_access
+- attack.t1190
+logsource:
+product: spring
+category: application
+detection:
+selection:
+- 'InvalidCsrfTokenException'
+- 'MissingCsrfTokenException'
+- 'CookieTheftException'
+- 'RequestRejectedException'
+- 'AccessDeniedException'
+condition: selection
+falsepositives:
+- Application misconfigurations resulting in broken CSRF tokens or malformed requests
+- Vulnerability scanning or automated testing
+level: medium
+
+---
+# Arquivo: D.yml
+title: Suspicious Spring Security Exception in Application Log
+id: 3e7b1d4a-8f2c-4a9e-b5d7-6c1f3a8e2b4d
+status: experimental
+description: |
+    Detects suspicious Spring Security exception class names appearing in
+    application logs, which may indicate exploitation attempts including
+    unauthorized access, CSRF token abuse, cookie tampering, and malformed
+    request injection.
+references:
+    - https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html
+author: Senior Threat Detection Engineer
+date: 2024-03-01
+tags:
+    - attack.initial-access
+    - attack.t1190
+    - attack.credential-access
+    - attack.t1539
+logsource:
+    category: application
+    product: spring
+detection:
+    keywords:
+        - 'AccessDeniedException'
+        - 'AuthenticationCredentialsNotFoundException'
+        - 'AuthenticationServiceException'
+        - 'BadCredentialsException'
+        - 'CookieTheftException'
+        - 'CsrfException'
+        - 'InvalidCsrfTokenException'
+        - 'MissingCsrfTokenException'
+        - 'InvalidCookieException'
+        - 'MalformedParameterException'
+        - 'PreAuthenticatedCredentialsNotFoundException'
+        - 'RememberMeAuthenticationException'
+        - 'SessionAuthenticationException'
+        - 'UsernameNotFoundException'
+    condition: keywords
+falsepositives:
+    - Legitimate application errors during normal authentication flows
+    - Penetration testing and security scanning activity
+    - Misconfigured clients causing repeated authentication failures
+level: medium
+
+---
+# Arquivo: E.yml
+title: Spring Security Exception Classes in Application Logs
+id: 9bbd01fb-5c86-4cb2-8b36-0c7d1d5f1d74
+status: experimental
+description: Detects Spring Security exception class names in application logs that may indicate unauthorized access attempts, CSRF token abuse, cookie tampering, or rejected malformed requests.
+logsource:
+product: spring
+category: application
+detection:
+selection:
+message|re: '(?i)\b(?:AccessDeniedException|AuthenticationException|AuthenticationCredentialsNotFoundException|BadCredentialsException|InsufficientAuthenticationException|SessionAuthenticationException|CsrfException|InvalidCsrfTokenException|MissingCsrfTokenException|RequestRejectedException|CookieTheftException|InvalidCookieException)\b'
+condition: selection
+falsepositives:
+
+* Legitimate authentication failures
+* Expected CSRF validation failures during testing or misconfiguration
+* Benign malformed request handling by the application or framework
+  level: medium
+
+
+---
+# Arquivo original: spring_application_exceptions.yml
+title: Spring Framework Exceptions
+id: ae48ab93-45f7-4051-9dfe-5d30a3f78e33
+status: stable
+description: Detects suspicious Spring framework exceptions that could indicate exploitation attempts
+references:
+    - https://docs.spring.io/spring-security/site/docs/current/api/overview-tree.html
+author: Thomas Patzke
+date: 2017-08-06
+modified: 2020-09-01
+tags:
+    - attack.initial-access
+    - attack.t1190
+logsource:
+    category: application
+    product: spring
+detection:
+    keywords:
+        - AccessDeniedException
+        - CsrfException
+        - InvalidCsrfTokenException
+        - MissingCsrfTokenException
+        - CookieTheftException
+        - InvalidCookieException
+        - RequestRejectedException
+    condition: keywords
+falsepositives:
+    - Application bugs
+level: medium
+
+---

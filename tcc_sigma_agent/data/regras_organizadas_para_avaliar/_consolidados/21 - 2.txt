@@ -1,0 +1,215 @@
+# Arquivo: A.yml
+title: Kubernetes Audit Events Modifying or Deleting Secrets
+id: b7e4c2d1-9a6f-4b3e-8c2d-1f5a6b7c8d9e
+status: experimental
+description: Detects Kubernetes API server audit events that create, update, patch, replace, or delete Secret resources. Modification or deletion of Secrets may indicate credential theft, tampering, or attempts to cover tracks by an attacker with sufficient RBAC permissions. Requires Kubernetes audit logging to be enabled and collected.
+author: Senior Threat Detection Engineer
+date: 2026/06/05
+references:
+  - [https://kubernetes.io/docs/reference/config-api/apiserver-audit.v1/](https://kubernetes.io/docs/reference/config-api/apiserver-audit.v1/)
+  - [https://commandk.dev/blog/guide-to-audit-k8s-secrets-for-compliance/](https://commandk.dev/blog/guide-to-audit-k8s-secrets-for-compliance/)
+tags:
+  - attack.credential_access
+  - attack.exfiltration
+  - kubernetes
+logsource:
+  product: kubernetes
+  service: audit
+  category: audit
+  description: Kubernetes API server audit logs must be enabled and forwarded to the SIEM. Audit policy should capture requestURI, verb, user, and objectRef fields.
+detection:
+  selection:
+    verb|in:
+      - 'create'
+      - 'update'
+      - 'patch'
+      - 'replace'
+      - 'delete'
+      - 'deletecollection'
+    objectRef.resource:
+      - 'secrets'
+  condition: selection
+falsepositives:
+  - Legitimate administrative or automation activity creating, rotating, or deleting secrets (CI/CD pipelines, operators, secret-rotation controllers).
+  - Cluster lifecycle operations or namespace cleanup jobs that remove secrets as part of normal maintenance.
+level: high
+
+---
+# Arquivo: B.yml
+title: Potential PrintNightmare Malicious DLL Dropped in Print Spooler Driver Directory
+id: 3a2b4c6d-8e9f-4a1b-9c7d-2e5f8a1b3c7d
+status: experimental
+description: Detects antivirus alerts for suspicious files created in the Windows Print Spooler x64 driver directory, potentially indicating PrintNightmare exploit activity (CVE-2021-1675, CVE-2021-34527).
+references:
+    - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-1675
+    - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527
+    - https://twitter.com/mvelazco/status/1410291741241102338
+author: Senior Threat Detection Engineer
+date: 2026-06-04
+logsource:
+    product: antivirus
+detection:
+    selection:
+        TargetFilename|contains|all:
+            - '\spool\drivers\x64\3\'
+            - '.dll'
+    filter_symantec_fp:
+        Signature: 'Symantec Suspicious.ML.Pending'
+    condition: selection and not filter_symantec_fp
+falsepositives:
+    - Legitimate printer driver installations
+    - Symantec pending-analysis detections (excluded)
+level: high
+tags:
+    - attack.privilege_escalation
+    - attack.t1068
+    - cve.2021-1675
+    - cve.2021-34527
+    - car.2013-05-009
+
+---
+# Arquivo: C.yml
+title: PrintNightmare Exploit Drop Antivirus Detection
+id: 8d2f5a60-312c-491b-b461-1e967a1496a7
+status: stable
+description: Detects antivirus alerts regarding suspicious files created within the Windows Print Spooler x64 driver directory, which is characteristic of PrintNightmare PoC exploitation.
+references:
+
+* [https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-1675](https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-1675)
+* [https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527](https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527)
+* [https://twitter.com/mvelazco/status/1410291741241102338](https://twitter.com/mvelazco/status/1410291741241102338)
+author: Senior Threat Detection Engineer
+date: 2026/06/04
+tags:
+* attack.privilege_escalation
+* attack.t1068
+* cve.2021-1675
+* cve.2021-34527
+logsource:
+category: antivirus
+detection:
+selection:
+FileName|contains: '\System32\spool\drivers\x64\3'
+keywords:
+* 'Pending Analysis'
+condition: selection and not keywords
+falsepositives:
+
+
+* Legitimate printer driver installations or updates performed by system administrators or automated deployment tools.
+level: high
+
+---
+# Arquivo: D.yml
+title: Antivirus Detection of Malicious DLL in Print Spooler Driver Directory
+id: 9e3c7f2a-4b1d-4e8c-b7f3-2d5a1c8e4b37
+status: stable
+description: >
+  Detects antivirus alerts for files created inside the Windows Print Spooler
+  x64 driver directory that are characteristic of PrintNightmare
+  (CVE-2021-34527 and CVE-2021-1675) exploitation. Both vulnerabilities allow
+  an authenticated attacker to cause the Spooler service to load an arbitrary
+  DLL from a path under the driver directory, resulting in code execution as
+  SYSTEM. Proof-of-concept and weaponised exploit tools drop a malicious DLL
+  into C:\Windows\System32\spool\drivers\x64\ before triggering a privileged
+  print driver installation call. Antivirus or EDR telemetry capturing file
+  creation events in this path is therefore a high-confidence indicator of
+  exploitation in progress. The known Symantec pending-analysis signatures
+  (Suspicious.Cloud.7.EP and Suspicious.Cloud.9.EP) are excluded to suppress
+  noise from PSP heuristic telemetry that incorrectly flags legitimate driver
+  files in the same directory, as reported by field responders shortly after
+  initial PoC publication. All other antivirus signatures firing on this path
+  remain alertable.
+references:
+  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-1675
+  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527
+  - https://twitter.com/mvelazco/status/1410291741241102338
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.privilege_escalation
+  - attack.t1068
+logsource:
+  category: antivirus
+detection:
+  selection:
+    Filename|contains: '\spool\drivers\x64\'
+  keywords:
+    - 'Suspicious.Cloud.7.EP'
+    - 'Suspicious.Cloud.9.EP'
+  condition: selection and not keywords
+falsepositives:
+  - Legitimate vendor-supplied printer driver updates or installations that
+    write signed DLLs into the Print Spooler x64 driver directory through
+    an approved printer management workflow, triggering heuristic AV
+    detections before the file is classified by the vendor's cloud backend.
+level: critical
+
+---
+# Arquivo: E.yml
+title: Suspicious PrintNightmare File In Spooler Driver Directory
+id: 4f8f1f0f-6f4f-4f4c-8d7b-0b6b2b3f3c1a
+status: experimental
+description: Detects antivirus detections of suspicious files created in the Windows Print Spooler x64 driver directory, which is associated with PrintNightmare exploitation and malicious DLL drops. Excludes known Symantec pending-analysis false positive signatures to reduce PSP telemetry noise.
+references:
+
+* [https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-1675](https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-1675)
+* [https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527](https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527)
+* [https://twitter.com/mvelazco/status/1410291741241102338](https://twitter.com/mvelazco/status/1410291741241102338)
+  author: OpenAI
+  date: 2026-06-04
+  tags:
+* attack.privilege_escalation
+* attack.t1068
+  logsource:
+  category: antivirus
+  detection:
+  selection:
+  TargetFilename|contains: '\spool\drivers\x64\3'
+  keywords:
+
+  * 'Symantec'
+  * 'pending analysis'
+  * 'Pending Analysis'
+  * 'WS.Reputation.1'
+  * 'Suspicious.Cloud'
+    condition: selection and not keywords
+    falsepositives:
+* Legitimate printer driver installation or update activity
+* Symantec pending-analysis telemetry and other PSP-related false positives
+  level: high
+
+
+---
+# Arquivo original: av_exploit_cve_2021_34527_print_nightmare.yml
+title: Antivirus PrinterNightmare CVE-2021-34527 Exploit Detection
+id: 6fe1719e-ecdf-4caf-bffe-4f501cb0a561
+status: stable
+description: Detects the suspicious file that is created from PoC code against Windows Print Spooler Remote Code Execution Vulnerability CVE-2021-34527 (PrinterNightmare), CVE-2021-1675 .
+references:
+    - https://twitter.com/mvelazco/status/1410291741241102338
+    - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-1675
+    - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527
+author: Sittikorn S, Nuttakorn T, Tim Shelton
+date: 2021-07-01
+modified: 2023-10-23
+tags:
+    - attack.privilege-escalation
+    - attack.stealth
+    - attack.t1055
+    - detection.emerging-threats
+    - cve.2021-34527
+    - cve.2021-1675
+logsource:
+    category: antivirus
+detection:
+    selection:
+        Filename|contains: ':\Windows\System32\spool\drivers\x64\'
+    keywords:
+        - 'File submitted to Symantec' # symantec fp, pending analysis, more generic
+    condition: selection and not keywords
+falsepositives:
+    - Unlikely, or pending PSP analysis
+level: critical
+
+---

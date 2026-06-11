@@ -1,0 +1,253 @@
+# Arquivo: A.yml
+title: Katz Stealer DNS Query to Known Related Domains
+id: 7c6c6c4f-8c6a-4f4c-9b0f-2b6d5f2a9d7d
+status: experimental
+description: Detects DNS queries for domains associated with Katz Stealer malware, which may indicate malware activity or compromise.
+references:
+  - https://github.com/NextronSystems/iocs/blob/master/reports/katz_stealer/readme.md
+  - https://www.nextron-systems.com/2025/05/23/katz-stealer-threat-analysis/
+author: OpenAI
+date: 2026-05-30
+tags:
+  - attack.command_and_control
+  - attack.t1071.004
+  - attack.credential_access
+logsource:
+  category: dns_query
+detection:
+  selection_queryname:
+    QueryName|endswith:
+      - 'katz-stealer.com'
+      - 'katzstealer.com'
+      - 'twist2katz.com'
+      - 'pub-ce02802067934e0eb072f69bf6427bf6.r2.dev'
+  selection_question_name:
+    dns.question.name|endswith:
+      - 'katz-stealer.com'
+      - 'katzstealer.com'
+      - 'twist2katz.com'
+      - 'pub-ce02802067934e0eb072f69bf6427bf6.r2.dev'
+  condition: 1 of selection_*
+fields:
+  - QueryName
+  - dns.question.name
+  - src_ip
+  - src_hostname
+  - user
+  - process_name
+  - query_type
+falsepositives:
+  - Threat intelligence lookups
+  - Security research or sandbox analysis
+  - Internal testing of detection content
+level: high
+
+---
+# Arquivo: B.yml
+title: DNS - Katz Stealer C2 and Payload Hosting Domain Query Detected
+id: d5f2e8a1-3c94-4b67-a09e-8f1c7d4b6e25
+status: test
+description: |
+    Detects DNS queries to domains associated with Katz Stealer, a Malware-as-a-
+    Service (MaaS) credential and data stealer active since at least May 2025.
+    Classified by Microsoft as Trojan:Win64/KatzStealer.RH!MTB (Severity: Severe).
+
+    The three monitored domains serve distinct roles in the kill chain:
+      1. katz-stealer.com  — Primary C2 and MaaS control panel domain.
+      2. twist2katz.com    — Hosts Discord backdoor code retrieved via HTTPS
+                             by the injected payload for process hijacking.
+      3. pub-ce02802067934e0eb072f69bf6427bf6.r2.dev — Cloudflare R2 bucket
+                             used to host the .NET stage-3 payload, downloaded by
+                             the in-memory .NET Reflection loader before injection
+                             into MSBuild.exe via Process Hollowing.
+
+    Infection vector: phishing emails, fake software downloads, malicious ads,
+                      and search-result manipulation delivering gzip-embedded JS.
+    Targets: Chrome, Edge, Brave, Firefox credentials/cookies/tokens; 154+
+             crypto wallet extensions; Discord, Telegram, Slack, Teams; Outlook
+             PST/OST; Steam; WiFi/VPN/FTP credentials; clipboard contents.
+
+    A DNS match is a high-fidelity indicator: no legitimate enterprise software
+    has reason to resolve these domains. Any match warrants immediate host
+    isolation and forensic investigation.
+references:
+    - https://www.nextron-systems.com/2025/05/23/katz-stealer-threat-analysis/
+    - https://www.picussecurity.com/resource/blog/understanding-katz-stealer-malware-and-its-credential-theft-capabilities
+    - https://cybersecsentinel.com/katz-stealer-malware-targets-browsers-wallets-and-messaging-platforms/
+    - https://attack.mitre.org/techniques/T1071/001/
+    - https://attack.mitre.org/techniques/T1041/
+author: Security Team
+date: 2026-05-25
+tags:
+    - attack.command_and_control
+    - attack.t1071.001   # Application Layer Protocol: Web (C2 over HTTPS)
+    - attack.exfiltration
+    - attack.t1041       # Exfiltration Over C2 Channel
+    - attack.execution
+    - attack.t1055.012   # Process Injection: Process Hollowing (MSBuild)
+logsource:
+    category: dns_query
+    product: windows
+detection:
+    selection_c2_domains:
+        # Primary C2 and Discord backdoor domains
+        # endswith catches apex domain AND any subdomains (api., www., cdn., etc.)
+        QueryName|endswith:
+            - 'katz-stealer.com'   # primary C2 / MaaS panel
+            - 'twist2katz.com'     # Discord backdoor code host
+    selection_payload_r2:
+        # Cloudflare R2 bucket hosting stage-3 .NET payload
+        # The 32-char hex prefix is unique — contains is safe against r2.dev FPs
+        QueryName|contains: 'pub-ce02802067934e0eb072f69bf6427bf6'
+    condition: 1 of selection_*
+fields:
+    - QueryName
+    - QueryResults
+    - Image
+    - ProcessId
+    - User
+falsepositives:
+    - Threat intelligence platforms performing automated IOC reputation lookups
+    - Security researchers analysing Katz Stealer samples in isolated lab networks
+    - Malware sandboxes detonating samples (should be network-isolated)
+level: high
+
+---
+# Arquivo: C.yml
+title: DNS Queries to Katz Stealer Associated Domains
+id: 6f2b9e1a-3c7d-4a8b-9f2e-1a2b3c4d5e6f
+status: experimental
+description: Detects DNS queries to domains associated with Katz Stealer malware. Matches known Katz-related domain patterns and repeated queries from a single host to reduce noise. Replace or augment pattern list with current threat intelligence IoCs.
+author: Daniela
+date: 2026-05-30
+references:
+  - Katz Stealer threat intelligence feeds
+  - Enterprise DNS monitoring best practices
+logsource:
+  product: dns
+  service: dns
+  category: network
+detection:
+  selection_katz_pattern:
+    QueryName|contains:
+      - "katz"
+      - "katzstealer"
+      - "katzpanel"
+      - "katz-c2"
+      - "katz-update"
+  # Optional: populate this list with confirmed IoC domains from your threat intel feed
+  selection_known_iocs:
+    QueryName|in:
+      - "REPLACE_WITH_KATZ_IOC_1"
+      - "REPLACE_WITH_KATZ_IOC_2"
+      - "REPLACE_WITH_KATZ_IOC_3"
+  # Threshold to reduce noise: multiple queries from same client within short window
+  selection_threshold:
+    CountByClientIP: ">3"
+    Timeframe: "5m"
+  condition: (selection_known_iocs) or (selection_katz_pattern and selection_threshold)
+fields:
+  - timestamp
+  - QueryName
+  - ClientIP
+  - ResponseCode
+  - QueryType
+falsepositives:
+  - Security researchers or analysts intentionally resolving Katz-related domains
+  - Internal testing or sandbox environments
+level: high
+tags:
+  - attack.exfiltration
+  - attack.t1071.004
+  - malware.katzstealer
+
+
+---
+# Arquivo: D.yml
+title: DNS Query To Katz Stealer Domains
+id: 8f2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+status: experimental
+description: Detects DNS queries to domains associated with Katz Stealer malware, which is known for stealing sensitive information from compromised systems.
+references:
+  - https://www.nextron-systems.com/2025/05/23/katz-stealer-threat-analysis/
+  - https://github.com/SigmaHQ/sigma/tree/master/rules-emerging-threats/2025/Malware/Katz-Stealer/net_dns_katz_stealer_domain.yml
+author: Senior Threat Detection Engineer
+date: 2026-05-29
+tags:
+  - attack.command-and-control
+  - attack.t1071.004
+logsource:
+  category: dns
+detection:
+  selection:
+    query|contains:
+      - 'katz-panel.com'
+      - 'katz-stealer.com'
+      - 'katzstealer.com'
+      - 'twist2katz.com'
+  condition: selection
+falsepositives:
+  - Unlikely, as these domains are not associated with legitimate services.
+level: high
+
+---
+# Arquivo: E.yml
+title: Katz Stealer Malware Infrastructure DNS Query
+id: 5cb2d9f3-a714-41fb-9b2c-639a06f477ef
+status: experimental
+description: Detects DNS queries to domains known to be associated with Katz Stealer infrastructure. This includes command and control (C2) domains and Cloudflare R2 bucket storage used during the loader phase of the infection chain to deliver additional payloads.
+references:
+    - https://github.com/NextronSystems/iocs/blob/master/reports/katz_stealer/readme.md
+    - https://www.nextron-systems.com/2025/05/23/katz-stealer-threat-analysis/
+    - https://unit42.paloaltonetworks.com/phantomvai-loader-delivers-infostealers/
+author: Security Operations Center
+date: 2026/05/30
+tags:
+    - attack.command_and_control
+    - attack.t1071.001 # Application Layer Protocol: Web Protocols
+logsource:
+    category: dns
+detection:
+    selection:
+        query|contains:
+            - 'twist2katz.com'
+            - 'katz-stealer.com'
+            - 'katzstealer.com'
+            - 'pub-ce02802067934e0eb072f69bf6427bf6.r2.dev'
+    condition: selection
+falsepositives:
+    - Sandbox execution environments, automated threat intelligence harvesting tools, or deliberate lookup activities conducted by internal security research teams.
+level: critical
+
+---
+# Arquivo original: opencanary_ssh_login_attempt.yml
+title: OpenCanary - SSH Login Attempt
+id: ff7139bc-fdb1-4437-92f2-6afefe8884cb
+status: test
+description: Detects instances where an SSH service on an OpenCanary node has had a login attempt.
+references:
+    - https://opencanary.readthedocs.io/en/latest/starting/configuration.html#services-configuration
+    - https://github.com/thinkst/opencanary/blob/a0896adfcaf0328cfd5829fe10d2878c7445138e/opencanary/logger.py#L52
+author: Security Onion Solutions
+date: 2024-03-08
+tags:
+    - attack.privilege-escalation
+    - attack.initial-access
+    - attack.lateral-movement
+    - attack.persistence
+    - attack.stealth
+    - attack.t1133
+    - attack.t1021
+    - attack.t1078
+logsource:
+    category: application
+    product: opencanary
+detection:
+    selection:
+        logtype: 4002
+    condition: selection
+falsepositives:
+    - Unlikely
+level: high
+
+---

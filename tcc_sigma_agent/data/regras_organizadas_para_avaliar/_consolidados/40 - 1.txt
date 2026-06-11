@@ -1,0 +1,424 @@
+# Arquivo: A.yml
+title: Exploitation Attempt and Post-Exploit Activity Related to GlobalProtect CVE-2024-3400
+id: 5d8a7c2f-2026-globalprotect-cve-2024-3400
+status: experimental
+description: Detects unauthenticated exploitation attempts against GlobalProtect/Palo Alto SSL/portal endpoints (CVE-2024-3400) and common post-exploit indicators: download of executables to user locations, execution from Temp/Downloads, and outbound connections typical of remote access payloads. Correlate firewall/webserver requests to GlobalProtect endpoints with endpoint process creation and file activity to raise confidence.
+author: Detection Engineer
+date: 2026-06-07
+references:
+  - https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/
+  - https://www.virustotal.com/
+  - https://docs.python.org/3/library/site.html
+logsource:
+  product: firewall,webserver,endpoint
+  service: panos,http,sysmon
+  category: network_traffic,web_access,process_creation
+detection:
+  selection_globalprotect_uri:
+    # HTTP/HTTPS requests targeting GlobalProtect/portal/ssl endpoints or PAN-OS management paths
+    RequestUri|re:
+      - '(?i)/GlobalProtect/|/global-protect/|/portal/|/ssl/|/panos/|/api/|/dana-na/|/dana/'
+    HttpMethod|in:
+      - "POST"
+      - "PUT"
+  selection_no_auth_header:
+    # Requests that do not include typical authentication headers (indicative of unauthenticated access attempts)
+    RequestHeaders|not_contains:
+      - "Authorization"
+      - "Cookie"
+      - "GP-Auth"
+  selection_unusual_useragent:
+    UserAgent|re:
+      - '(?i)(curl|wget|python-requests|libwww-perl|nikto|sqlmap|masscan|nmap|fuzz)'
+  selection_successful_exploit_response:
+    Status:
+      - 200
+      - 201
+    ResponseBody|re:
+      - '(?i)(<html|<\?xml|OK|success|portal|GlobalProtect)'
+  selection_download_to_user:
+    EventID: 11
+    TargetFilename|re:
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\Downloads\\.*\.(exe|msi|msix|zip|7z|dll|py)$'
+      - '(?i)\\AppData\\Local\\Temp\\.*\.(exe|dll|ps1|bat|py)$'
+  selection_execution_from_temp:
+    EventID: 1
+    Image|re:
+      - '(?i)\\AppData\\Local\\Temp\\.*\.(exe|dll|py|ps1)$'
+    ParentImage|re:
+      - '(?i)\\(msedge|chrome|firefox|iexplore|brave|opera|svchost|explorer)\.exe$'
+  selection_unsigned_download_execution:
+    EventID: 1
+    Image|re:
+      - '(?i)\\Users\
+
+\[^\\]
+
++\\Downloads\\.*\.(exe|msi|msix|appx)$'
+    Signed: "false"
+  selection_post_exploit_network:
+    EventID: 3
+    DestinationPort:
+      - 443
+      - 8443
+      - 80
+      - 22
+      - 3389
+    DestinationIp|not_in_cidr:
+      - "10.0.0.0/8"
+      - "172.16.0.0/12"
+      - "192.168.0.0/16"
+  selection_python_site_exec:
+    EventID: 1
+    Image|re:
+      - '(?i)\\python(?:3)?(\.exe)?$'
+    CommandLine|re:
+      - '(?i)(-m site|import site|site\.addsitedir|sitecustomize|site-packages)'
+  condition: (selection_globalprotect_uri and (selection_no_auth_header or selection_unusual_useragent) and selection_successful_exploit_response) and (selection_download_to_user or selection_execution_from_temp or selection_unsigned_download_execution or selection_post_exploit_network or selection_python_site_exec)
+fields:
+  - timestamp
+  - ClientIP
+  - Host
+  - HttpMethod
+  - RequestUri
+  - RequestHeaders
+  - Status
+  - UserAgent
+  - Image
+  - ParentImage
+  - CommandLine
+  - TargetFilename
+  - DestinationIp
+  - DestinationPort
+  - ProcessId
+falsepositives:
+  - Legitimate administrative or automated integrations that interact with GlobalProtect/PAN-OS APIs (whitelist known management IPs and automation user agents).
+  - Users downloading and running legitimate installers from trusted vendors.
+  - Dev/test systems where unauthenticated API endpoints are intentionally exposed.
+level: high
+tags:
+  - attack.exploitation
+  - attack.initial_access
+  - attack.command_and_control
+  - vulnerability.CVE-2024-3400
+  - detection.network
+  - detection.endpoint
+notes: |
+  - Tuning: whitelist known management hosts, internal scanners, and scheduled automation; restrict detection to production-facing GlobalProtect portals and to requests from external/untrusted IP ranges.
+  - Investigation: correlate firewall/webserver requests to GlobalProtect endpoints with endpoint telemetry (process creation, file writes, unsigned binaries), collect downloaded artifacts and compute hashes, capture full HTTP request/response pairs, and inspect TLS SNI and certificate details for suspicious destinations.
+  - Response: if exploitation is confirmed, isolate affected hosts, block offending client IPs and C2 destinations, remove malicious artifacts, rotate credentials and certificates if exposed, and apply vendor mitigations/patches for CVE-2024-3400.
+
+
+---
+# Arquivo: B.yml
+title: Malicious Python .pth File Created in site-packages for Persistent Code Execution
+id: f47a9c31-2e18-4b07-ad85-8c6d0b3e52f9
+status: experimental
+description: |
+    Detects creation or modification of a Python .pth file inside a site-packages
+    directory whose content contains an executable "import " line, indicating abuse
+    of the Python site module's .pth auto-execution feature for persistent backdoor
+    installation.
+
+    MECHANISM (Python docs/library/site.html):
+    The Python site module, loaded automatically at interpreter startup, processes
+    every .pth file found in site-packages directories. Per the official Python
+    documentation, any line in a .pth file that begins with "import " followed by
+    a space or tab character is EXECUTED AS PYTHON CODE rather than appended to
+    sys.path. This means any .pth file dropped into site-packages that starts with
+    "import " will execute its payload every time ANY Python process starts on the
+    host — including cron jobs, monitoring agents, and system tools.
+
+    UPSTYLE BACKDOOR (CVE-2024-3400 / UTA0218):
+    The UPSTYLE backdoor, deployed by Chinese state-backed threat actor UTA0218
+    against Palo Alto Networks GlobalProtect firewalls (exploited as a zero-day,
+    March–April 2024), uses exactly this mechanism. The installer script (update.py,
+    SHA256: 3de2a4392b8715bad070b2ae12243f166ead37830f7c6d24e778985927f9caac)
+    writes the backdoor to:
+        /usr/lib/python3.6/site-packages/system.pth
+    The file begins with an "import " line followed by a base64-encoded payload
+    blob. Once in place, the backdoor:
+      1. Polls the nginx SSL VPN error log (/var/log/pan/sslvpn_ngx_error.log)
+         for attacker-crafted HTTP requests to non-existent pages containing
+         an encoded command pattern.
+      2. Decodes and executes the embedded command.
+      3. Writes command output to the legitimate CSS file:
+         /var/appweb/sslvpndocs/global-protect/portal/css/bootstrap.min.css
+      4. Removes the triggering log entry from sslvpn_ngx_error.log.
+      5. Restores bootstrap.min.css to its original content 15 seconds later.
+      6. Restores access and modification timestamps on both files (anti-forensic).
+
+    The .pth persistence mechanism is entirely Python-documented and appliance-
+    agnostic. Any attacker who reads the Python site module documentation can
+    reuse it on any Linux appliance, container, or server running Python —
+    making this detection relevant beyond the PAN-OS context.
+
+    DETECTION STRATEGY:
+    This rule targets the filesystem write event — the moment system.pth (or any
+    anomalously named .pth file) is created or modified in a site-packages directory.
+    This is earlier in the kill chain than the backdoor's polling behaviour and
+    survives payload recompilation, C2 rotation, and hash-based IOC expiry.
+
+    Legitimate .pth files:
+      - Are created exclusively by pip, conda, setuptools, or distutils during
+        package installation.
+      - Contain only sys.path extension lines (plain directory paths) or well-known
+        package "import" lines consistent with installed package names
+        (e.g. "import pkg_resources" from setuptools).
+      - Are named after the package they belong to (e.g. "requests.pth",
+        "numpy.pth"), not generic system-sounding names like "system.pth".
+
+    Any .pth file created by a process other than a package manager, or containing
+    a non-standard "import" line with an encoded payload, is anomalous.
+
+references:
+    - https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/
+    - https://www.virustotal.com/gui/file/3de2a4392b8715bad070b2ae12243f166ead37830f7c6d24e778985927f9caac
+    - https://docs.python.org/3/library/site.html
+    - https://security.paloaltonetworks.com/CVE-2024-3400
+    - https://unit42.paloaltonetworks.com/cve-2024-3400/
+author: Generated from Volexity CVE-2024-3400 research, UPSTYLE VirusTotal sample, and Python site module documentation
+date: 2024-04-12
+tags:
+    - attack.persistence
+    - attack.t1546.016   # Event Triggered Execution: Installer Packages (.pth abuse)
+    - attack.defense_evasion
+    - attack.t1027.013   # Obfuscated Files or Information: Encrypted/Encoded File (base64 blob in .pth)
+    - attack.t1070.006   # Indicator Removal: Timestomp (timestamp restoration post-execution)
+    - attack.initial_access
+    - attack.t1190       # Exploit Public-Facing Application (CVE-2024-3400 delivery vector)
+    - tlp:white
+logsource:
+    product: linux
+    category: file_event
+    # Requires Sysmon for Linux (sysinternalsuite) with FileCreate/FileModify events
+    # enabled, OR auditd with -w rules on site-packages directories, OR an EDR agent
+    # with filesystem telemetry on Linux.
+    #
+    # Recommended auditd rule to generate this telemetry:
+    #   -w /usr/lib/python3/ -p wa -k python_sitepackages_write
+    #   -w /usr/lib/python3.6/site-packages/ -p wa -k python_sitepackages_write
+    #   -w /usr/local/lib/ -p wa -k python_sitepackages_write
+    #   -w /opt/ -p wa -k python_sitepackages_write
+    #
+    # The TargetFilename field below corresponds to the file path written.
+detection:
+    # ── Arm 1: Exact UPSTYLE IOC path (highest specificity) ──────────────────
+    # The specific path documented by Volexity and confirmed in the VirusTotal
+    # sample. Any write to this exact path is malicious — "system.pth" is not
+    # a filename produced by any legitimate Python package.
+    selection_upstyle_exact:
+        TargetFilename: '/usr/lib/python3.6/site-packages/system.pth'
+
+    # ── Arm 2: Any .pth file written to a site-packages directory ────────────
+    # Catches UPSTYLE variants using different filenames, and any other attacker
+    # reusing this Python-documented persistence primitive on other appliances
+    # or servers. site-packages under /usr/lib, /usr/local/lib, and /opt are
+    # the standard installation roots across major Linux distributions.
+    selection_pth_in_sitepackages:
+        TargetFilename|contains:
+            - '/site-packages/'
+            - '/dist-packages/'
+        TargetFilename|endswith: '.pth'
+
+    # ── Arm 3: .pth file written anywhere by a non-package-manager process ───
+    # Pip, conda, and setuptools are the only legitimate writers of .pth files.
+    # Any other process creating a .pth file outside a controlled install context
+    # is suspicious regardless of path — covers edge cases where an attacker
+    # stages the file in a non-standard Python prefix path.
+    filter_legitimate_package_managers:
+        Image|contains:
+            - '/pip'
+            - '/pip3'
+            - '/conda'
+            - '/setuptools'
+            - '/easy_install'
+            - 'python setup.py'
+
+    # ── Arm 4: .pth file written outside of an interactive package install ────
+    # On network appliances (PAN-OS, FortiOS, etc.), pip and conda should never
+    # run during normal operations. Any .pth write on an appliance-class host is
+    # unconditionally anomalous.
+    # On general-purpose servers, correlate with Arm 3 to identify non-pip writers.
+
+    # ── Exclude known benign .pth files created at OS/package install time ────
+    # These are stable after initial provisioning; any write post-baseline is
+    # suspicious. If your SIEM supports it, alert only on writes that occur
+    # outside of a defined maintenance/provisioning window.
+    filter_known_benign_pth_names:
+        TargetFilename|endswith:
+            - '/easy-install.pth'
+            - '/pkg_resources.pth'
+            - '/site.pth'
+
+    condition: >
+        (selection_upstyle_exact)
+        or
+        (selection_pth_in_sitepackages and not filter_legitimate_package_managers
+         and not filter_known_benign_pth_names)
+
+falsepositives:
+    - A developer or sysadmin manually running "python setup.py develop" or
+      "pip install -e ." (editable installs), which creates a .pth file pointing
+      to the source directory. These are almost never performed on network security
+      appliances and are rare on production servers. Filter by Image containing pip.
+    - A configuration management tool (Ansible, Puppet, Chef) that installs a
+      Python package by writing files directly rather than invoking pip — exclude
+      by ParentImage (e.g. containing 'ansible', 'puppet', 'chef').
+    - A container build step that runs during image construction (acceptable at
+      build time, anomalous at runtime) — scope the rule to exclude build
+      infrastructure hostnames if operating in a container environment.
+    # Recommended: on network security appliances (PAN-OS, FortiOS, Junos, etc.),
+    # treat ANY write to a site-packages .pth file as critical with zero
+    # false-positive tolerance — package managers do not run on appliances
+    # during normal operations under any circumstances.
+level: critical
+
+---
+# Arquivo: C.yml
+title: Suspicious Python PTH File Creation (UPSTYLE Backdoor)
+id: f4a87b32-e567-4a11-9a3b-2810a455a71a
+status: experimental
+description: |
+  Detects the creation or modification of a Python path configuration file (.pth), specifically targeting the name 'system.pth' within Python's site-packages or dist-packages directories.
+  This technique abuses the Python `site` module's initialization process, which automatically executes lines starting with 'import' in .pth files. 
+  This specific persistence and execution hijacking technique was leveraged by the UPSTYLE backdoor during the widespread exploitation of Palo Alto GlobalProtect appliances (CVE-2024-3400).
+author: Gemini
+date: 2026/06/07
+references:
+    - https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/
+    - https://docs.python.org/3/library/site.html
+    - https://www.virustotal.com/gui/file/3de2a4392b8715bad070b2ae12243f166ead37830f7c6d24e778985927f9caac
+tags:
+    - attack.persistence
+    - attack.privilege_escalation
+    - attack.defense_evasion
+    - attack.t1574.004
+    - cve.2024.3400
+logsource:
+    category: file_event
+    product: linux
+detection:
+    selection:
+        TargetFilename|contains:
+            - '/site-packages/'
+            - '/dist-packages/'
+        TargetFilename|endswith: '/system.pth'
+    condition: selection
+falsepositives:
+    - Highly unlikely. While legitimate Python packages do use .pth files for namespace packages (like `azure.pth` or `zope.interface.pth`), a file explicitly named `system.pth` is non-standard and highly indicative of the UPSTYLE campaign IOCs.
+level: high
+
+---
+# Arquivo: D.yml
+title: CVE-2024-3400 Exploitation - UPSTYLE Backdoor Deployment
+id: 6f1e2a3b-4c5d-6e7f-8a9b-0c1d2e3f4a5b
+status: experimental
+description: Detects the deployment of the UPSTYLE backdoor via CVE-2024-3400, a critical command injection vulnerability in Palo Alto Networks PAN-OS GlobalProtect feature. The backdoor is typically placed in /usr/lib/python3.6/site-packages/system.pth, and the exploit modifies /var/appweb/sslvpndocs/global-protect/portal/css/bootstrap.min.css.
+references:
+  - https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/
+  - https://www.virustotal.com/gui/file/3de2a4392b8715bad070b2ae12243f166ead37830f7c6d24e778985927f9caac
+  - https://docs.python.org/3/library/site.html
+author: Sigma Rule Generator
+date: 2026-06-06
+tags:
+  - attack.initial-access
+  - attack.t1190
+  - cve.2024-3400
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection_pth:
+    TargetFilename|endswith: '/usr/lib/python3.6/site-packages/system.pth'
+  selection_css:
+    TargetFilename|endswith: '/var/appweb/sslvpndocs/global-protect/portal/css/bootstrap.min.css'
+  condition: 1 of selection_*
+falsepositives:
+  - Legitimate Python package installations may create .pth files, but the specific path /usr/lib/python3.6/site-packages/system.pth is unusual.
+  - Legitimate system updates may modify the CSS file, but the location and context of this modification should be investigated.
+level: critical
+
+---
+# Arquivo: E.yml
+This rule focuses on the Python persistence mechanism Volexity observed in the CVE-2024-3400 intrusions: a malicious `.pth` file placed under `site-packages`, which Python processes at startup, making it a useful detection point for the UPSTYLE-style backdoor. 
+title: Python Site-Packages Persistence via .pth or Customize File Creation
+id: 6d7a8f1c-7f21-4e4e-9c6a-1f7e0a4b6e4f
+status: experimental
+description: Detects suspicious creation or modification of Python site-packages persistence files such as .pth, sitecustomize.py, or usercustomize.py, which can be used to execute attacker-controlled code at interpreter startup.
+references:
+
+* [https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/](https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/)
+* [https://docs.python.org/3/library/site.html](https://docs.python.org/3/library/site.html)
+  author: OpenAI
+  date: 2026-06-07
+  logsource:
+  category: file_event
+  detection:
+  selection_sitepack:
+  TargetFilename|contains:
+
+  * 'site-packages'
+    selection_persistence_file:
+    TargetFilename|endswith:
+  * 'system.pth'
+  * 'sitecustomize.py'
+  * 'usercustomize.py'
+  * '.pth'
+    condition: selection_sitepack and selection_persistence_file
+    falsepositives:
+* Legitimate Python package installation or virtual environment setup
+* Administrator-created site customization files
+* Software deployment tooling that writes to site-packages
+  level: high
+  tags:
+* attack.persistence
+* attack.t1037
+
+```
+```
+
+[1]: https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/ "Zero-Day Exploitation of Unauthenticated Remote Code Execution Vulnerability in GlobalProtect (CVE-2024-3400) | Volexity"
+
+
+---
+# Arquivo original: file_event_macos_python_path_configuration_files.yml
+title: Python Path Configuration File Creation - MacOS
+id: 4f394635-13ef-4599-b677-3353e0f84f55
+related:
+    - id: e3652ba3-0ad8-4010-a957-b7ba369e7bac # Windows
+      type: similar
+    - id: fb96c26c-9f85-4ae7-af0d-ed1ed1f1f5ce # Linux
+      type: similar
+status: test
+description: |
+    Detects creation of a Python path configuration file (.pth) in Python library folders, which can be maliciously abused for code execution and persistence.
+    Modules referenced by these files are run at every Python startup (v3.5+), regardless of whether the module is imported by the calling script.
+    Default paths are '\lib\site-packages\*.pth' (Windows) and '/lib/pythonX.Y/site-packages/*.pth' (Unix and macOS).
+references:
+    - https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/
+    - https://www.virustotal.com/gui/file/3de2a4392b8715bad070b2ae12243f166ead37830f7c6d24e778985927f9caac
+    - https://docs.python.org/3/library/site.html
+author: Andreas Braathen (mnemonic.io)
+date: 2024-04-25
+tags:
+    - attack.execution
+    - attack.t1059.006
+    - detection.threat-hunting
+logsource:
+    product: macos
+    category: file_event
+detection:
+    selection:
+        TargetFilename|re: '(?i)/lib/python3\.([5-9]|[0-9]{2})/site-packages/' # Unix and macOS
+        TargetFilename|endswith: '.pth'
+    condition: selection
+falsepositives:
+    - Although .pth files are discouraged due to potential security implications, these are legitimate files by specification.
+level: medium
+
+---

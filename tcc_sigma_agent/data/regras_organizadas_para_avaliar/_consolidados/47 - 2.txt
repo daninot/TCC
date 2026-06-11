@@ -1,0 +1,716 @@
+# Arquivo: A.yml
+title: Suspicious LSASS Process Access Flags
+id: 2f6d6c23-3c5f-4a54-9bb2-0a9f6f0f9a77
+status: test
+description: Detects process access requests to LSASS with GrantedAccess flags consistent with credential dumping behavior.
+references:
+
+* [https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights](https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights)
+* [https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html](https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html)
+* [https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment](https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment)
+* [https://web.archive.org/web/20230420013146/http://security-research.dyndns.org/pub/slides/FIRST2017/FIRST-2017_Tom-Ueltschi_Sysmon_FINAL_notes.pdf](https://web.archive.org/web/20230420013146/http://security-research.dyndns.org/pub/slides/FIRST2017/FIRST-2017_Tom-Ueltschi_Sysmon_FINAL_notes.pdf)
+  logsource:
+  product: windows
+  category: process_access
+  detection:
+  selection_target:
+  TargetImage|endswith: '\lsass.exe'
+  selection_access:
+
+  * GrantedAccess|endswith:
+
+    * '30'
+    * '50'
+    * '70'
+    * '90'
+    * 'B0'
+    * 'D0'
+    * 'F0'
+    * '18'
+    * '38'
+    * '58'
+    * '78'
+    * '98'
+    * 'B8'
+    * 'D8'
+    * 'F8'
+    * '1A'
+    * '3A'
+    * '5A'
+    * '7A'
+    * '9A'
+    * 'BA'
+    * 'DA'
+    * 'FA'
+  * GrantedAccess|startswith:
+
+    * '0x100000'
+    * '0x1010'
+    * '0x1410'
+    * '0x1418'
+    * '0x1438'
+    * '0x143a'
+    * '0x1f0fff'
+    * '0x1f1fff'
+    * '0x1f2fff'
+    * '0x1f3fff'
+    * '0x40'
+      filter_main_generic:
+      SourceImage|contains:
+    * ':\Program Files (x86)'
+    * ':\Program Files'
+    * ':\Windows\System32'
+    * ':\Windows\SysWOW64'
+      filter_main_windefend_1:
+      SourceImage|contains: ':\ProgramData\Microsoft\Windows Defender'
+      SourceImage|endswith: '\MsMpEng.exe'
+      filter_main_windefend_2:
+      CallTrace|contains|all:
+    * ':\ProgramData\Microsoft\Windows Defender\Definition Updates{'
+    * '}\mpengine.dll+'
+      GrantedAccess: '0x1418'
+      filter_main_windefend_3:
+      CallTrace|contains:
+    * '|c:\program files\windows defender\mprtp.dll'
+    * '|c:\program files\windows defender\MpClient.dll'
+      filter_main_explorer:
+      SourceImage|endswith: '\explorer.exe'
+      GrantedAccess: '0x401'
+      filter_optional_malwarebytes:
+      SourceImage|endswith: ':\ProgramData\MALWAREBYTES\MBAMSERVICE\ctlrupdate\mbupdatr.exe'
+      filter_optional_mbami:
+      SourceImage|endswith: '\MBAMInstallerService.exe'
+      GrantedAccess: '0x40'
+      filter_optional_vscode:
+      SourceImage|endswith: '\AppData\Local\Programs\Microsoft VS Code\Code.exe'
+      filter_optional_vmwaretools:
+      SourceImage|contains: ':\ProgramData\VMware\VMware Tools'
+      SourceImage|endswith: '\vmtoolsd.exe'
+      filter_optional_sysinternals_process_explorer:
+      SourceImage|endswith:
+    * '\PROCEXP64.EXE'
+    * '\PROCEXP.EXE'
+      GrantedAccess: '0x40'
+      filter_optional_sysinternals_handle:
+      SourceImage|endswith:
+    * '\handle.exe'
+    * '\handle64.exe'
+      GrantedAccess: '0x40'
+      filter_optional_nextron:
+      SourceImage|endswith:
+    * '\aurora-agent-64.exe'
+    * '\aurora-agent.exe'
+    * '\thor.exe'
+    * '\thor64.exe'
+      GrantedAccess: '0x40'
+      filter_optional_webex:
+      SourceImage|endswith: '\AppData\Local\WebEx\WebexHost.exe'
+      GrantedAccess: '0x401'
+      filter_optional_steam_apps:
+      SourceImage|contains: '\SteamLibrary\steamapps'
+      condition: all of selection_* and not 1 of filter_main_* and not 1 of filter_optional_*
+      falsepositives:
+* Legitimate security tools, EDR, AV, and endpoint diagnostics
+* User-initiated inspection or troubleshooting of LSASS by administrative tools
+  level: high
+  tags:
+* attack.credential-access
+* attack.t1003.001
+
+
+---
+# Arquivo: B.yml
+title: Suspicious Process Access to LSASS Indicative of Credential Dumping
+id: 5a3c9d2e-7b4f-4e6a-9c1d-0f2b3a4e5d6f
+status: experimental
+description: Detects process access requests to LSASS with GrantedAccess masks commonly used by credential dumping tools (Mimikatz-class). Matches access masks indicating memory read, duplication, or full access intent. Excludes known legitimate AV/EDR and system tooling to reduce noise. Requires process access auditing (e.g., Sysmon Event ID 10) that captures TargetImage, GrantedAccess, SourceImage, and CallTrace.
+author: Senior Threat Detection Engineer
+date: 2026/06/14
+references:
+  - [https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights](https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights)
+  - [https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html](https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html)
+  - [https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment](https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment)
+tags:
+  - attack.credential_access
+  - attack.discovery
+  - windows
+  - lsass
+logsource:
+  product: windows
+  category: process_access
+  description: Process access events (e.g., Sysmon Event ID 10) that include SourceImage, TargetImage (or TargetProcessName), GrantedAccess, CallTrace, and ProcessId fields. Ensure process access auditing is enabled.
+detection:
+  selection_target:
+    TargetImage|endswith:
+      - '\\lsass.exe'
+      - '\\LSASS.EXE'
+  selection_access_lowbyte:
+    GrantedAccess|endswith:
+      - '30'
+      - '50'
+      - '70'
+      - '90'
+      - 'B0'
+      - 'D0'
+      - 'F0'
+      - '38'
+      - '3A'
+      - '18'
+      - '10'
+      - '40'
+      - '01'
+  selection_access_high:
+    GrantedAccess|startswith:
+      - '0x1f0'
+      - '0x1f1'
+      - '0x1f2'
+      - '0x1f3'
+      - '0x100000'
+      - '0x1010'
+      - '0x141'
+      - '0x143'
+      - '0x1438'
+      - '0x143a'
+      - '0x401'
+      - '0x40'
+  condition: all of selection_target selection_access_lowbyte selection_access_high
+  # Exclusions to reduce noise
+  filter_main_system:
+    SourceImage|contains:
+      - '\\Windows\\'
+      - '\\Program Files\\'
+      - '\\Program Files (x86)\\'
+  filter_main_defender:
+    CallTrace|contains|all:
+      - 'Definition Updates'
+      - 'mpengine.dll'
+  filter_main_defender_proc:
+    SourceImage|endswith:
+      - '\\MsMpEng.exe'
+      - '\\MsMpEng.exe'
+  filter_main_mpclient:
+    CallTrace|contains:
+      - 'MpClient'
+      - 'mprtp'
+  filter_main_explorer:
+    SourceImage|endswith:
+      - '\\explorer.exe'
+    GrantedAccess|endswith:
+      - '401'
+  filter_optional_malwarebytes:
+    SourceImage|endswith:
+      - '\\mbupdatr.exe'
+      - '\\MBAMInstallerService.exe'
+    GrantedAccess|endswith:
+      - '40'
+  filter_optional_tools:
+    SourceImage|endswith:
+      - '\\Code.exe'
+      - '\\vmtoolsd.exe'
+      - '\\PROCEXP64.EXE'
+      - '\\PROCEXP.EXE'
+      - '\\handle.exe'
+      - '\\handle64.exe'
+      - '\\NextronAurora.exe'
+      - '\\ThorAgent.exe'
+      - '\\WebexHost.exe'
+      - '\\steam.exe'
+    GrantedAccess|endswith:
+      - '40'
+  condition: all of selection_target selection_access_lowbyte selection_access_high and not 1 of filter_main_system filter_main_defender filter_main_defender_proc filter_main_mpclient filter_main_explorer and not 1 of filter_optional_malwarebytes filter_optional_tools
+falsepositives:
+  - Legitimate security products or system components performing LSASS access for protection, scanning, or remediation.
+  - Administrative or forensic tools run by authorized operators that require LSASS access.
+  - Endpoint agents or management tooling not enumerated in optional filters that legitimately access LSASS.
+level: high
+
+---
+# Arquivo: C.yml
+title: LSASS Process Access with Suspicious GrantedAccess Mask
+id: 7b9e4a3c-1d2e-4f5a-9b8c-0d1e2f3a4b5c
+status: experimental
+description: Detects process access requests to LSASS with GrantedAccess flags consistent with credential dumping (Mimikatz-class tools). LSASS holds authentication secrets; access masks like 0x1F0FFF / 0x1F1FFF / 0x1F2FFF / 0x1F3FFF and the 0x1010 / 0x1410 / 0x1438 family indicate memory read or duplication intent.
+references:
+- [https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights](https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights)
+- [https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html](https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html)
+- [https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment](https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment)
+- [https://web.archive.org/web/20230420013146/http://security-research.dyndns.org/pub/slides/FIRST2017/FIRST-2017_Tom-Ueltschi_Sysmon_FINAL_notes.pdf](https://web.archive.org/web/20230420013146/http://security-research.dyndns.org/pub/slides/FIRST2017/FIRST-2017_Tom-Ueltschi_Sysmon_FINAL_notes.pdf)
+author: Senior Threat Detection Engineer
+date: 2026/06/08
+tags:
+- attack.credential_access
+- attack.t1003.001
+logsource:
+product: windows
+category: process_access
+detection:
+selection_target:
+TargetImage|endswith: '\lsass.exe'
+selection_access:
+GrantedAccess|startswith:
+- '0x100000'
+- '0x1f0fff'
+- '0x1f1fff'
+- '0x1f2fff'
+- '0x1f3fff'
+- '0x1418'
+- '0x1438'
+- '0x143a'
+- '0x40'
+GrantedAccess|endswith:
+- '30'
+- '38'
+- '3a'
+- '50'
+- '58'
+- '5a'
+- '70'
+- '78'
+- '7a'
+- '90'
+- '98'
+- '9a'
+- 'B0'
+- 'B8'
+- 'Ba'
+- 'D0'
+- 'D8'
+- 'Da'
+- 'F0'
+- 'F8'
+- 'Fa'
+- '10'
+- '18'
+- '1a'
+- 'ff'
+filter_main_paths:
+SourceImage|contains:
+- '\Windows\System32'
+- '\Program Files'
+- '\Program Files (x86)'
+filter_main_defender_msmpeng:
+SourceImage|contains: '\Microsoft\Windows Defender\Platform'
+SourceImage|endswith: '\MsMpEng.exe'
+filter_main_defender_mpengine:
+CallTrace|contains|all:
+- '\Definition Updates'
+- '\mpengine.dll'
+GrantedAccess: '0x1418'
+filter_main_defender_client:
+CallTrace|contains:
+- 'MpClient'
+- 'mprtp'
+filter_main_explorer:
+SourceImage|endswith: '\explorer.exe'
+GrantedAccess: '0x401'
+filter_optional_malwarebytes:
+SourceImage|endswith:
+- '\mbupdatr.exe'
+- '\MBAMInstallerService.exe'
+GrantedAccess: '0x40'
+filter_optional_vscode:
+SourceImage|endswith: '\Code.exe'
+filter_optional_vmware:
+SourceImage|endswith: '\vmtoolsd.exe'
+filter_optional_procexp:
+SourceImage|endswith:
+- '\PROCEXP64.EXE'
+- '\PROCEXP.EXE'
+GrantedAccess: '0x40'
+filter_optional_handle:
+SourceImage|endswith:
+- '\handle.exe'
+- '\handle64.exe'
+GrantedAccess: '0x40'
+filter_optional_nextron:
+SourceImage|endswith:
+- '\aurora.exe'
+- '\thor.exe'
+- '\thor64.exe'
+GrantedAccess: '0x40'
+filter_optional_webex:
+SourceImage|endswith: '\WebexHost.exe'
+GrantedAccess: '0x401'
+filter_optional_steam:
+SourceImage|contains: '\Steam\steamapps'
+condition: all of selection_* and not 1 of filter_main_* and not 1 of filter_optional_*
+falsepositives:
+- Legitimate security agents, antivirus software, and debugging tools troubleshooting system processes.
+level: high
+
+---
+# Arquivo: D.yml
+title: LSASS Credential Dumping via Suspicious GrantedAccess
+id: d4e5f6a7-b8c9-40d1-92e3-4a5b6c7d8e9f
+status: experimental
+description: Detects process access requests to LSASS with GrantedAccess flags consistent with credential dumping tools (e.g., Mimikatz), indicating potential credential theft.
+references:
+    - https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
+    - https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html
+    - https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment
+    - https://web.archive.org/web/20230420013146/http://security-research.dyndns.org/pub/slides/FIRST2017/FIRST-2017_Tom-Ueltschi_Sysmon_FINAL_notes.pdf
+author: Senior Threat Detection Engineer
+date: 2026-06-08
+logsource:
+    product: windows
+    category: process_access
+detection:
+    selection_target:
+        TargetImage|endswith: '\lsass.exe'
+    selection_access:
+        GrantedAccess|endswith:
+            # Low-byte patterns: 0x30, 0x50, 0x70, 0x90, 0xB0, 0xD0, 0xF0 and variants with 8/A
+            - '30'
+            - '50'
+            - '70'
+            - '90'
+            - 'b0'
+            - 'd0'
+            - 'f0'
+            - '38'
+            - '58'
+            - '78'
+            - '98'
+            - 'b8'
+            - 'd8'
+            - 'f8'
+            - '3a'
+            - '5a'
+            - '7a'
+            - '9a'
+            - 'ba'
+            - 'da'
+            - 'fa'
+        GrantedAccess|startswith:
+            # High masks: 0x100000, 0x1f0fff family, 0x1418, 0x1438, 0x143a, 0x40
+            - '0x100000'
+            - '0x1f0fff'
+            - '0x1f1fff'
+            - '0x1f2fff'
+            - '0x1f3fff'
+            - '0x1418'
+            - '0x1438'
+            - '0x143a'
+            - '0x40'
+    filter_main_system_paths:
+        SourceImage|contains:
+            - '\System32\'
+            - '\SysWOW64\'
+            - '\Program Files\'
+            - '\Program Files (x86)\'
+    filter_main_defender:
+        - SourceImage|endswith: '\MsMpEng.exe'
+        - CallTrace|contains|all:
+            - '\ProgramData\Microsoft\Windows Defender\Definition Updates\'
+            - '\mpengine.dll'
+        - GrantedAccess|startswith: '0x1418'
+        - CallTrace|contains:
+            - 'MpClient.dll'
+            - 'mprtp.dll'
+    filter_main_explorer:
+        SourceImage|endswith: '\explorer.exe'
+        GrantedAccess|startswith: '0x401'
+    filter_optional_malwarebytes:
+        SourceImage|endswith:
+            - '\mbupdatr.exe'
+            - '\MBAMInstallerService.exe'
+        GrantedAccess|startswith: '0x40'
+    filter_optional_vscode:
+        SourceImage|endswith: '\Code.exe'
+        GrantedAccess|startswith: '0x40'
+    filter_optional_vmware:
+        SourceImage|endswith: '\vmtoolsd.exe'
+        GrantedAccess|startswith: '0x40'
+    filter_optional_procexp:
+        SourceImage|endswith:
+            - '\PROCEXP64.exe'
+            - '\PROCEXP.exe'
+        GrantedAccess|startswith: '0x40'
+    filter_optional_handle:
+        SourceImage|endswith:
+            - '\handle64.exe'
+            - '\handle.exe'
+        GrantedAccess|startswith: '0x40'
+    filter_optional_aurora:
+        SourceImage|endswith:
+            - '\aurora.exe'
+            - '\thor.exe'
+        GrantedAccess|startswith: '0x40'
+    filter_optional_webex:
+        SourceImage|endswith: '\WebexHost.exe'
+        GrantedAccess|startswith: '0x401'
+    filter_optional_steam:
+        SourceImage|contains: '\Steam\steamapps\'
+    condition: all of selection_* and not 1 of filter_main_* and not 1 of filter_optional_*
+falsepositives:
+    - Legitimate security software (AV/EDR) accessing LSASS for monitoring (excluded where possible)
+    - System processes like explorer.exe (excluded)
+    - Third-party applications with legitimate need (excluded via optional filters)
+level: critical
+tags:
+    - attack.credential_access
+    - attack.t1003
+    - attack.t1003.001
+
+---
+# Arquivo: E.yml
+title: LSASS Process Access with Credential Dumping Access Rights
+id: f1e3c8b2-4d7a-4f2e-b9c5-3a6d1e8f4b27
+status: experimental
+description: >
+  Detects process access requests to the Local Security Authority Subsystem
+  Service (lsass.exe) with GrantedAccess flags consistent with credential
+  dumping tooling in the Mimikatz family. LSASS holds NTLM hashes, Kerberos
+  tickets, and cleartext credentials for interactively logged-on users.
+  Access mask families such as 0x1F0FFF and its variants request full process
+  access including VM_READ and PROCESS_DUP_HANDLE, which are the minimum
+  rights needed to extract credential material from LSASS memory. The 0x1010
+  and 0x1410/0x1438 families represent PROCESS_QUERY_LIMITED_INFORMATION
+  combined with VM_READ, the minimum access set used by modern dumpers
+  attempting to reduce their footprint. Detection combines mandatory targeting
+  of lsass.exe with a broad catalog of suspicious access mask values, then
+  aggressively suppresses known-legitimate sources including Windows Defender,
+  common EDR products, virtualisation agents, and developer tooling to reduce
+  false-positive volume in instrumented environments.
+references:
+  - https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
+  - https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html
+  - https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment
+  - https://web.archive.org/web/20230420013146/http://security-research.dyndns.org/pub/slides/FIRST2017/FIRST-2017_Tom-Ueltschi_Sysmon_FINAL_notes.pdf
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.credential_access
+  - attack.t1003.001
+logsource:
+  category: process_access
+  product: windows
+detection:
+  selection_target:
+    TargetImage|endswith: '\lsass.exe'
+  selection_access:
+    - GrantedAccess|endswith:
+        - '30'
+        - '50'
+        - '70'
+        - '90'
+        - 'B0'
+        - 'D0'
+        - 'F0'
+        - '38'
+        - '58'
+        - '78'
+        - '98'
+        - 'B8'
+        - 'D8'
+        - 'F8'
+        - '3A'
+        - '5A'
+        - '7A'
+        - '9A'
+        - 'BA'
+        - 'DA'
+        - 'FA'
+    - GrantedAccess|startswith:
+        - '0x1F0'
+        - '0x1f0'
+        - '0x1F1'
+        - '0x1f1'
+        - '0x1F2'
+        - '0x1f2'
+        - '0x1F3'
+        - '0x1f3'
+        - '0x1418'
+        - '0x1438'
+        - '0x143a'
+        - '0x1010'
+        - '0x1410'
+        - '0x100000'
+        - '0x40'
+  filter_main_system_paths:
+    SourceImage|startswith:
+      - 'C:\Windows\System32\'
+      - 'C:\Windows\SysWOW64\'
+      - 'C:\Windows\WinSxS\'
+      - 'C:\Program Files\'
+      - 'C:\Program Files (x86)\'
+  filter_main_defender_exe:
+    SourceImage|endswith: '\MsMpEng.exe'
+  filter_main_defender_calltrace:
+    CallTrace|contains|all:
+      - '\Windows Defender\Definition Updates\'
+      - 'mpengine.dll'
+    GrantedAccess: '0x1418'
+  filter_main_defender_client:
+    CallTrace|contains:
+      - 'MpClient.dll'
+      - 'mprtp.dll'
+  filter_main_explorer:
+    SourceImage|endswith: '\explorer.exe'
+    GrantedAccess: '0x401'
+  filter_optional_malwarebytes:
+    SourceImage|endswith:
+      - '\mbupdatr.exe'
+      - '\MBAMInstallerService.exe'
+    GrantedAccess: '0x40'
+  filter_optional_vscode:
+    SourceImage|contains: '\Microsoft VS Code\'
+  filter_optional_vmware:
+    SourceImage|endswith: '\vmtoolsd.exe'
+  filter_optional_procexp:
+    SourceImage|endswith:
+      - '\PROCEXP64.EXE'
+      - '\PROCEXP.EXE'
+      - '\handle.exe'
+      - '\handle64.exe'
+    GrantedAccess: '0x40'
+  filter_optional_aurora:
+    SourceImage|endswith:
+      - '\aurora-agent.exe'
+      - '\thor64.exe'
+      - '\thor.exe'
+    GrantedAccess: '0x40'
+  filter_optional_webex:
+    SourceImage|endswith: '\WebexHost.exe'
+    GrantedAccess: '0x401'
+  filter_optional_steam:
+    SourceImage|startswith: 'C:\Program Files (x86)\Steam\'
+  condition: all of selection_* and not 1 of filter_main_* and not 1 of filter_optional_*
+falsepositives:
+  - Endpoint security, EDR, and AV products not covered by the optional
+    filter group that legitimately open LSASS for process inspection or
+    memory scanning; add newly discovered legitimate sources to the
+    appropriate filter block after confirming the source binary.
+  - Crash-dump utilities or system diagnostics tools that access LSASS
+    memory as part of an authorised forensic or debugging workflow.
+level: high
+
+---
+# Arquivo original: proc_access_win_lsass_susp_access_flag.yml
+title: Potentially Suspicious GrantedAccess Flags On LSASS
+id: a18dd26b-6450-46de-8c91-9659150cf088
+related:
+    - id: 32d0d3e2-e58d-4d41-926b-18b520b2b32d
+      type: similar
+status: test
+description: Detects process access requests to LSASS process with potentially suspicious access flags
+references:
+    - https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
+    - https://onedrive.live.com/view.aspx?resid=D026B4699190F1E6!2843&ithint=file%2cpptx&app=PowerPoint&authkey=!AMvCRTKB_V1J5ow
+    - https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html
+    - https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment
+    - https://web.archive.org/web/20230420013146/http://security-research.dyndns.org/pub/slides/FIRST2017/FIRST-2017_Tom-Ueltschi_Sysmon_FINAL_notes.pdf
+author: Florian Roth, Roberto Rodriguez, Dimitrios Slamaris, Mark Russinovich, Thomas Patzke, Teymur Kheirkhabarov, Sherif Eldeeb, James Dickenson, Aleksey Potapov, oscd.community
+date: 2021-11-22
+modified: 2023-11-29
+tags:
+    - attack.credential-access
+    - attack.t1003.001
+    - attack.s0002
+logsource:
+    category: process_access
+    product: windows
+detection:
+    selection_target:
+        TargetImage|endswith: '\lsass.exe'
+    selection_access:
+        - GrantedAccess|endswith:
+              # - '10'  # covered in rule 678dfc63-fefb-47a5-a04c-26bcf8cc9f65
+              - '30'
+              - '50'
+              - '70'
+              - '90'
+              - 'B0'
+              - 'D0'
+              - 'F0'
+              - '18'
+              - '38'
+              - '58'
+              - '78'
+              - '98'
+              - 'B8'
+              - 'D8'
+              - 'F8'
+              - '1A'
+              - '3A'
+              - '5A'
+              - '7A'
+              - '9A'
+              - 'BA'
+              - 'DA'
+              - 'FA'
+              - '0x14C2'  # https://github.com/b4rtik/ATPMiniDump/blob/76304f93b390af3bb66e4f451ca16562a479bdc9/ATPMiniDump/ATPMiniDump.c
+        - GrantedAccess|startswith:
+              - '0x100000'
+              - '0x1418'    # car.2019-04-004
+              - '0x1438'    # car.2019-04-004
+              - '0x143a'    # car.2019-04-004
+              - '0x1f0fff'
+              - '0x1f1fff'
+              - '0x1f2fff'
+              - '0x1f3fff'
+              - '0x40'
+              # - '0x1000'  # minimum access requirements to query basic info from service
+              # - '0x1010'    # car.2019-04-004
+              # - '0x1400'
+              # - '0x1410'    # car.2019-04-004 # Covered by 678dfc63-fefb-47a5-a04c-26bcf8cc9f65
+    filter_main_generic:
+        # When using this rule. Remove this filter and replace it by the path of the specific AV you use
+        SourceImage|contains:
+            - ':\Program Files (x86)\'
+            - ':\Program Files\'
+            - ':\Windows\System32\'
+            - ':\Windows\SysWOW64\'
+    filter_optional_malwarebytes:
+        SourceImage|endswith: ':\ProgramData\MALWAREBYTES\MBAMSERVICE\ctlrupdate\mbupdatr.exe'
+    filter_optional_vscode:
+        SourceImage|endswith: '\AppData\Local\Programs\Microsoft VS Code\Code.exe'
+    filter_main_windefend_1:
+        SourceImage|contains: ':\ProgramData\Microsoft\Windows Defender\'
+        SourceImage|endswith: '\MsMpEng.exe'
+    filter_main_windefend_2:
+        CallTrace|contains|all:
+            - '|?:\ProgramData\Microsoft\Windows Defender\Definition Updates\{'
+            - '}\mpengine.dll+'
+        GrantedAccess: '0x1418'
+    filter_main_windefend_3:
+        CallTrace|contains:
+            - '|c:\program files\windows defender\mprtp.dll'
+            - '|c:\program files\windows defender\MpClient.dll'
+    filter_optional_vmwaretools:
+        SourceImage|contains: ':\ProgramData\VMware\VMware Tools\'
+        SourceImage|endswith: '\vmtoolsd.exe'
+    filter_optional_sysinternals_process_explorer:
+        SourceImage|endswith:
+            - '\PROCEXP64.EXE'
+            - '\PROCEXP.EXE'
+        GrantedAccess: '0x40'
+    filter_optional_mbami:
+        SourceImage|endswith: '\MBAMInstallerService.exe'
+        GrantedAccess: '0x40'
+    filter_optional_nextron:
+        SourceImage|endswith:
+            - '\aurora-agent-64.exe'
+            - '\aurora-agent.exe'
+            - '\thor.exe'
+            - '\thor64.exe'
+        GrantedAccess: '0x40'
+    filter_main_explorer:
+        SourceImage|endswith: '\explorer.exe'
+        GrantedAccess: '0x401'
+    filter_optional_sysinternals_handle:
+        SourceImage|endswith:
+            - '\handle.exe'
+            - '\handle64.exe'
+        GrantedAccess: '0x40'
+    filter_optional_webex:
+        SourceImage|endswith: '\AppData\Local\WebEx\WebexHost.exe'
+        GrantedAccess: '0x401'
+    filter_optional_steam_apps:
+        SourceImage|contains: '\SteamLibrary\steamapps\'
+    condition: all of selection_* and not 1 of filter_main_* and not 1 of filter_optional_*
+falsepositives:
+    - Legitimate software such as AV and EDR
+level: medium
+
+---
