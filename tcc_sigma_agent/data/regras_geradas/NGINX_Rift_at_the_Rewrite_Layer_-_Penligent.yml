@@ -1,0 +1,26 @@
+title: NGINX Rift at the Rewrite Layer - Penligent
+
+id: 8d749976-90d9-40eb-9d19-73f4546bd868
+
+status: test
+
+description: |
+    Detects DNS responses that trigger a heap buffer overflow in NGINX's ngx_http_rewrite_module (CVE-2026-42945).
+
+references:
+  - https://www.x41-dsec.de/lab/advisories/x41-2021-002-nginx-resolver-copy/
+  - https://security.snyk.io/vuln/CVE-2026-42945
+
+logsource:
+  category: webserver
+  product: nginx
+
+detection:
+  selection:
+    event_data|contains: "ngx_http_rewrite_module"
+  condition: selection
+
+falsepositives:
+  - Unknown
+
+level: high

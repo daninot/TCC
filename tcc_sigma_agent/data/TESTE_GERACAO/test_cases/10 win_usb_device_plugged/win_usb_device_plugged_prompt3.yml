@@ -1,0 +1,21 @@
+title: Detecting Unauthorized USB Device Activity
+id: 02cf2fe2-959a-47a2-99d5-b5c0448cfa15
+
+logsource:
+  category: file_event
+  product: windows
+
+detection:
+  selection_1:
+    TargetObject|contains: '\USB\'
+    Details|contains: 'inserted'
+
+  filter_main_exact:
+    Image: 'C:\Windows\System32\svchost.exe'
+
+  condition: selection_1 and not 1 of filter_main_*
+
+
+references:
+  - https://attack.mitre.org/techniques/T1052/
+  - https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-event-forwarding/event-forwarding

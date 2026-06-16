@@ -1,0 +1,28 @@
+title: Cisco IOS CLI Exfiltration
+id: cbeeaa1a-8c40-48e1-8f2c-9ce342f89a70
+status: test
+description: Detects exfiltration of data over the Cisco IOS CLI.
+references:
+    - https://www.cisco.com/security/center/content/CiscoSecurityAdvisory/ciseco-20230205-CiscoIOSXR.html
+tags:
+    - attack.command-and-control
+    - attack.t1105
+logsource:
+    product: cisco
+    service: aaa
+detection:
+    selection_commands:
+        Command|contains:
+            - 'debug ip packet'
+            - 'debug ip verify'
+            - 'copy running-config tftp://'
+            - 'copy flash tftp://'
+            - 'copy ftp://'
+            - 'copy sftp://'
+            - 'copy scp://'
+            - 'copy http://'
+            - 'copy https://'
+    condition: any of selection_commands
+falsepositives:
+    - Legitimate debugging or troubleshooting activities by administrators.
+level: high

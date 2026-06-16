@@ -3,6 +3,43 @@ import requests
 import json
 import os
 from urllib.parse import urlparse
+from langchain_ollama import ChatOllama
+from langchain_core.messages import HumanMessage
+
+#===========================================================================
+# DOMÍNIOS DE DOCUMENTAÇÃO A IGNORAR NO CAMPO 'references' DA REGRA
+#===========================================================================
+# Estas URLs são documentação de SINTAXE/ferramenta, não a FONTE da ameaça.
+# Não devem entrar no campo 'references' da regra Sigma gerada.
+# ATENÇÃO: não inclua aqui domínios que possam ser a fonte real da ameaça
+# (ex.: confluence.atlassian.com pode ser a documentação do log que define a
+# ameaça — nesse caso é fonte legítima e deve permanecer).
+# Lista editável: ajuste conforme necessário.
+DOMINIOS_DOC_IGNORAR = [
+    "sigmahq.io",
+    "sigmahq.github.io",
+]
+
+
+def filtrar_urls_doc(urls: list) -> list:
+    """Remove da lista as URLs que apontam para documentação de sintaxe/ferramenta.
+
+    Args:
+        urls: lista de URLs extraídas do prompt.
+
+    Returns:
+        A lista sem as URLs cujo domínio está em DOMINIOS_DOC_IGNORAR.
+    """
+    if not urls:
+        return urls
+    filtradas = []
+    for u in urls:
+        dominio = urlparse(u).netloc.lower()
+        if any(doc in dominio for doc in DOMINIOS_DOC_IGNORAR):
+            continue
+        filtradas.append(u)
+    return filtradas
+
 
 #função para encontrar todas as menções de CVE e CWE em qualquer texto:
 def extrair_referencias(texto: str):
@@ -20,18 +57,138 @@ def extrair_palavras_chave_url(url:str):
         if len(p) >= 3 and not p.isdigit() and p.lower() not in lixo
     ]
 
-#função pra fazer uma limpa no texto pra levar pro chromadb
+#---------------------------------------------------------------------------
+# PRÉ-PROCESSAMENTO ROBUSTO DE PROMPT (suporte ao Nó 1)
+#---------------------------------------------------------------------------
+# O agente aceita dois "regimes" de prompt:
+#  - ESTRUTURADO: traz cabeçalhos conhecidos (# Threat to detect, # References...);
+#  - SOLTO: texto corrido, sem cabeçalhos (ex.: "gere uma regra para este evento: <url>").
+# As funções abaixo permitem tratar ambos com a mesma lógica, convergindo para uma
+# saída comum (uma descrição da ameaça limpa, pronta para o RAG e o gerador).
+
+# cabeçalhos que indicam um prompt ESTRUTURADO. são divididos em dois grupos:
+#  - de CONTEXTO: contêm a descrição da ameaça/ambiente (queremos o conteúdo);
+#  - de INSTRUÇÃO: dizem ao agente o que fazer (NÃO são descrição da ameaça; ignorar).
+CABECALHOS_CONTEXTO = [
+    "threat to detect",
+    "target environment",
+    "references",
+    "authoritative references",
+    "context",
+    "background",
+]
+CABECALHOS_INSTRUCAO = [
+    "requirements",
+    "output",
+    "instructions",
+    "task",
+    "role",
+]
+TODOS_CABECALHOS = CABECALHOS_CONTEXTO + CABECALHOS_INSTRUCAO
+
+# frases-instrução (stopwords de instrução): ruído para a busca semântica do RAG.
+# são instruções para o AGENTE, não descrição da AMEAÇA. removidas antes do RAG.
+INSTRUCOES_RUIDO = [
+    r"generate\s+(one|a|an)?\s*(valid\s+)?sigma\s+rule",
+    r"produce\s+(one|a|an)?\s*(valid\s+)?sigma\s+rule",
+    r"create\s+(one|a|an)?\s*(valid\s+)?(detection\s+|sigma\s+)?rule",
+    r"you\s+are\s+a\s+senior\s+threat\s+detection\s+engineer",
+    r"following\s+the\s+specification\s+at",
+    r"return\s+only\s+the\s+yaml",
+    r"no\s+markdown\s+fences",
+    r"no\s+explanations?",
+    r"for\s+this\s+event",
+    r"in\s+yaml",
+]
+
+
+def detectar_regime(texto: str) -> str:
+    """Decide se o prompt é 'estruturado' (tem cabeçalhos) ou 'solto'.
+
+    Args:
+        texto: o prompt completo digitado pelo usuário.
+
+    Returns:
+        "estruturado" se houver ao menos um cabeçalho conhecido na forma '# Titulo';
+        "solto" caso contrário.
+    """
+    #procura linhas que começam com '#' seguido de um dos cabeçalhos conhecidos
+    for linha in texto.splitlines():
+        m = re.match(r"^#+\s*(.+?)\s*$", linha.strip())
+        if m:
+            titulo = m.group(1).strip().lower()
+            if any(titulo.startswith(c) for c in TODOS_CABECALHOS):
+                return "estruturado"
+    return "solto"
+
+
+def limpar_instrucoes(texto: str) -> str:
+    """Remove frases-instrução (ruído) para não poluir a busca semântica do RAG.
+
+    Args:
+        texto: trecho de descrição da ameaça (já sem URLs).
+
+    Returns:
+        O mesmo texto com as frases-instrução removidas e espaços normalizados.
+    """
+    limpo = texto
+    for padrao in INSTRUCOES_RUIDO:
+        limpo = re.sub(padrao, " ", limpo, flags=re.IGNORECASE)
+    #normaliza espaços e pontuação solta deixada pela remoção
+    limpo = re.sub(r"[ \t]+", " ", limpo)
+    limpo = re.sub(r"\n{3,}", "\n\n", limpo)
+    return limpo.strip(" :;-\n\t")
+
+
 def extrair_secoes_tecnicas(texto: str) -> str:
-    secoes_alvo = ["threat to detect", "target environment"]
-    blocos = re.split(r"^#\s+", texto, flags=re.MULTILINE)
+    """Isola as seções de CONTEXTO de um prompt estruturado, ignorando as de instrução.
+
+    Generaliza a versão antiga: antes só pegava 'threat to detect' e 'target
+    environment'; agora pega qualquer seção de contexto (ver CABECALHOS_CONTEXTO) e
+    descarta explicitamente as de instrução (# Requirements, # Output, etc.).
+
+    Args:
+        texto: o prompt (idealmente já sem URLs).
+
+    Returns:
+        As seções de contexto concatenadas; ou o texto original se não houver
+        nenhum cabeçalho reconhecível (prompt solto).
+    """
+    #divide o texto nos cabeçalhos markdown ('# Titulo'); re.split com captura
+    #mantém o título junto do conteúdo correspondente.
+    partes = re.split(r"^#+\s+", texto, flags=re.MULTILINE)
     trechos_relevantes = []
-    for bloco in blocos:
+    for bloco in partes:
+        if not bloco.strip():
+            continue
         primeira_linha = bloco.split("\n", 1)[0].strip().lower()
-        if any(alvo in primeira_linha for alvo in secoes_alvo):
+        #pega só as seções de contexto; ignora as de instrução
+        if any(primeira_linha.startswith(c) for c in CABECALHOS_CONTEXTO):
             trechos_relevantes.append(bloco.strip())
     if trechos_relevantes:
         return "\n\n".join(trechos_relevantes)
     return texto
+
+
+def avaliar_contexto(texto_limpo: str, urls: list, minimo_chars: int = 30) -> bool:
+    """Decide se o prompt tem 'contexto pobre' (pouca/nenhuma descrição textual).
+
+    Caso típico: o usuário só forneceu URLs e uma instrução genérica, sem descrever
+    a ameaça em texto. A informação está atrás dos links — o agente precisará
+    depender do scraping (Nó 2) e, possivelmente, da expansão por LLM.
+
+    Args:
+        texto_limpo: a descrição da ameaça já sem URLs e sem frases-instrução.
+        urls: lista de URLs encontradas no prompt.
+        minimo_chars: limiar de caracteres úteis abaixo do qual o contexto é pobre.
+
+    Returns:
+        True se o contexto for considerado pobre; False caso contrário.
+    """
+    util = (texto_limpo or "").strip()
+    #pobre = sobrou pouquíssimo texto E havia URLs (a info está atrás dos links)
+    return len(util) < minimo_chars and len(urls) > 0
+
 
 #função para consultar a API do MITRE para um CVE:
 def consulta_mitre(cve_id:str):
@@ -245,3 +402,69 @@ def extrair_urls_de_referencias(texto: str):
     urls = re.findall(r"https?://[^\s]+", bloco_refs)
     urls_limpas = [u.rstrip(r".,;!?)\]}>'\"") for u in urls]
     return urls_limpas
+
+def destilar_ameaca(material_bruto: str) -> str:
+    """Resume o material coletado (scraping, web) numa descrição factual da ameaça.
+
+    Usada quando o Nó 1 sinaliza CONTEXTO POBRE: o prompt não descreve a ameaça em
+    texto (a info está atrás de links). A LLM lê o material bruto coletado pelo Nó 2
+    e DESTILA dele 2-3 frases factuais: qual ameaça, em qual produto/log, quais
+    indicadores. Isto NÃO gera regra — apenas concentra o sinal semântico.
+
+    DECORRELAÇÃO: usa um modelo de família distinta do gerador (MODELO_DESTILADOR)
+    e temperatura ZERO, para evitar que erros de interpretação do destilador
+    sejam silenciosamente confirmados pelo gerador. Se o modelo alternativo
+    não estiver instalado, faz fallback graciosamente.
+
+    Trava anti-alucinação: o chamador só deve invocar esta função quando houver
+    material suficiente (ver LIMIAR_MATERIA_PRIMA).
+
+    Args:
+        material_bruto: o texto coletado pelo Nó 2 (conteúdo de URL, busca web, etc.).
+
+    Returns:
+        Descrição destilada da ameaça, ou string vazia em caso de falha.
+    """
+    #limita o material enviado à LLM (contexto + custo); o início costuma conter o essencial
+    material = material_bruto.strip()[:3000]
+
+    prompt = (
+        "You are a cybersecurity analyst. Read the raw material below (web page "
+        "content, search snippets) and extract ONLY the threat to be detected.\n"
+        "Write 2-3 short, factual sentences answering: WHAT threat/technique, in "
+        "WHICH product or log source, and WHICH concrete indicators (exception "
+        "names, fields, keywords, log levels) appear.\n"
+        "Do NOT write a Sigma rule. Do NOT invent details not present in the "
+        "material. If the material is insufficient, say exactly 'INSUFFICIENT'.\n\n"
+        f"RAW MATERIAL:\n{material}\n\n"
+        "THREAT DESCRIPTION:"
+    )
+
+    # tenta o modelo destilador dedicado; se não estiver instalado, usa fallback
+    modelo_usado = MODELO_DESTILADOR
+    temperatura_usada = TEMP_DESTILADOR
+    try:
+        llm = ChatOllama(model=modelo_usado, temperature=temperatura_usada)
+        resposta = llm.invoke([HumanMessage(content=prompt)])
+        texto = (resposta.content or "").strip()
+    except Exception as e:
+        #possíveis causas: modelo não instalado, Ollama fora do ar, OOM
+        print(f" -> Destilador '{modelo_usado}' indisponível ({e}).")
+        print(f" -> Fallback: usando '{MODELO_DESTILADOR_FALLBACK}' "
+              f"com temperatura {TEMP_DESTILADOR_FALLBACK}.")
+        try:
+            modelo_usado = MODELO_DESTILADOR_FALLBACK
+            temperatura_usada = TEMP_DESTILADOR_FALLBACK
+            llm = ChatOllama(model=modelo_usado, temperature=temperatura_usada)
+            resposta = llm.invoke([HumanMessage(content=prompt)])
+            texto = (resposta.content or "").strip()
+        except Exception as e2:
+            print(f" -> Fallback também falhou: {e2}")
+            return ""
+
+    print(f"    (destilação feita com '{modelo_usado}' @ temperature={temperatura_usada})")
+
+    #a LLM pode sinalizar que não havia material útil
+    if not texto or "INSUFFICIENT" in texto.upper():
+        return ""
+    return texto

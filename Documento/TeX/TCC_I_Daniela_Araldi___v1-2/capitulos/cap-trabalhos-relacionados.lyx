@@ -1,0 +1,1105 @@
+#LyX file created by tex2lyx 2.4
+\lyxformat 620
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin /home/daniela/Documents/TCC/Documento/TeX/TCC_I_Daniela_Araldi___v1/capitulos/
+\textclass article
+\use_default_options false
+\maintain_unincluded_children no
+\language english
+\language_package none
+\inputencoding auto-legacy
+\fontencoding default
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 0
+\use_package cancel 0
+\use_package esint 1
+\use_package mathdots 0
+\use_package mathtools 0
+\use_package mhchem 0
+\use_package stackrel 0
+\use_package stmaryrd 0
+\use_package undertilde 0
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 0
+\use_minted 0
+\use_lineno false
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\change_bars false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% ATENÃÃO - veja com o seu orientador se vocÃª vai ter este capÃ­tulo e se este vai ter nome!
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+chapter{Trabalhos Relacionados}
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset CommandInset label
+LatexCommand label
+name "cap:trabalhos:relacionados"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+jt{<neste capÃ­tulo poderiam ser apresentados mais trabalhos relacionados e de forma compacta. Segue um exemplo de um artigo que publiquei recentemente: 
+\backslash
+url{https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=11025844}>}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+jt{<Se vocÃª quiser, pode deixar do jeito que estÃ¡, jÃ¡ hÃ¡ mais detalhes em comparaÃ§Ã£o com artigos. Mesmo assim, recomendo a inclusÃ£o de pelo menos mais um trabalho relacionado>}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+jt{<roteiro para a apresentaÃ§Ã£o de cada trabalho relacionado: o que foi feito; metodologia resumida; principais resultados>}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Machine Learning Algorithms in SIEM Systems for Enhanced Detection and Management of Security Events
+\end_layout
+
+\begin_layout Standard
+O estudo de 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+citeonline
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+Nurusheva2024
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+ propÃµe a integraÃ§Ã£o de algoritmos de 
+\shape italic
+machine learning
+\shape default
+ (ML) em SIEMs convencionais para superar insuficiÃªncias na detecÃ§Ã£o das ameaÃ§as modernas. O objetivo Ã© aprimorar a identificaÃ§Ã£o de ataques desconhecidos e reduzir falsos positivos por meio de um modelo dinÃ¢mico que analisa padrÃµes histÃ³ricos. Para validar a abordagem, os pesquisadores implementaram uma arquitetura utilizando a pilha ELK 
+\begin_inset Foot
+status collapsed
+
+
+\begin_layout Standard
+Sigla para trÃªs ferramentas de cÃ³digo aberto: 
+\shape italic
+Elasticsearch
+\shape default
+, que fornece funcionalidades de anÃ¡lise e pesquisa; 
+\shape italic
+Logstash
+\shape default
+, responsÃ¡vel por coletar, agregar e armazenar dados usados pelo 
+\shape italic
+Elasticsearch
+\shape default
+; e 
+\shape italic
+Kibana
+\shape default
+, que fornece a interface do usuÃ¡rio e informaÃ§Ãµes sobre os dados coletados e analisados anteriormente pelo 
+\shape italic
+Elasticsearch
+\shape default
+.
+\end_layout
+
+\end_inset
+
+ e simularam cenÃ¡rios reais de ciberataques na ferramenta DVWA (
+\shape italic
+Damn Vulnerable Web Application
+\shape default
+), criada especialmente para testes de penetraÃ§Ã£o. Um modelo de CNN (Rede Neural Convolucional) foi treinado com dados de amostras de ataques do repositÃ³rio 
+\shape italic
+MITRE
+\shape default
+, priorizando a detecÃ§Ã£o de 
+\shape italic
+ransomware
+\shape default
+ e movimentaÃ§Ã£o lateral. Os autores tambÃ©m mencionam que o cÃ³digo foi desenvolvido para comparaÃ§Ã£o com modelos de 
+\shape italic
+Random Forest
+\shape default
+(algoritmo de ML que combina a saÃ­da de mÃºltiplas Ã¡rvores de decisÃ£o para alcanÃ§ar um Ãºnico resultado 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+key "IBM_RandomForest"
+literal "false"
+
+\end_inset
+
+) e SVM (
+\shape italic
+Support vector machine
+\shape default
+ — algoritmo supervisionado de ML que classifica dados encontrando uma linha ou hiperplano Ã³timo que maximiza a distÃ¢ncia entre cada classe em um espaÃ§o N-dimensional 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+key "IBM_SVM"
+literal "false"
+
+\end_inset
+
+).
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+jt{<seria possÃ­vel apresentar os principais resulados em termos numÃ©ricos?>}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Os autores afirmam ganhos operacionais significativos nos seus resultados: o sistema reduziu falsos positivos ao correlacionar eventos de mÃºltiplas fontes (
+\shape italic
+firewalls
+\shape default
+, IDS e servidores), automatizou respostas em tempo real (como bloqueio de IPs via integraÃ§Ã£o com 
+\shape italic
+bots
+\shape default
+ do 
+\shape italic
+Telegram
+\shape default
+) e otimizou a eficiÃªncia de SOCs ao transformar alertas brutos em aÃ§Ãµes acionÃ¡veis. 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+citeonline
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+Nurusheva2024
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+ concluiram que os modelos de ML identificam padrÃµes sutis em grandes volumes de 
+\shape italic
+logs
+\shape default
+ com maior precisÃ£o do que as regras estÃ¡ticas, alÃ©m de se adaptarem continuamente a novas tÃ¡ticas de ataque sem intervenÃ§Ã£o manual constante. A pesquisa contribui para entender um caminho de integraÃ§Ã£o entre ML e SIEM, neste caso utilizando tÃ©cnicas de aprendizado nÃ£o supervisionado; no entanto, nÃ£o fornece nÃºmeros quantitativos especÃ­ficos.
+\end_layout
+
+\begin_layout Standard
+A soluÃ§Ã£o do trabalho conecta-se com o presente projeto atravÃ©s do objetivo de ambos, que Ã© sofisticar os SIEMs para o melhor enfrentamento de novas ameaÃ§as e/ou prevenÃ§Ã£o de ataques, e da base de vulnerabilidades em comum — padrÃ£o MITRE. Os trabalhos diferem-se principalmente na abordagem: 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+citeonline
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+Nurusheva2024
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+ possuem uma metodologia mais qualitativa e descritiva, servindo de exemplo teÃ³rico. JÃ¡ o trabalho da autora Ã© um estudo qualitativo e quantitativo, de teor empÃ­rico, que fornecerÃ¡ percentuais de dados comparativos no final.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+jt{<no quÃª o seu trabalho Ã© diferente? (Ã© importante "vender o peixe" para o seu trabalho)>}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Automated Log Analysis and Anomaly Detection Using Machine Learning
+\end_layout
+
+\begin_layout Standard
+O estudo de 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+citeonline
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+Shah2022
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+, tem como objetivo propor um modelo automatizado para a detecÃ§Ã£o de anomalias em arquivos de 
+\shape italic
+logs
+\shape default
+, enfrentando o desafio da ausÃªncia de dados rotulados. A motivaÃ§Ã£o central do trabalho Ã© reduzir a sobrecarga de alertas nos sistemas de seguranÃ§a e eliminar a necessidade de inspeÃ§Ã£o manual extensiva, inviÃ¡vel em ambientes com grandes volumes de 
+\shape italic
+logs
+\shape default
+. Para isso, os autores buscaram uma soluÃ§Ã£o que aproveita tanto tÃ©cnicas de aprendizado de mÃ¡quina quanto o conhecimento prÃ©vio dos especialistas.
+\end_layout
+
+\begin_layout Standard
+A metodologia do trabalho combina aprendizado nÃ£o supervisionado (
+\shape italic
+K-means
+\shape default
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+footnote{
+\backslash
+textit{K-Means} Ã© um algoritmo iterativo de agrupamento que particiona N objetos em K 
+\backslash
+textit{clusters} disjuntos, utilizando centrÃ³ides e distÃ¢ncia euclidiana para minimizar a variÃ¢ncia intra-
+\backslash
+textit{cluster} 
+\backslash
+cite{oti2021comprehensive}.} 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+para 
+\shape italic
+clustering
+\shape default
+) com aprendizado supervisionado (classificaÃ§Ã£o com 
+\shape italic
+Naive Bayes
+\shape default
+), utilizando regras automatizadas geradas a partir de conhecimento especializado para rotular registros inicialmente nÃ£o estruturados. ApÃ³s a etapa de prÃ©-processamento e vetorizaÃ§Ã£o de dados com TF-IDF, os autores aplicam 
+\shape italic
+Elbow Method
+\shape default
+ para definir o nÃºmero ideal de 
+\shape italic
+clusters
+\shape default
+ e, em seguida, criam regras baseadas em padrÃµes observados nos 
+\shape italic
+clusters
+\shape default
+ para construir um conjunto de dados rotulados. Esse conjunto, entÃ£o, Ã© usado para treinar um classificador que distingue eventos normais e anÃ´malos, alcanÃ§ando acurÃ¡cia de 98% na base de testes.
+\end_layout
+
+\begin_layout Standard
+O artigo de 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+citeonline
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+Shah2022
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+ propÃµe a geraÃ§Ã£o automÃ¡tica de rÃ³tulos com base em regras para prever ameaÃ§as com a ajuda de ML. JÃ¡ o presente trabalho busca desenvolver um agente autÃ´nomo que crie regras 
+\shape italic
+Sigma
+\shape default
+ para sistemas SIEM. Os autores do estudo concluem que a detecÃ§Ã£o automatizada de anomalias enfrenta alguns desafios e um deles Ã© a heterogeneidade dos ambientes de monitoramento e igualmente seus rÃ³tulos — desafio este que se pretende minimizar com a automatizaÃ§Ã£o da criaÃ§Ã£o de regras 
+\shape italic
+Sigma
+\shape default
+.
+\end_layout
+
+\begin_layout Standard
+Enquanto 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+citeonline
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+Shah2022
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+ foca em rotular automaticamente dados de 
+\shape italic
+logs
+\shape default
+, o uso das regras 
+\shape italic
+Sigma
+\shape default
+ permite a unificaÃ§Ã£o dos padrÃµes, amenizando os desafios dos ambientes heterogÃªneos, mencionado pelos autores. 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+adr{os SIEMs vÃ£o continuar sendo heterogÃªneos, pois cada um usa um formato e padronizaÃ§Ã£o de dados diferentes, alÃ©m do que os eventos de devices diferentes tambÃ©m nÃ£o sÃ£o padronizados. As regras SIGMA sÃ£o sÃ³ uma forma de expressar a regra ou a ameaÃ§a e o que deve ser buscado, mas ainda precisa ser convertido para o SIEM de destino, que jÃ¡ possui as suas regras prÃ³prias, alÃ­as, mais de 90
+\backslash
+% das regras usadas sÃ£o do prÃ³prio SIEM, nÃ£o vem e nem virÃ£o do SIGMA. Essa questÃ£o precisa estar clara pra vocÃª, principalmente, e assim conseguir definir melhor o escopo do trabalho e o objetivo que desejarÃ¡ alcanÃ§ar no final. Enfim, SIGMA nÃ£o Ã© uma receita mÃ¡gica que resolve esses problemas apresentados em outros trabalhos, mas Ã© uma forma generalista de compartilhar novas regras vindas da comunidade e que podem ser convertidas automaticamente ou manualmente para o SIEM que o usuÃ¡rio jÃ¡ utiliza.}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+Dentre outros pontos, este trabalho propÃµe uma soluÃ§Ã£o mais genÃ©rica, com regras prontas para implantaÃ§Ã£o, enquanto o trabalho citado aborda um modelo de classificaÃ§Ã£o focado em 
+\shape italic
+logs
+\shape default
+.
+\end_layout
+
+\begin_layout Section
+From Text to MITRE Techniques: Exploring the Malicious Use of Large Language Models for Generating Cyber Attack Payloads
+\end_layout
+
+\begin_layout Standard
+O artigo de 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+citeonline
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+charan2023fromtext
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+ investiga os riscos associados ao uso malicioso de modelos de linguagem generativa para criaÃ§Ã£o de cÃ³digos ofensivos baseados nas tÃ©cnicas do MITRE ATT&CK. O objetivo do estudo foi avaliar a capacidade desses modelos em gerar, via engenharia de 
+\shape italic
+prompt
+\shape default
+, cÃ³digos executÃ¡veis correspondentes Ã s 10 tÃ©cnicas MITRE mais usadas por atacantes em 2022. TambÃ©m buscam comparar o desempenho do 
+\shape italic
+ChatGPT
+\shape default
+ e 
+\shape italic
+Bard
+\shape default
+(nomenclatura antiga do 
+\shape italic
+Google Gemini
+\shape default
+) em termos de geraÃ§Ã£o, eficÃ¡cia e sua habilidade de explicar claramente o que o cÃ³digo faz, como funciona e qual seu impacto.
+\end_layout
+
+\begin_layout Standard
+Os autores aplicaram engenharia de 
+\shape italic
+prompt
+\shape default
+ em ambos modelos jÃ¡ citados, buscando contornar restriÃ§Ãµes Ã©ticas e tÃ©cnicas impostas por padrÃ£o para as inteligÃªncias, com o intuito de gerar com sucesso 
+\shape italic
+scripts
+\shape default
+ maliciosos. Dois exemplos sÃ£o as tÃ©cnicas T1055, de InjeÃ§Ã£o de processos 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+key "mitreDataImpact"
+literal "false"
+
+\end_inset
+
+, e T1486, de Criptografia para Impacto 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+key "mitreDataImpact"
+literal "false"
+
+\end_inset
+
+. Esses cÃ³digos foram executados em um ambiente controlado (
+\shape italic
+sandbox
+\shape default
+), permitindo que a anÃ¡lise dos resultados ocorresse em seguranÃ§a. O estudo de 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+citeonline
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+charan2023fromtext
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+ se baseou em dados do 
+\shape italic
+Red Report
+\shape default
+ de 2023 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+key "picus2023redreport"
+literal "false"
+
+\end_inset
+
+ da 
+\shape italic
+Picus Labs
+\shape default
+ — divisÃ£o de pesquisa e desenvolvimento da empresa de seguranÃ§a cibernÃ©tica 
+\shape italic
+Picus Security
+\shape default
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+key "picusAbout"
+literal "false"
+
+\end_inset
+
+, que analisou mais de 500 mil amostras de 
+\shape italic
+malware
+\shape default
+ reais. A anÃ¡lise demonstrou que o 
+\shape italic
+ChatGPT
+\shape default
+ foi mais eficaz do que o 
+\shape italic
+Google Bard
+\shape default
+ na geraÃ§Ã£o de cÃ³digo funcional e correÃ§Ã£o de erros.
+\end_layout
+
+\begin_layout Standard
+O artigo destaca tanto os riscos quanto os possÃ­veis usos defensivos da tecnologia, como a simulaÃ§Ã£o de cenÃ¡rios realistas por profissionais de seguranÃ§a ofensiva, como os 
+\shape italic
+Pentesters
+\shape default
+, profissionais de seguranÃ§a ou 
+\shape italic
+hackers
+\shape default
+ Ã©ticos que simulam os ataques cibernÃ©ticos para encontrar vulnerabilidades no sistema computacional 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+key "ibm_penetration_testing"
+literal "false"
+
+\end_inset
+
+, inclusos no 
+\shape italic
+Red Team
+\shape default
+ da empresa, que reÃºne todos os profissionais autorizados a reproduzir investidas no sistema como se fossem um potencial adversÃ¡rio contra a postura de seguranÃ§a do ambiente 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+key "nist_red_team"
+literal "false"
+
+\end_inset
+
+. O estudo de 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+citeonline
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+charan2023fromtext
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+ tambÃ©m utiliza a engenharia de 
+\shape italic
+prompt
+\shape default
+ para extrair melhores informaÃ§Ãµes das LLMs e automatizar tarefas correlacionadas, atravÃ©s da exploraÃ§Ã£o do uso ofensivo das LLMs (para fins de conhecimento). Em contrapartida, o presente projeto sugere o uso de forma defensiva, voltado Ã  detecÃ§Ã£o de ameaÃ§as e correlaÃ§Ã£o de eventos.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+vspace{1em}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{ioc}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{cve}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{llm}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{ioc}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{ips}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{ia}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{ml}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{nlp}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{soc}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{gdpr}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{pci-dss}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{cwe}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{nist}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{cisa}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{nvd}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{cvss}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{pln}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{ri}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{ei}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{ta}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{dvwa}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{cnn}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{svm}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{ip}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+textcolor{white}{
+\backslash
+gls{tf-idf}}
+\end_layout
+
+\begin_layout Plain Layout
+%
+\backslash
+vspace{1em}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+adr{"o projeto proposto", escrito dessa forma, nÃ£o dÃ¡ pra saber se estÃ¡ falando do projeto apresentado no trabalho relacionado ou no seu. Sempre que for o seu, coloque "este trabalho, este projeto" ou algo similar, para deixar claro.}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+jt{<descrever mais um trabalho relacionado. Para o TCC2: criar uma tabela que apresente diversos trabalhos relacionados>}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

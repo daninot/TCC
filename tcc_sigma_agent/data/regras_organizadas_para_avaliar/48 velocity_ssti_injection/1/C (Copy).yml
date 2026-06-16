@@ -1,0 +1,87 @@
+title: Apache Velocity Template Injection Attempts and Application Error Indicators
+id: 2026-000-velocity-vti-app-error
+status: experimental
+description: Detects attempts to exploit Apache Velocity Template Injection (VTI) and related malicious template payloads combined with application server error responses or stack traces. Flags HTTP requests containing Velocity template syntax or attempts to access Java internals (e.g., java.lang.Runtime, Class.forName, getRuntime().exec) and correlates with 5xx responses, stack traces, or repeated error responses from the same client to identify exploitation or probing activity.
+author: Detection Engineer
+date: 2026-06-08
+references:
+  - https://antgarsil.github.io/posts/velocity/
+  - https://www.wix.engineering/post/threat-and-vulnerability-hunting-with-application-server-error-logs
+logsource:
+  product: webserver
+  service: http
+  category: web_access
+detection:
+  selection_velocity_payload:
+    RequestBody|re:
+      - '(?i)\$\{.*\}'
+      - '(?i)#set\s*\('
+      - '(?i)#foreach\s*\('
+      - '(?i)\$!\{.*\}'
+      - '(?i)\$\{.*\|.*\}'
+  selection_java_runtime_exec:
+    RequestBody|re:
+      - '(?i)Runtime\.getRuntime\(\)\.exec\('
+      - '(?i)java\.lang\.Runtime'
+      - '(?i)Class\.forName\('
+      - '(?i)new\s+java\.lang'
+      - '(?i)getRuntime\(\)\.exec'
+  selection_template_class_access:
+    RequestBody|re:
+      - '(?i)org\.apache\.velocity'
+      - '(?i)VelocityContext'
+      - '(?i)Template\.merge\('
+  selection_stacktrace_response:
+    ResponseBody|re:
+      - '(?i)(exception|stacktrace|traceback|at\s+[A-Za-z0-9_\.]+:\d+|java\.lang\.|org\.springframework|org\.apache\.velocity)'
+  selection_http_error_status:
+    Status:
+      - 500
+      - 502
+      - 503
+      - 504
+  selection_suspicious_useragent:
+    UserAgent|re:
+      - '(?i)(curl|wget|python-requests|libwww-perl|sqlmap|acunetix|nikto|fuzz|scanner)'
+  selection_long_uri_or_params:
+    RequestUri|re:
+      - '.{200,}'
+  selection_repeated_errors_from_ip:
+    CountByClientIP: ">5"
+    Timeframe: "5m"
+    Status:
+      - 500
+      - 502
+      - 503
+      - 504
+  condition: >
+    (selection_velocity_payload or selection_java_runtime_exec or selection_template_class_access)
+    and (selection_stacktrace_response or selection_http_error_status or selection_repeated_errors_from_ip)
+    or (selection_velocity_payload and selection_suspicious_useragent)
+fields:
+  - timestamp
+  - ClientIP
+  - HttpMethod
+  - Uri
+  - RequestBody
+  - ResponseBody
+  - Status
+  - UserAgent
+  - Referer
+  - Host
+falsepositives:
+  - Legitimate use of Velocity templates in application requests (internal template rendering APIs) where template fragments are submitted intentionally.
+  - Security scanners or automated testing tools that intentionally submit template-like payloads to test template engines.
+  - Large or complex legitimate requests that include characters matching the regex (tune by whitelisting known clients and internal services).
+level: high
+tags:
+  - web.application
+  - attack.injection
+  - attack.template_injection
+  - apache.velocity
+  - detection.logging
+notes: |
+  - Tuning: whitelist known internal services, CI/CD scanners, and trusted testing tools; restrict detection to production-facing endpoints and to external/untrusted client IP ranges.
+  - Investigation: capture full request and response pairs, request parameters and bodies, server-side stack traces, recent deployments, and correlate with WAF/IDS alerts. If exploitation is suspected, preserve affected logs and collect the rendered template context from the application if possible.
+  - Remediation: apply input validation and output encoding, disable direct template evaluation of user-controlled input, patch vulnerable template engine versions, add WAF rules to block template syntax patterns, and review recent code changes that touch template rendering paths.
+

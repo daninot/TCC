@@ -1,0 +1,18 @@
+title: Suspicious File Download from Pwndrop
+
+id: 71947c3e-1079-4caa-8bae-da2b9f9663b3
+
+description: Detects suspicious file downloads from pwndrop
+
+references:
+  - https://breakdev.org/pwndrop/
+  - https://github.com/kgretzky/pwndrop
+
+logsource:
+  category: proxy
+  product: your_proxy_product
+
+detection:
+  selection:
+    Contents|contains: '/pwndrop/'
+  condition: selection

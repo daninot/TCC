@@ -1,0 +1,17 @@
+Generate a SIGMA rule to detect creation of the default PsExec named pipe on
+a Windows host — indicating PsExec service execution, used for lateral
+movement or remote command execution.
+
+Target product: windows; log source category: pipe_created. Requires Sysmon
+named pipe event logging (Event ID 17/18) — document this in the rule.
+
+Detection matches the specific default pipe name created by the PsExec service.
+
+References to include:
+- https://www.jpcert.or.jp/english/pub/sr/ir_research.html
+- https://jpcertcc.github.io/ToolAnalysisResultSheet
+
+
+
+Nota
+Esta regra tem a tag attack.s0029 — um namespace de software do MITRE ATT&CK (S0029 = PsExec), raramente visto nas regras. Não mencionei nos prompts para não entregar a resposta, mas é um ponto de avaliação interessante: pouquíssimas LLMs conhecem o namespace attack.s* espontaneamente. Também tem detection.threat-hunting, padrão já visto na Regra 11.

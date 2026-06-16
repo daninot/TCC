@@ -1,0 +1,15 @@
+title: NGINX DNS Resolver Off-by-One Heap Write Vulnerability
+id: fe70c1c4-2e38-4b41-b300-4b288b445c54
+
+logsource:
+  category: webserver
+  product: nginx
+
+detection:
+  selection:
+    exception_name: ngx_resolver_copy()
+  condition: selection
+
+references:
+  - https://www.x41-dsec.de/lab/advisories/x41-2021-002-nginx-resolver-copy/
+  - https://docs.nginx.com/nginx/admin-guide/monitoring/debugging/#enabling-core-dumps

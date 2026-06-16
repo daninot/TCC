@@ -1,0 +1,35 @@
+2 REFERENCIAL TEÓRICO
+2.1 Segurança da Informação e SOC
+
+2.1.1 SIEM
+
+2.1.2 SIEMs Inteligentes
+2.2 Bases de Padrões de Ataques (CVE, CWE, MITRE ATT&CK, NVD)
+2.3 Regras Sigma
+
+2.3.1 Sigma e a Mitigação de Ameaças
+
+2.3.2 Estrutura
+
+
+2.4 Processamento de Linguagem Natural
+
+2.4.1 Modelos de Linguagem de Grande Escala (LLMs)
+
+2.4.2 Arquitetura Transformer
+
+2.4.3 Engenharia de Prompt (Zero-shot e Few-shot)
+2.5 Geração Aumentada por Recuperação (RAG)
+
+2.5.1 Embeddings e Bancos de Dados Vetoriais
+
+2.5.2 RAG aplicado à Cibersegurança
+2.6 Agentes Autônomos
+
+2.6.1 Padrão ReAct
+
+2.6.2 LangGraph como Orquestrador
+
+Fim de frase: \apud{accenture2019securing}{podzins2019siem} → (ACCENTURE, 2019 apud PODZINS, 2019)
+
+No texto: \apudonline{accenture2019securing}{podzins2019siem} → Accenture (2019 apud PODZINS, 2019)

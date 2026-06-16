@@ -1,0 +1,11 @@
+Uma decisão de design importante, e quero sua opinião antes de finalizar: o que guardar no page_content (o texto que o gerador vê depois como exemplo few-shot). Há uma tensão real aqui:
+
+Se o page_content virar o texto enxuto (só logsource+detection), o embedding fica ótimo, mas o gerador perde o resto da regra como molde de formatação (title, tags, status...).
+Se o page_content continuar sendo o YAML inteiro, o gerador tem molde completo, mas aí precisamos embeddar uma coisa (texto enxuto) e armazenar outra (YAML cheio) — o que o Chroma permite, mas exige um passo a mais.
+
+Minha recomendação: embeddar o texto enxuto, mas guardar o YAML completo no page_content, com o logsource também em metadata. Você ganha os três benefícios (busca focada, filtro por logsource, molde completo) sem perder nada. Tecnicamente isso significa passar pelo embedding manualmente em vez de usar from_documents direto — eu cuido disso no código.
+
+
+
+
+Onde isto importa para você decidir algo de verdade: a única escolha real é se A deve ser filtro rígido ou suave na Intervenção 2. Filtro rígido (where product=linux) é poderoso mas frágil — se o agente errar a inferência do logsource-alvo num prompt solto, ele descarta bons candidatos. Filtro suave (re-ranking que prefere o mesmo logsource sem excluir) é mais robusto a erro de inferência. Dado que seus prompts do Estágio 3/4 têm logsource explícito mas os prompts "selvagens" da tese (CVE inédito, notícia) não terão, eu recomendaria filtro suave — mas isso é a conversa da Intervenção 2.

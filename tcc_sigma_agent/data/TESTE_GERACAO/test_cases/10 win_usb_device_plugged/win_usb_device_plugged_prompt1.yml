@@ -1,0 +1,32 @@
+(a) LOGSOURCE: The indicator would appear in the web search logs (DuckDuckGo), which suggests that the category fits best as "webserver".
+
+(b) FIELDS: The specific log fields containing the indicators of the threat are likely to be related to the search queries, such as the keywords "usb device", "windows 10s event viewer" in the URL.
+
+(c) MODIFIERS: For each field, |contains is the correct choice because we're looking for the presence of these keywords anywhere in the search query.
+
+(d) ATT&CK: The technique that best describes this threat is t1043 (Network Device Exploitation), as it involves exploiting a network device to gain unauthorized access or control.
+
+
+title: Potential Malware Activity - Web Search
+id: 6ae67582-c4cc-4e32-9060-bddfe9052409
+status: test
+description: Detects search queries related to malware activity.
+references:
+    - https://duckduckgo.com/
+author: "Your Name"
+date: 2023-02-20
+tags:
+    - attack.execution
+    - detection.emerging-threats
+logsource:
+    category: webserver
+    product: duckduckgo
+detection:
+    selection:
+        Query|contains:
+            - usb device
+            - windows 10s event viewer
+    condition: selection
+falsepositives:
+    - Unknown
+level: high

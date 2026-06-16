@@ -1,0 +1,29 @@
+<thinking>...</thinking>
+
+(a) LOGSOURCE: The indicator of the threat would appear in the process_creation category, as it is related to the creation of new processes.
+
+(b) FIELDS: The fields that contain the indicator of the threat are likely to be related to the process name or image path. Specifically, we can look for the presence of the string "BlackByte" in the ImagePath field.
+
+(c) MODIFIERS: Since we're looking for a specific string within the ImagePath field, an exact match is the correct choice.
+
+(d) ATT&CK: The technique that best describes this threat is t1055 (Process Injection), as it involves injecting malicious code into legitimate processes.
+
+
+```
+title: BlackByte Ransomware Detection
+id: b2e60816-96b2-45bd-ba91-b63578c03ef6
+status: test
+description: Detects the creation of a process named "BlackByte"
+references:
+  - https://www.trendmicro.com/vinfo/us/security/news/ransomware-spotlight/ransomware-spotlight-blackbyte
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    ImagePath|endswith: '\\blackbyte.exe'
+condition: selection
+falsepositives:
+  - Unknown
+level: critical
+```

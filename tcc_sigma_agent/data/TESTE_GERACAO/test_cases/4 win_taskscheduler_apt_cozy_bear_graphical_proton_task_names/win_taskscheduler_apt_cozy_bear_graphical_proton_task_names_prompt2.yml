@@ -1,0 +1,56 @@
+<thinking>...</thinking>
+
+(a) LOGSOURCE: The category that fits best is `taskscheduler` because the indicator of the threat (scheduled task names) would appear in the Windows Task Scheduler logs.
+
+(b) FIELDS: The specific log fields that contain the indicator of the threat are `EventID`, `TaskName`.
+
+(c) MODIFIERS: For each field, exact match (`=`) is the correct choice because we're looking for exact matches with known SVR-specific scheduled task names.
+
+(d) ATT&CK: The technique (tXXXX) that best describes this threat is `T1053` (Scheduled Task/Job).
+
+---
+
+title: Scheduled Tasks Names Used By SVR For GraphicalProton Backdoor
+id: 8fa65166-f463-4fd2-ad4f-1436133c52e1
+related:
+    - id: 2bfc1373-0220-4fbd-8b10-33ddafd2a142
+      type: similar
+status: test
+description: Hunts for known SVR-specific scheduled task names
+author: CISA
+references:
+    - https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-347a
+date: 2023-12-18
+tags:
+    - attack.persistence
+    - detection.emerging-threats
+logsource:
+    service: security
+    product: windows
+detection:
+    selection:
+        EventID = 4698
+        TaskName = '\defender'
+        TaskName = '\Microsoft\DefenderService'
+        TaskName = '\Microsoft\Windows\Application Experience\StartupAppTaskCheck'
+        TaskName = '\Microsoft\Windows\Application Experience\StartupAppTaskCkeck'
+        TaskName = '\Microsoft\Windows\ATPUpd'
+        TaskName = '\Microsoft\Windows\Data Integrity Scan\Data Integrity Update'
+        TaskName = '\Microsoft\Windows\DefenderUPDService'
+        TaskName = '\Microsoft\Windows\IISUpdateService'
+        TaskName = '\Microsoft\Windows\Speech\SpeechModelInstallTask'
+        TaskName = '\Microsoft\Windows\WiMSDFS'
+        TaskName = '\Microsoft\Windows\Windows Defender\Defender Update Service'
+        TaskName = '\Microsoft\Windows\Windows Defender\Service Update'
+        TaskName = '\Microsoft\Windows\Windows Error Reporting\CheckReporting'
+        TaskName = '\Microsoft\Windows\Windows Error Reporting\SubmitReporting'
+        TaskName = '\Microsoft\Windows\Windows Filtering Platform\BfeOnServiceStart'
+        TaskName = '\Microsoft\Windows\WindowsDefenderService'
+        TaskName = '\Microsoft\Windows\WindowsDefenderService2'
+        TaskName = '\Microsoft\Windows\WindowsUpdate\Scheduled AutoCheck'
+        TaskName = '\Microsoft\Windows\WindowsUpdate\Scheduled Check'
+        TaskName = '\WindowUpdate'
+    condition: selection
+falsepositives:
+    - Unknown
+level: high

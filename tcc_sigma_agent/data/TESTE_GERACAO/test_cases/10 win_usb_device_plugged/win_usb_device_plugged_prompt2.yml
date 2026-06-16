@@ -1,0 +1,36 @@
+<thinking>...</thinking>
+
+(a) LOGSOURCE: The category that fits best is "registry_event" because the indicator of the threat (USB device) would appear in the Windows Registry when a USB device is plugged or unplugged.
+
+(b) FIELDS: The specific log fields that contain the indicator of the threat are "Provider_Name", "EventID", and possibly "ImagePath".
+
+(c) MODIFIERS: For each field, |contains seems to be the correct choice because we're looking for path fragments that may appear anywhere in the ImagePath.
+
+(d) ATT&CK: The technique that best describes this threat is attack.t1537 (Data Exfiltration).
+
+---
+
+title: Potential Data Exfiltration via USB Device
+id: 12345678-1234-5678-9012-345678901234
+status: test
+description: Detects potential data exfiltration via USB device
+references:
+  - https://example.com/article-on-usb-security-management
+  - https://example.com/how-to-track-down-usb-flash-drive-usage-in-windows-10s-event-viewer
+author: Your Name
+date: 2023-03-06
+modified: 2023-03-06
+tags:
+  - attack.t1537
+logsource:
+  product: windows
+  category: registry_event
+detection:
+  selection:
+    Provider_Name|contains: 'USB'
+    EventID|contains: '2000' # USB device plugged or unplugged event ID
+    ImagePath|contains: '\\SystemRoot\\system32\\drivers\\storport.sys' # USB storage driver
+  condition: selection
+falsepositives:
+  - Unknown
+level: medium

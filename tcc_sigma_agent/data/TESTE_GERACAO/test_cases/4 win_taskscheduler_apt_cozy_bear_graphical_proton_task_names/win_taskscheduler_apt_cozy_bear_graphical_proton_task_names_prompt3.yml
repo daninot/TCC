@@ -1,0 +1,20 @@
+title: Scheduled Tasks Names Used By SVR For GraphicalProton Backdoor
+id: 3ca3e22f-d7c9-42f9-91a2-46fd7e90a3cb
+
+logsource:
+  category: registry_event
+  product: windows
+
+detection:
+  selection:
+    TaskName|contains:
+      - '\Windows\SystemRestore\SR'
+      - '\Windows\Windows Defender\'
+      - '\Windows\BitLocker'
+      - '\Windows\WindowsBackup\'
+      - '\Windows\WindowsUpdate\'
+      - '\Windows\UpdateOrchestrator\Schedule'
+      - '\Windows\ExploitGuard'
+    # Add more important tasks
+
+  condition: selection

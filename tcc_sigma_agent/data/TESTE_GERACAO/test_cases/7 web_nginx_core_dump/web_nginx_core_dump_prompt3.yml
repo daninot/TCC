@@ -1,0 +1,17 @@
+title: NGINX Segfault from Sensitive Process Detected
+id: 4dad67d3-be63-497c-8cf1-d06e3640e466
+
+logsource:
+  category: webserver
+  product: nginx
+
+detection:
+  selection:
+    - OriginalFileName|contains: segfault
+    - Details|contains: segmentation fault
+    - Details|contains: heap overflow
+  condition: any of selection
+
+references:
+  - https://www.x41-dsec.de/lab/advisories/x41-2021-002-nginx-resolver-copy/
+  - https://docs.nginx.com/nginx/admin-guide/monitoring/debugging/#enabling-core-dumps

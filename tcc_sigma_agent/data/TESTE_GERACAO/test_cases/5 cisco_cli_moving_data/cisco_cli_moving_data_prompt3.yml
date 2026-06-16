@@ -1,0 +1,37 @@
+<thinking>...</thinking>
+
+LOGSOURCE: The indicator would appear in the AAA (Authentication, Authorization, and Accounting) logs of the Cisco device, which is typically categorized as a process_creation event.
+
+FIELDS: The relevant log fields are likely to be CommandLine or Command, which contain the actual commands executed on the device.
+
+MODIFIERS: Since we're looking for specific command strings, exact match would be the correct choice. However, if we were searching for path fragments within those commands, |contains might be more suitable.
+
+ATT&CK: The technique that best describes this threat is attack.t1005 (Exfiltration Over Command and Control Channel), as it involves extracting data from a system using a command-line interface.
+
+```yml
+title: Cisco IOS XE Software Forensic Data Collection Procedures
+id: 12345678-1234-5678-9012-345678901234
+status: test
+description: Detects suspicious commands executed on the Cisco device
+references:
+    - https://www.cisco.com/c/en/us/support/docs/security/forensics/forensic-data-collection-procedures.html
+author: [Your Name]
+date: 2023-11-28
+modified: 2023-11-28
+tags:
+    - attack.t1005
+logsource:
+    product: cisco
+    service: aaa
+detection:
+    selection_cli_1:
+        CommandLine|exact match:
+            - 'show running-config'
+            - 'show startup-config'
+            - 'show archive config'
+            - 'more'
+    condition: 1 of selection_cli_*
+falsepositives:
+    - Legitimate activities
+level: medium
+```

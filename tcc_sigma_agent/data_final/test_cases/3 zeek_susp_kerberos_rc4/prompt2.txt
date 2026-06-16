@@ -1,0 +1,37 @@
+You are a Senior Threat Detection Engineer. Produce ONE valid SIGMA rule in YAML,
+following the specification at https://sigmahq.io/docs/basics/rules.html.
+
+# Threat to detect
+A Kerberos Ticket-Granting Service (TGS) request is issued using the weak RC4
+encryption algorithm. This pattern is a classic indicator of a Kerberoasting
+attack, in which an adversary requests service tickets encrypted with RC4 in
+order to extract them and crack the associated service account passwords offline.
+
+# Target environment
+- Product: Zeek (network IDS / traffic monitor)
+- Log source: Zeek kerberos logs
+- Detection must filter OUT legitimate noise: computer/machine accounts routinely
+  perform Kerberos activity that can match this pattern and is not malicious.
+  Use exclusion logic in the detection condition.
+
+# Authoritative references (use these to choose REAL Zeek kerberos field names
+and values — do NOT invent any):
+- https://adsecurity.org/?p=3458
+
+# Requirements
+1. Include all mandatory fields: title, id (fresh UUIDv4), status, description,
+   references, author, date, tags, logsource, detection, falsepositives, level.
+2. `references` must contain ONLY the URL above.
+3. `detection` must use real Zeek kerberos log field names and values (TGS
+   request type, RC4 cipher identifier as Zeek represents it).
+4. `detection.condition` must combine a positive selection with a negative
+   exclusion (e.g., `selection and not <exclusion>`) to suppress the legitimate
+   computer-account baseline.
+5. Map the behavior to MITRE ATT&CK and place the tactic(s)/technique(s) in
+   `tags` using the format `attack.<tactic>` and `attack.t<technique_id>`.
+6. `falsepositives` must mention normal enterprise SPN activity.
+7. `level` must reflect a signal that is suspicious but commonly noisy in
+   real-world networks.
+
+# Output
+Return ONLY the YAML. No markdown fences, no explanations, no extra text.

@@ -1,0 +1,27 @@
+title: Creation of a Hidden Local User Account
+id: 622fef3a-664a-4e4a-a716-94a3d6d99712
+status: test
+description: Detects the creation or renaming of a user account with a dollar sign.
+references:
+    - https://twitter.com/SBousseaden/status/1387743867663958021
+author: Your Name
+date: 2023-02-20
+modified: 2023-02-20
+tags:
+    - attack.persistence
+    - attack.t1136.001
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4720 # user creation
+        TargetUserName|endswith: '$'
+        EventID: 4781 # rename user
+        OldTargetUserName|contains: '$'
+    filter_main_dollar_sign:
+        NewTargetUserName|endswith: '$'
+    condition: 1 of selection and not 1 of filter_main_*
+falsepositives:
+    - Unknown
+level: high

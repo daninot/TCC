@@ -1,0 +1,34 @@
+<thinking>...</thinking>
+
+The log source category that fits best is "process_creation" because the indicator of the threat (the URL) would appear in the process creation event logs.
+
+The relevant log fields are "Image" and "CommandLine".
+
+For the "Image" field, |endswith is the correct choice because we're looking for specific file extensions or terminal tokens. For the "CommandLine" field, |contains is the correct choice because the indicator of the threat (the URL) may appear anywhere in the command line.
+
+The ATT&CK technique that best describes this threat is t1083 (Source Code Retrieval).
+
+Here's the YAML rule:
+
+title: Source Code Enumeration Detection by Keyword
+id: 12345678-1234-5678-9012-345678901234
+status: test
+description: Detects source code enumeration that use GET requests by keyword searches in URL strings
+references:
+  - https://pentester.land/tutorials/2018/10/25/source-code-disclosure-via-exposed-git-folder.html
+  - https://medium.com/@logicbomb_1/bugbounty-how-i-was-able-to-download-the-source-code-of-indias-largest-telecom-service-52cf5c5640a1
+author: Sigma Rule Author
+date: 2023-02-20
+modified: 2023-02-20
+tags:
+  - attack.discovery
+  - attack.t1083
+logsource:
+  category: process_creation
+detection:
+  keywords:
+    - '.git/'
+  condition: keywords
+falsepositives:
+  - Unknown
+level: medium

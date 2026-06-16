@@ -5,64 +5,79 @@
 %% Título e rótulo de capítulo (rótulos não devem conter caracteres especiais, acentuados ou cedilha)
 \chapter{Referencial te\'orico}\label{cap:referencialTeorico}
 
-Neste capítulo será discorrido sobre os principais conceitos que justificam o escopo deste trabalho, como o que são e qual a importância dos SIEMs na área de segurança da informação, o que são as regras \textit{Sigma}, o que são LLMs e como os assuntos se relacionam entre si.
+Este capítulo apresenta os fundamentos teóricos que sustentam o desenvolvimento do agente proposto. 
+São discutidos os conceitos de \gls{soc} e \gls{siem} na área de segurança da informação, as bases de conhecimento sobre vulnerabilidades e técnicas adversárias, o padrão \textit{Sigma} para regras de detecção, os modelos de linguagem de grande escala (\glspl{llm}), a geração aumentada por recuperação (\gls{rag}) e os agentes autônomos como paradigma de orquestração de \glspl{llm}.
 
 \section{Segurança da Informação e SOC}
 
+Em organizações de médio e grande porte a defesa cibernética não costuma ser tarefa de uma única ferramenta. 
+O volume e a heterogeneidade dos eventos gerados por servidores, \textit{firewalls}, sistemas de detecção de intrusão (\gls{ids}), aplicações em nuvem e dispositivos de usuários tornam inviável a inspeção manual contínua, exigindo a composição de equipes e infraestruturas dedicadas ao monitoramento, à detecção e à resposta a incidentes \cite{vielberth2020soc, Shah2022}. É neste contexto que surgem os \gls{soc}, unidades especializadas que centralizam pessoas, processos e tecnologias para sustentar a postura defensiva de uma organização em tempo integral.
 
+Segundo \citeonline{vielberth2020soc}, um \gls{soc} bem estruturado articula três pilares interdependentes: analistas humanos com diferentes níveis de experiência, procedimentos formalizados de triagem e resposta e uma camada tecnológica capaz de coletar, correlacionar e priorizar evidências de ameaças. 
+A operação típica se organiza em níveis funcionais, em que no \textit{Tier} 1 os analistas iniciais executam a triagem dos alertas, no \textit{Tier} 2 os investigadores intermediários conduzem a análise de incidentes e no \textit{Tier} 3 os especialistas de nível mais alto realizam \textit{\gls{threat hunting}} e perícia forense \cite{tariq2025alert}. 
+O componente tecnológico central que sustenta essa cadeia é o sistema \gls{siem}, descrito na próxima seção. 
 
 \subsection{SIEM}
 
-Um Sistema de Gerenciamento de Informações e Eventos de Segurança, do inglês \textit{Security Information and Event Management} (SIEM) funciona como o núcleo central de inteligência em ambientes de cibersegurança,
-agregando e correlacionando \textit{logs} provindos de toda a infraestrutura de TI --- como \textit{firewalls}, sistemas de detecção de intrusão (IDS), todos os tipos de servidores, bancos de dados e entre outras inúmeras aplicações. 
-Sua essência reside na capacidade de contextualizar eventos aparentemente desconexos, identificando padrões que ferramentas isoladas não detectariam. 
-Conforme destacam \citeonline{PodzinsRomanovs}, essa contextualização é crucial em ações automatizadas contra ameaças complexas e citam o exemplo de um ataque de \textit{zero-day}, onde a correlação entre uma tentativa de força bruta no \textit{Active Directory} 
-(serviço de diretório da \textit{Microsoft} que gerencia identidades, recursos e permissões dentro da rede interna) e a existência de tráfego suspeito no \textit{firewall} pode disparar respostas imediatas.
+Um \gls{siem} atua como o núcleo de inteligência operacional em ambientes de cibersegurança, agregando e correlacionando \textit{logs} -- registros automáticos de eventos gerados por sistemas, aplicações, redes e dispositivos, provenientes de toda a infraestrutura de Tecnologia da Informação. 
+Como já citado anteriormente, as fontes típicas incluem \textit{firewalls}, sistemas de detecção e prevenção de intrusão (\gls{ids}/\acrshort{ips}), servidores de aplicação e de banco de dados, controladores de domínio, \textit{endpoints} e serviços em nuvem \cite{gonzalez2021siem}. 
+Seu propósito reside na capacidade de correlacionar eventos aparentemente desconexos e identificar padrões que ferramentas isoladas não o fazem.
 
-Nos Centros de Operações de Segurança (SOCs), o SIEM assume um papel operacional indispensável. 
-Ele consolida alertas de diferentes fontes e formatos, prioriza incidentes com base na criticidade e orquestra processos de resposta (\textit{workflows}). 
-\citeonline{PodzinsRomanovs} enfatizam ainda que, sem um SIEM, os SOCs perdem a capacidade de detectar fases avançadas de ataques, como por exemplo, de movimento lateral e escalação de privilégios, que se caracterizam pela movimentação do invasor por meio dos sistemas do alvo enquanto adquire privilégios de acesso ---visando o nível de administrador; 
-é citado o caso da rede de hoteis \textit{Starwood}, que permaneceu quatro anos sem identificar uma violação sequer e sofreu um vazamento de dados de 383 milhões de hóspedes ao redor do mundo em 2019 \cite{Marriot}. 
-Diante do exposto, essa visão unificada transforma o SIEM no ``sistema nervoso'' do SOC, permitindo que analistas investiguem ameaças sistêmicas, não apenas alertas isolados. 
+Convém distinguir o \gls{siem} de outras soluções pontuais de defesa, como antivírus, \textit{firewalls} ou plataformas de proteção de \textit{endpoint} (\acrshort{epp}). 
+Tais soluções operam de forma localizada -- protegendo um \textit{host}, um perímetro de rede ou um vetor específico, e geram alertas específicos de seu escopo. 
+O \gls{siem}, por outro lado, é uma camada agregadora: ele consome os \textit{logs} produzidos por essas ferramentas, normaliza formatos heterogêneos para um esquema comum e aplica regras de correlação capazes de identificar, na conjunção de múltiplos eventos, padrões de ataque que permaneceriam imperceptíveis em uma análise isolada \cite{gonzalez2021siem, sheeraz2024siem}.
+Conforme destacam \citeonline{PodzinsRomanovs}, essa contextualização é decisiva em ações automatizadas contra ameaças complexas, como ataques \textit{zero-day}, em que, por exemplo, a correlação entre uma tentativa de força bruta no \textit{Active Directory} (serviço de diretório da \textit{Microsoft} responsável pelo gerenciamento de identidades, recursos e permissões da rede interna) e um tráfego suspeito no \textit{firewall} pode disparar uma resposta imediata.
 
-A eficácia de um SOC está intrinsecamente ligada à maturidade do SIEM. 
-Regras mal calibradas geram excesso de falsos positivos; 
-SIEMs não otimizados podem produzir mais de mil alertas diários, sobrecarregando as equipes --- segundo \citeonline{PodzinsRomanovs}, uma pessoa sozinha é capaz de analisar apenas cerca de 5 a 15 alertas por dia, a depender da criticidade dos mesmos. 
-Por outro lado, uma configuração refinada permite que um único analista investigue milhares de \textit{logs}, elevando exponencialmente a eficiência operacional. 
-A empresa Exabeam reforça que essa otimização é a base para um SOC ágil e proativo \cite{Exabeam1}.
+Nos \gls{soc}s, o \gls{siem} assume papel operacional indispensável: 
+consolida alertas de diferentes fontes e formatos, prioriza incidentes com base na criticidade e orquestra fluxos de resposta (\textit{workflows}). 
+Sem essa camada, os analistas perdem a capacidade de detectar fases avançadas de ataque, como movimento lateral e escalação de privilégios -- etapas em que o invasor se desloca pelos sistemas do alvo acumulando privilégios até atingir o nível administrativo \cite{PodzinsRomanovs}. 
+A ausência desse tipo de visão integrada está associada a violações de longa duração, como foi o caso da rede mundial de hotéis \textit{Starwood}, em que a intrusão permaneceu não identificada por aproximadamente quatro anos e resultou no vazamento de dados de cerca de 383 milhões de hóspedes ao redor do mundo \cite{Marriot}. 
+Essa visão unificada transforma o \gls{siem} no "sistema nervoso" do \gls{soc}, permitindo que analistas investiguem ameaças sistêmicas e não apenas alertas isolados.
 
-A importância estratégica de um SIEM convencional na cibersegurança moderna se ancora na sua capacidade de reduzir drasticamente o tempo de detecção de ameaças, principalmente porque, conforme o passar dos anos, qualquer tipo de dado se tornou o recurso mais valioso que existe. 
-\citeonline{PodzinsRomanovs} citam um relatório de vazamentos de dados de 2018 da Verizon \cite{verizon2018dbir}, informando que cerca de 68\% das violações são descobertas meses (ou mais) após o ataque inicial; 
-o último relatório, de 2025, não atualiza esta porcentagem, mas informa que o tempo médio de remediação de vulnerabilidades nos dispositivos de borda (especialmente falhas de \textit{zero-day}) é de 32 dias \cite{verizon2025dbir}. 
-Este tipo de lacuna pode ser preenchida quando se tem um SIEM bem implementado, em virtude da correlação dos eventos em tempo real. 
-Além disso, ele serve como alicerce para a evolução tecnológica: plataformas SIEM convencionais são a base necessária para a integração de IA e aprendizado de máquina, que posteriormente amplificam a detecção de ameaças sutis e permitem a automação de respostas \cite{PaloAlto1}.
+A eficácia de um \gls{soc}, porém, está intrinsecamente ligada à robustez do \gls{siem} e à calibração das suas regras de detecção. 
+Regras mal calibradas geram excesso de falsos positivos e instâncias não otimizadas podem produzir mais de mil alertas diários, sobrecarregando as equipes -- segundo \citeonline{PodzinsRomanovs}, um analista isolado consegue investigar com profundidade entre 5 e 15 alertas por dia, dependendo da criticidade. 
+Esse desequilíbrio configura o fenômeno conhecido como \textit{alert fatigue}, ou fadiga de alertas: a exposição contínua a grandes volumes de notificações de baixo valor leva os analistas à dessensibilização, ao prolongamento do tempo de resposta e, em última instância, ao \textit{burnout} profissional, com impactos diretos na qualidade da defesa \cite{tariq2025alert}. 
+A literatura recente identifica a fadiga de alertas como um dos principais desafios contemporâneos dos \gls{soc}s e, justamente por isso, motiva a busca por mecanismos automatizados de triagem, correlação e geração de regras mais precisas -- preocupação central do presente trabalho.
 
->>>>Qual a diferença entre um SIEM e um antivírus tipo o Acronis?<<<<<<<<
+A importância estratégica do \gls{siem} também se ancora na sua capacidade de reduzir o tempo de detecção de ameaças. 
+\citeonline{PodzinsRomanovs} citam o relatório de violações da \textit{Verizon} de 2018, que apontava cerca de 68\% das violações sendo descobertas meses ou mais após o ataque inicial \cite{verizon2018dbir}; 
+já o relatório de 2025 informa que o tempo médio de remediação de vulnerabilidades em dispositivos de borda (especialmente falhas de \textit{zero-day}) é de 32 dias \cite{verizon2025dbir}. 
+Essa lacuna pode ser substancialmente reduzida com um \gls{siem} bem implementado, em virtude da correlação de eventos em tempo real. 
+Adicionalmente, a plataforma \gls{siem} serve de alicerce para a evolução tecnológica do \gls{soc}: é sobre ela que se integram componentes mais recentes, como módulos de inteligência artificial e aprendizado de máquina, que ampliam a detecção de ameaças sutis e habilitam a automação de respostas \cite{tendikov2024siem}.
 
-Economicamente, embora o SIEM convencional envolva custos elevados (licenças baseadas em volume de \textit{logs}, equipe especializada e SOC ininterrupto), \citeonline{PodzinsRomanovs} justificam seu investimento frente ao cenário de riscos globais: projetou-se US\$ 5,2 trilhões em perdas por ciberataques entre 2019 –- 2023. 
-Para organizações com dados sensíveis ou requisitos de conformidade, como o GDPR --- Regulamento Geral sobre a Proteção de Dados da União Europeia, ou a PCI-DSS --- \textit{Payment Card Industry Data Security Standard}, norma globalmente reconhecida aplicada à segurança de dados de cartões de pagamento, o SIEM é não apenas viável, mas indispensável;
-sua ausência representa um lapso operacional intransponível, mesmo com outras soluções de segurança.
-
-Em suma, o SIEM convencional se mantém como pilar irrevogável da segurança corporativa; 
-não por sua tecnologia isolada, mas também por habilitar ecossistemas integrados de detecção e resposta. 
-Conclui-se que sua implementação estratégica, ainda que desafiadora, é um divisor de águas entre organizações expostas a violações prolongadas e aquelas capazes de antecipar, conter e remediar ameaças em escala evolutiva.
-
+Do ponto de vista econômico, embora o \gls{siem} envolva custos elevados -- com licenças baseadas em volume de \textit{logs}, infraestrutura dedicada e equipe especializada em regime ininterrupto, o investimento se justifica diante da magnitude das perdas associadas a incidentes cibernéticos. 
+Em 2019, a \textit{Accenture} projetava perdas globais da ordem de US\$ 5,2 trilhões para os 5 anos seguintes \apud{accenture2019securing}{PodzinsRomanovs}, tendência que se confirmou nos anos posteriores: 
+o relatório anual da IBM de 2024 (\cite{ibm2024costbreach}) registrou um custo médio global de US\$ 4,88 milhões por violação de dados, com aumento de 10\% em relação ao ano anterior. 
+O último, de 2025, no entanto, trouxe uma pequena reviravolta: o custo médio global caiu 9\% em relação a 2024, motivado por melhorias na identificação e contenção de incidentes \cite{ibm2025costbreach}.
+Para organizações com dados sensíveis ou sujeitas a regulações como o \gls{gdpr}, da União Europeia, ou o \acrshort{pci-dss} -- norma globalmente reconhecida para a segurança de dados de cartões de pagamento, o \gls{siem} deixa de ser uma opção e torna-se requisito operacional. 
+Em síntese, o \gls{siem} mantém-se como pilar irrevogável da segurança corporativa, não apenas pela sua tecnologia isolada, mas por construir o ecossistema integrado de detecção e resposta sobre o qual se constroem as defesas modernas.
 
 \subsection{SIEMs Inteligentes}
 
-A integração de aprendizado de máquina (do inglês, \textit{machine learning}, ML) e inteligência artificial (IA) em SIEMs transforma a cibersegurança ao superar as limitações das abordagens baseadas em regras estáticas. 
-De acordo com \citeonline{Saddi2024}, a IA generativa consegue criar dados sintéticos para simular ameaças inéditas, permitindo a detecção proativa de ataques \textit{zero-day} sem depender exclusivamente de dados previamente rotulados. 
-Essa capacidade é amplificada pelos algoritmos de ML que analisam padrões contextuais em grandes volumes de \textit{logs}, correlacionam eventos aparentemente desconexos (como tráfego anômalo com tentativas de força bruta) e identificam ameaças complexas. 
-A predição de ameaças e a automatização dessas análises são fatores críticos para a atuação dos SOCs.
+Apesar de sua centralidade operacional, o o sistema \gls{siem} tradicional opera majoritariamente sobre regras estáticas -- definições escritas por especialistas que descrevem condições de alertas a partir de padrões conhecidos. 
+Essa abordagem apresenta duas limitações sistemáticas: a dificuldade em detectar ameaças cuja assinatura ainda não foi formalizada, como ataques \textit{\gls{zero-day}}, e a alta taxa de falsos positivos quando as regras não acompanham a dinâmica do ambiente protegido \cite{gonzalez2021siem, Nurusheva2024}.
+\citeonline{gonzalez2021siem} observam, especificamente, que pouquíssimas soluções de \gls{siem} dispõem de mecanismos de correlação avançada capazes de realizar uma análise histórica e de desvios necessária, por exemplo, para a detecção posterior de ataques \gls{zero-day}. 
+Portanto, é a partir da integração de técnicas de aprendizado de máquina \gls{ml} e \gls{ia}, buscando superar tais limitações, que se originam os chamados \gls{siem}s inteligentes.
 
-A integração de técnicas de IA e aprendizado de máquina em sistemas SIEM melhora significativamente a correlação de grandes volumes de eventos em tempo real, reduzindo falsos positivos ou falsos negativos, acelerando a triagem de alertas \cite{PaloAlto1}.
-Conforme demonstrado por \citeonline{Nurusheva2024}, algoritmos de detecção de anomalias, análise preditiva e limiares adaptativos permitem identificar proativamente atividades sutis ou ocultas que escapariam sob regras estáticas ou análise manual. 
-Ainda, ao empregar ambos modelos supervisionados e não supervisionados, o SIEM com ML aprende continuamente a partir dos dados de \textit{logs} e do comportamento da rede, ajustando-se dinamicamente às mudanças no ambiente e antecipando novos vetores de ataque \cite{jordan2015machine}.
+De acordo com \citeonline{Saddi2024}, a \gls{ia} generativa é capaz de produzir dados sintéticos e simular cenários de ataque -- replicando, por exemplo, a atuação de um invasor ou a propagação de \textit{malware}, o que permite tanto treinar modelos de detecção quanto avaliar defesas antes de sua implantação, sustentando uma postura proativa de identificação de ameaças emergentes. 
+Essa capacidade é amplificada por algoritmos de \gls{ml} que analisam padrões contextuais em grandes volumes de \textit{logs}, correlacionam eventos aparentemente desconexos -- por exemplo, tráfego anômalo combinado com tentativas de força bruta, e identificam comportamentos compatíveis com técnicas adversárias documentadas. 
+\citeonline{tendikov2024siem} reforçam que a integração de \gls{ia} e \gls{ml} em \gls{siem}s aprimora a correlação de grandes volumes de eventos em tempo real e permite que esses sistemas aprendam a partir de dados históricos e se adaptem dinamicamente a ameaças emergentes. 
+Esse aprimoramento incide diretamente sobre a fadiga dos analistas discutida na seção anterior: \citeonline{tariq2025alert} documentam que mecanismos de automação e triagem assistida por \gls{ml} reduzem a carga cognitiva associada ao alto volume de alertas e ao excesso de falsos positivos, principais causas do esgotamento nos \gls{soc}s.
 
-É visto que, com o crescimento exponencial de dados e o aumento da complexidade das ameaças, é inviável depender exclusivamente de analistas humanos, tornando substancial o uso estratégico de ML/IA por parte dos SIEMs.
-Essa prática permite que o SIEM evolua de uma abordagem baseada em regras para uma abordagem comportamental e baseada em risco, onde perfis de usuários e entidades são criados automaticamente e usados para detectar desvios. 
-Isso se alinha com o trabalho de \citeonline{Saddi2024}, que propõem modelos de IA generativa para analisar fluxos de dados e gerar respostas simuladas a possíveis ataques, ajudando a antecipar e mitigar riscos de forma mais eficaz. 
-Portanto, a incorporação de IA e ML em SIEMs representa um avanço significativo para a cibersegurança moderna, trazendo precisão, adaptabilidade e automação a um cenário cada vez mais dinâmico e hostil.
+\citeonline{Nurusheva2024} demonstram que algoritmos de detecção de anomalias, análise preditiva e limiares adaptativos permitem identificar atividades sutis que escapariam das regras estáticas ou à análise manual, e propõem um sistema autoadaptativo, capaz de identificar ameaças inéditas em tempo real sem depender de regras predefinidas. 
+Um aspecto central desse paradigma é a possibilidade de reduzir a dependência de bases previamente rotuladas
+\footnote{Uma base rotulada (do inglês \textit{labeled dataset}) condiz a uma coleção de pares entrada-saída, onde cada amostra de entrada (por exemplo, linha de \textit{log} ou fluxo de rede) recebeu uma anotação confiável sobre o que se é de fato}: 
+como destacado por \citeonline{tariq2025alert}, algoritmos não supervisionados conseguem modelar o comportamento típico de uma rede e detectar anomalias sem a necessidade de conjuntos de dados rotulados, o que os torna particularmente eficazes na identificação de ameaças novas -- embora ao custo de uma taxa de falsos positivos superior à dos métodos supervisionados. 
+Do ponto de vista conceitual, esse comportamento decorre das próprias características do aprendizado de máquina, cuja capacidade de aprender padrões a partir de dados, sem programação explícita, fundamenta tanto as abordagens supervisionadas quanto as não-supervisionadas \cite{jordan2015machine}. 
+Ao combinar esses dois tipos de modelo, o \gls{siem} com \gls{ml} ajusta-se continuamente às mudanças no ambiente e antecipa novos vetores de ataque \cite{sheeraz2024siem}.
+
+%Uma materialização particularmente difundida dessa abordagem é o conjunto de técnicas designadas como \gls{ueba}, em que perfis de usuários e entidades são construídos automaticamente a partir do histórico de eventos e usados para sinalizar desvios estatisticamente significativos em relação a uma linha de base de comportamento normal (HASSAN et al., 2025). 
+%No arcabouço descrito por Hassan et al. (2025), por exemplo, o módulo UEBA emprega exclusivamente algoritmos não supervisionados — especificamente o Isolation Forest —, opção justificada precisamente pela escassez de sessões maliciosas rotuladas em operações reais. O UEBA costuma compor, junto ao SIEM, plataformas integradas que incluem ainda módulos de orquestração e resposta automatizada (Security Orchestration, Automation, and Response, SOAR), capazes de executar ações de contenção — como reforço de autenticação, isolamento de endpoints e bloqueio de endereços IP — com mínima intervenção humana (HASSAN et al., 2025).
+
+Por fim, compreende-se que depender exclusivamente de analistas humanos é inviável diante do crescimento exponencial dos dados e da sofisticação das ameaças. 
+A incorporação de \gls{ia} e \gls{ml} em \gls{siem}s representa, portanto, um avanço significativo da cibersegurança, conferindo precisão, adaptabilidade e automação a um cenário cada vez mais dinâmico e hostil. 
+Esse movimento, no entanto, ainda enfrenta desafios relevantes, sobretudo no que tange à interpretabilidade dos modelos, à dependência de dados de qualidade para o treinamento e à necessidade de regras formais que estabeleçam o vocabulário comum entre as diferentes ferramentas. 
+Seguindo este último ponto, nas próximas seções se discutirá sobre a efetividade de qualquer \gls{siem}; sendo inteligente ou não, depende de regras de detecção formalizadas em padrões abertos e interoperáveis, ancoradas em bases consolidadas de conhecimento sobre vulnerabilidades e técnicas adversárias.
 
 
 \section{Bases de Padrões de Ataques}
@@ -214,11 +229,11 @@ Essas entradas podem afetar o modelo mesmo que sejam imperceptíveis para humano
 Superar qualquer entrave exigirá trabalho contínuo, transparência dos dados e aperfeiçoamento incessante das técnicas de mitigação de riscos. 
 
 
-\subsection{Arquitetura Transformer}
+\subsection{Arquitetura \textit{Transformer}}
 
 
 
-\subsection{Engenharia de Prompt}
+\subsection{Engenharia de \textit{Prompt}}
 
 
 
@@ -238,8 +253,8 @@ Superar qualquer entrave exigirá trabalho contínuo, transparência dos dados e
 
 
 
-%\subsection{Padrão ReAct}
+\subsection{Padrão \textit{ReAct}}
 
 
 
-\subsection{LangGraph como Orquestrador}
+\subsection{\textit{LangGraph} como \textit{Orquestrador}}

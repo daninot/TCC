@@ -1,0 +1,82 @@
+cenario_id,prompt_usado,status,tentativas,tempo_total_s,usou_web_search,tipo_input,contexto_pobre,erro_validacao_final,regra_referencia,arquivo_regra_gerada,arquivo_parecer
+1 lnx_sshd_exploit_cve_2018_15473,prompt1,REPROVADO,4,97.12,True,texto_livre,True,Etapa 2 falhou - faltou campo obrigatório: 'detection',agente_rag_CVE-2018-15473_Exploitation_Attempt.yml,agente_rag_CVE-2018-15473_Exploitation_Attempt_prompt1.yml,agente_rag_CVE-2018-15473_Exploitation_Attempt_prompt1.parecer.txt
+1 lnx_sshd_exploit_cve_2018_15473,prompt2,REPROVADO,4,100.78,True,cve,False,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: mapping values are not allowed here
+  in ""<unicode string>"", line 5, column 22:
+    Here is the YAML rule:
+                         ^)",agente_rag_CVE-2018-15473_Exploitation_Attempt.yml,agente_rag_CVE-2018-15473_Exploitation_Attempt_prompt2.yml,agente_rag_CVE-2018-15473_Exploitation_Attempt_prompt2.parecer.txt
+1 lnx_sshd_exploit_cve_2018_15473,prompt3,APROVADO,4,97.78,True,cve,False,APROVADO,agente_rag_CVE-2018-15473_Exploitation_Attempt.yml,agente_rag_CVE-2018-15473_Exploitation_Attempt_prompt3.yml,agente_rag_CVE-2018-15473_Exploitation_Attempt_prompt3.parecer.txt
+10 win_usb_device_plugged,prompt1,APROVADO,3,82.32,True,texto_livre,True,APROVADO,win_usb_device_plugged.yml,win_usb_device_plugged_prompt1.yml,win_usb_device_plugged_prompt1.parecer.txt
+10 win_usb_device_plugged,prompt2,REPROVADO,4,95.06,True,texto_livre,False,Etapa 2 falhou - faltou campo obrigatório: 'title',win_usb_device_plugged.yml,win_usb_device_plugged_prompt2.yml,win_usb_device_plugged_prompt2.parecer.txt
+10 win_usb_device_plugged,prompt3,APROVADO,2,81.95,True,texto_livre,False,APROVADO,win_usb_device_plugged.yml,win_usb_device_plugged_prompt3.yml,win_usb_device_plugged_prompt3.parecer.txt
+2 win_exploit_cve_2021_1675_printspooler,prompt1,REPROVADO,4,96.1,True,texto_livre,True,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: while scanning a block scalar
+  in ""<unicode string>"", line 6, column 19:
+      RepositoryName: |exact match ""PrintNightmare""
+                      ^
+expected chomping or indentation indicators, but found 'e'
+  in ""<unicode string>"", line 6, column 20:
+      RepositoryName: |exact match ""PrintNightmare""
+                       ^)",agente_rag_2_PrintNightmare__CVE-2021-1675__Detection.yml,agente_rag_2_PrintNightmare__CVE-2021-1675__Detection_prompt1.yml,agente_rag_2_PrintNightmare__CVE-2021-1675__Detection_prompt1.parecer.txt
+2 win_exploit_cve_2021_1675_printspooler,prompt2,REPROVADO,4,99.19,True,cve,False,Etapa 2 falhou - faltou campo obrigatório: 'detection',agente_rag_2_PrintNightmare__CVE-2021-1675__Detection.yml,agente_rag_2_PrintNightmare__CVE-2021-1675__Detection_prompt2.yml,agente_rag_2_PrintNightmare__CVE-2021-1675__Detection_prompt2.parecer.txt
+2 win_exploit_cve_2021_1675_printspooler,prompt3,REPROVADO,4,94.1,True,cve,False,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: while scanning a block scalar
+  in ""<unicode string>"", line 11, column 15:
+            path: |contains C:\Windows\System32\sp ... 
+                  ^
+expected chomping or indentation indicators, but found 'c'
+  in ""<unicode string>"", line 11, column 16:
+            path: |contains C:\Windows\System32\spo ... 
+                   ^)",agente_rag_2_PrintNightmare__CVE-2021-1675__Detection.yml,agente_rag_2_PrintNightmare__CVE-2021-1675__Detection_prompt3.yml,agente_rag_2_PrintNightmare__CVE-2021-1675__Detection_prompt3.parecer.txt
+3 lnx_auth_exploit_cve_2021_4034_pwnkit_lpe,prompt1,APROVADO,3,115.71,True,texto_livre,True,APROVADO,lnx_auth_exploit_cve_2021_4034_pwnkit_lpe.yml,lnx_auth_exploit_cve_2021_4034_pwnkit_lpe_prompt1.yml,lnx_auth_exploit_cve_2021_4034_pwnkit_lpe_prompt1.parecer.txt
+3 lnx_auth_exploit_cve_2021_4034_pwnkit_lpe,prompt2,REPROVADO,4,86.3,True,cve,False,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: while scanning an alias
+  in ""<unicode string>"", line 6, column 12:
+      product: *
+               ^
+expected alphabetic or numeric character, but found '\n'
+  in ""<unicode string>"", line 6, column 13:
+      product: *
+                ^)",lnx_auth_exploit_cve_2021_4034_pwnkit_lpe.yml,lnx_auth_exploit_cve_2021_4034_pwnkit_lpe_prompt2.yml,lnx_auth_exploit_cve_2021_4034_pwnkit_lpe_prompt2.parecer.txt
+3 lnx_auth_exploit_cve_2021_4034_pwnkit_lpe,prompt3,REPROVADO,4,88.64,True,cve,False,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: while scanning an alias
+  in ""<unicode string>"", line 6, column 12:
+      product: *
+               ^
+expected alphabetic or numeric character, but found '\n'
+  in ""<unicode string>"", line 6, column 13:
+      product: *
+                ^)",lnx_auth_exploit_cve_2021_4034_pwnkit_lpe.yml,lnx_auth_exploit_cve_2021_4034_pwnkit_lpe_prompt3.yml,lnx_auth_exploit_cve_2021_4034_pwnkit_lpe_prompt3.parecer.txt
+4 win_taskscheduler_apt_cozy_bear_graphical_proton_task_names,prompt1,REPROVADO,4,96.18,True,texto_livre,True,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: mapping values are not allowed here
+  in ""<unicode string>"", line 9, column 21:
+    Here's the YAML rule:
+                        ^)",win_taskscheduler_apt_cozy_bear_graphical_proton_task_names.yml,win_taskscheduler_apt_cozy_bear_graphical_proton_task_names_prompt1.yml,win_taskscheduler_apt_cozy_bear_graphical_proton_task_names_prompt1.parecer.txt
+4 win_taskscheduler_apt_cozy_bear_graphical_proton_task_names,prompt2,REPROVADO,4,116.8,True,texto_livre,False,Etapa 2 falhou - faltou campo obrigatório: 'title',win_taskscheduler_apt_cozy_bear_graphical_proton_task_names.yml,win_taskscheduler_apt_cozy_bear_graphical_proton_task_names_prompt2.yml,win_taskscheduler_apt_cozy_bear_graphical_proton_task_names_prompt2.parecer.txt
+4 win_taskscheduler_apt_cozy_bear_graphical_proton_task_names,prompt3,APROVADO,1,74.33,True,texto_livre,False,APROVADO,win_taskscheduler_apt_cozy_bear_graphical_proton_task_names.yml,win_taskscheduler_apt_cozy_bear_graphical_proton_task_names_prompt3.yml,win_taskscheduler_apt_cozy_bear_graphical_proton_task_names_prompt3.parecer.txt
+5 cisco_cli_moving_data,prompt2,APROVADO,3,89.44,True,texto_livre,False,APROVADO,cisco_cli_moving_data.yml,cisco_cli_moving_data_prompt2.yml,cisco_cli_moving_data_prompt2.parecer.txt
+5 cisco_cli_moving_data,prompt3,REPROVADO,4,98.68,True,texto_livre,False,"Etapa 3 falhou - erro de semântica - 
+pySigma relata: Sigma rule author must be a string",cisco_cli_moving_data.yml,cisco_cli_moving_data_prompt3.yml,cisco_cli_moving_data_prompt3.parecer.txt
+6 proxy_pwndrop,prompt1,REPROVADO,4,120.72,True,texto_livre,True,"Etapa 3 falhou - erro de semântica - 
+pySigma relata: Sigma rule must contain at least one condition",proxy_pwndrop.yml,proxy_pwndrop_prompt1.yml,proxy_pwndrop_prompt1.parecer.txt
+6 proxy_pwndrop,prompt2,APROVADO,2,92.9,True,texto_livre,False,APROVADO,proxy_pwndrop.yml,proxy_pwndrop_prompt2.yml,proxy_pwndrop_prompt2.parecer.txt
+6 proxy_pwndrop,prompt3,APROVADO,1,64.31,True,texto_livre,False,APROVADO,proxy_pwndrop.yml,proxy_pwndrop_prompt3.yml,proxy_pwndrop_prompt3.parecer.txt
+7 web_nginx_core_dump,prompt1,APROVADO,3,89.53,True,texto_livre,True,APROVADO,web_nginx_core_dump.yml,web_nginx_core_dump_prompt1.yml,web_nginx_core_dump_prompt1.parecer.txt
+7 web_nginx_core_dump,prompt2,REPROVADO,4,86.33,True,texto_livre,False,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: while scanning a simple key
+  in ""<unicode string>"", line 9, column 1:
+    <code>
+    ^
+could not find expected ':'
+  in ""<unicode string>"", line 10, column 1:
+    title: Detect Nginx Core Dump
+    ^)",web_nginx_core_dump.yml,web_nginx_core_dump_prompt2.yml,web_nginx_core_dump_prompt2.parecer.txt
+7 web_nginx_core_dump,prompt3,APROVADO,2,83.39,True,texto_livre,False,APROVADO,web_nginx_core_dump.yml,web_nginx_core_dump_prompt3.yml,web_nginx_core_dump_prompt3.parecer.txt
+8 win_dns_client_anonymfiles_com,prompt1,REPROVADO,4,103.78,True,texto_livre,True,"Etapa 3 falhou - erro de semântica - 
+pySigma relata: Sigma rule must contain at least one condition",agente_rag_2_DNS_Query_for_Anonfiles_com_Domain_-_DNS_Client.yml,agente_rag_2_DNS_Query_for_Anonfiles_com_Domain_-_DNS_Client_prompt1.yml,agente_rag_2_DNS_Query_for_Anonfiles_com_Domain_-_DNS_Client_prompt1.parecer.txt
+8 win_dns_client_anonymfiles_com,prompt2,APROVADO,1,72.35,True,texto_livre,False,APROVADO,agente_rag_2_DNS_Query_for_Anonfiles_com_Domain_-_DNS_Client.yml,agente_rag_2_DNS_Query_for_Anonfiles_com_Domain_-_DNS_Client_prompt2.yml,agente_rag_2_DNS_Query_for_Anonfiles_com_Domain_-_DNS_Client_prompt2.parecer.txt
+8 win_dns_client_anonymfiles_com,prompt3,APROVADO,2,78.21,True,texto_livre,False,APROVADO,agente_rag_2_DNS_Query_for_Anonfiles_com_Domain_-_DNS_Client.yml,agente_rag_2_DNS_Query_for_Anonfiles_com_Domain_-_DNS_Client_prompt3.yml,agente_rag_2_DNS_Query_for_Anonfiles_com_Domain_-_DNS_Client_prompt3.parecer.txt
+9 win_security_new_or_renamed_user_account_with_dollar_sign,prompt1,APROVADO,1,69.81,True,texto_livre,True,APROVADO,win_security_new_or_renamed_user_account_with_dollar_sign.yml,win_security_new_or_renamed_user_account_with_dollar_sign_prompt1.yml,win_security_new_or_renamed_user_account_with_dollar_sign_prompt1.parecer.txt
+9 win_security_new_or_renamed_user_account_with_dollar_sign,prompt2,REPROVADO,4,96.01,True,texto_livre,False,"Etapa 3 falhou - erro de semântica - 
+pySigma relata: Sigma rule must contain at least one condition",win_security_new_or_renamed_user_account_with_dollar_sign.yml,win_security_new_or_renamed_user_account_with_dollar_sign_prompt2.yml,win_security_new_or_renamed_user_account_with_dollar_sign_prompt2.parecer.txt
+9 win_security_new_or_renamed_user_account_with_dollar_sign,prompt3,APROVADO,2,81.2,True,texto_livre,False,APROVADO,win_security_new_or_renamed_user_account_with_dollar_sign.yml,win_security_new_or_renamed_user_account_with_dollar_sign_prompt3.yml,win_security_new_or_renamed_user_account_with_dollar_sign_prompt3.parecer.txt

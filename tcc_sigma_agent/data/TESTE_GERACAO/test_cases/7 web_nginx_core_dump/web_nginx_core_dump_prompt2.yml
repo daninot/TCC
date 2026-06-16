@@ -1,0 +1,27 @@
+<thinking>...</thinking>
+
+(a) LOGSOURCE: The indicator would appear in the process creation logs, so the category that fits best is `process_creation`.
+
+(b) FIELDS: The fields that contain the indicator of the threat are `Image` (for the NGINX process) and possibly other fields related to core dumps or crashes.
+
+(c) MODIFIERS: For the `Image` field, we can use `|endswith` to match the NGINX process name. However, since we're looking for a core dump, which is typically indicated by a file extension (e.g., `.core`), we should use `|contains` instead.
+
+(d) ATT&CK: The technique that best describes this threat is `T1190` (Exploit Public-Facing Application).
+
+<code>
+title: Detect Nginx Core Dump
+
+logsource:
+  category: process_creation
+  product: nginx
+
+detection:
+  selection:
+    Image|contains: nginx
+    CommandLine|contains: core dump
+
+falsepositives:
+  - Legitimate crash diagnostic operations
+
+level: medium
+</code>

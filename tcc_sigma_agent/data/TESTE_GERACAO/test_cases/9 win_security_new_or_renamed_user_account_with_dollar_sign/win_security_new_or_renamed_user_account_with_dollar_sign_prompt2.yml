@@ -1,0 +1,35 @@
+<thinking>...</thinking>
+
+LOGSOURCE: The indicator would appear in the security event logs, so `registry_event` is the best category.
+
+FIELDS: The fields that contain the indicator of the threat are `TargetObject` and `Image`.
+
+MODIFIERS: For `TargetObject`, |contains is the correct choice because it may appear anywhere in the path. For `Image`, |endswith is the correct choice because it's a terminal token.
+
+ATT&CK: This threat best describes technique T1136.001, which is "Create or Modify System Process".
+
+OUTPUT:
+
+title: Suspicious Computer Account Name Change
+
+id: 12345678-1234-5678-9012-345678901234
+
+description: Detects the creation of a user with the "$" character.
+
+references:
+- https://twitter.com/SBousseaden/status/1387743867663958021
+- https://www.microsoft.com/en-us/security/blog/2021/11/09/kb5008102-active-directory-security-accounts-manager-hardening-changes/
+
+logsource:
+  category: registry_event
+
+detection:
+  selection:
+    TargetObject|contains: '\SAM\SAM\Domains\Account\Users\Names\$'
+    Image|endswith: '\lsass.exe'
+
+condition: all of selection*
+
+falsepositives:
+
+level: high

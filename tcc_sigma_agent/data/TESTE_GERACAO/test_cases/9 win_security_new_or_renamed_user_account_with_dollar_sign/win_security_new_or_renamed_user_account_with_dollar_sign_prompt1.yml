@@ -1,0 +1,29 @@
+(a) LOGSOURCE: The category that fits best is "webserver" because the indicator of the threat (researching "parentheses" and related topics) would appear in a web search engine's log.
+
+(b) FIELDS: The specific log fields that contain the indicator of the threat are likely to be related to the search query, such as the URL or the search terms. However, without more information about the log format, it is difficult to determine which exact field(s) would contain this data.
+
+(c) MODIFIERS: Since we're looking for a specific search query, |contains seems like the correct choice. We can use this modifier to match any occurrence of the search terms in the URL or search query.
+
+(d) ATT&CK: The technique that best describes this threat is "Information Gathering/Reconnaissance" (t1043), which involves gathering information about a target system or network without interacting with it directly.
+
+YAML rule:
+title: Information Gathering/Reconnaissance via Web Search
+id: 1b09c3b5-186e-4778-b266-9ec4e34c8182
+status: test
+description: Detects research on "parentheses" and related topics in web search queries.
+references:
+  - https://twitter.com/SBousseaden/status/1387743867663958021
+tags:
+  - attack.t1043
+logsource:
+  category: webserver
+  product: duckduckgo
+detection:
+  selection:
+    CommandLine|contains:
+      - "parentheses"
+      - "brackets"
+      - "()"
+      - "[]"
+      - "{}"
+  condition: any of selection

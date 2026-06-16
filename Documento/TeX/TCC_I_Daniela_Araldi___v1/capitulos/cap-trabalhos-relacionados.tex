@@ -3,117 +3,184 @@
 \label{cap:trabalhos:relacionados}
 
 %\jt{<neste capítulo poderiam ser apresentados mais trabalhos relacionados e de forma compacta. Segue um exemplo de um artigo que publiquei recentemente: \url{https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=11025844}>}
-
 %\jt{<Se você quiser, pode deixar do jeito que está, já há mais detalhes em comparação com artigos. Mesmo assim, recomendo a inclusão de pelo menos mais um trabalho relacionado>}
-
 %\jt{<roteiro para a apresentação de cada trabalho relacionado: o que foi feito; metodologia resumida; principais resultados>}
-
-\section{Machine Learning Algorithms in SIEM Systems for Enhanced Detection and Management of Security Events}
-
-O estudo de \citeonline{Nurusheva2024} propõe a integração de algoritmos de \textit{machine learning} (ML) em SIEMs convencionais para superar insuficiências na detecção das ameaças modernas. 
-O objetivo é aprimorar a identificação de ataques desconhecidos e reduzir falsos positivos por meio de um modelo dinâmico que analisa padrões históricos. 
-Para validar a abordagem, os pesquisadores implementaram uma arquitetura utilizando a pilha ELK 
-\footnote{Sigla para três ferramentas de código aberto: \textit{Elasticsearch}, que fornece funcionalidades de análise e pesquisa; \textit{Logstash}, responsável por coletar, agregar e armazenar dados usados pelo \textit{Elasticsearch}; e \textit{Kibana}, que fornece a interface do usuário e informações sobre os dados coletados e analisados anteriormente pelo \textit{Elasticsearch}.} 
-e simularam cenários reais de ciberataques na ferramenta DVWA (\textit{Damn Vulnerable Web Application}), criada especialmente para testes de penetração. 
-Um modelo de CNN (Rede Neural Convolucional) foi treinado com dados de amostras de ataques do repositório \textit{MITRE}, priorizando a detecção de \textit{ransomware} e movimentação lateral. 
-Os autores também mencionam que o código foi desenvolvido para comparação com modelos de \textit{Random Forest}(algoritmo de ML que combina a saída de múltiplas árvores de decisão para alcançar um único resultado \cite{IBM_RandomForest}) 
-e SVM (\textit{Support vector machine} --- algoritmo supervisionado de ML que classifica dados encontrando uma linha ou hiperplano ótimo que maximiza a distância entre cada classe em um espaço N-dimensional \cite{IBM_SVM}).
-
 %\jt{<seria possível apresentar os principais resulados em termos numéricos?>}
-
-Os autores afirmam ganhos operacionais significativos nos seus resultados: 
-o sistema reduziu falsos positivos ao correlacionar eventos de múltiplas fontes (\textit{firewalls}, IDS e servidores), 
-automatizou respostas em tempo real (como bloqueio de IPs via integração com \textit{bots} do \textit{Telegram}) e otimizou a eficiência de SOCs ao transformar alertas brutos em ações acionáveis. 
-\citeonline{Nurusheva2024} concluiram que os modelos de ML identificam padrões sutis em grandes volumes de \textit{logs} com maior precisão do que as regras estáticas, além de se adaptarem continuamente a novas táticas de ataque sem intervenção manual constante.
-A pesquisa contribui para entender um caminho de integração entre ML e SIEM, neste caso utilizando técnicas de aprendizado não supervisionado;
-no entanto, não fornece números quantitativos específicos.
-
-A solução do trabalho conecta-se com o presente projeto através do objetivo de ambos,
-que é sofisticar os SIEMs para o melhor enfrentamento de novas ameaças e/ou prevenção de ataques,
-e da base de vulnerabilidades em comum  --- padrão MITRE. 
-Os trabalhos diferem-se principalmente na abordagem: \citeonline{Nurusheva2024} possuem uma metodologia mais qualitativa e descritiva, servindo de exemplo teórico. 
-Já o trabalho da autora é um estudo qualitativo e quantitativo, de teor empírico, que fornecerá percentuais de dados comparativos no final.
-
 %\jt{<no quê o seu trabalho é diferente? (é importante "vender o peixe" para o seu trabalho)>}
-
-
-\section{Automated Log Analysis and Anomaly Detection Using Machine Learning}
-
-O estudo de \citeonline{Shah2022}, tem como objetivo propor um modelo automatizado para a detecção de anomalias em arquivos de \textit{logs}, enfrentando o desafio da ausência de dados rotulados. 
-A motivação central do trabalho é reduzir a sobrecarga de alertas nos sistemas de segurança e eliminar a necessidade de inspeção manual extensiva, inviável em ambientes com grandes volumes de \textit{logs}. 
-Para isso, os autores buscaram uma solução que aproveita tanto técnicas de aprendizado de máquina quanto o conhecimento prévio dos especialistas.
-
-A metodologia do trabalho combina aprendizado não supervisionado (\textit{K-means}
-%\footnote{\textit{K-Means} é um algoritmo iterativo de agrupamento que particiona N objetos em K \textit{clusters} disjuntos, utilizando centróides e distância euclidiana para minimizar a variância intra-\textit{cluster} \cite{oti2021comprehensive}.} 
-para \textit{clustering}) com aprendizado supervisionado (classificação com \textit{Naive Bayes}),
-utilizando regras automatizadas geradas a partir de conhecimento especializado para rotular registros inicialmente não estruturados. 
-Após a etapa de pré-processamento e vetorização de dados com TF-IDF, 
-os autores aplicam \textit{Elbow Method} para definir o número ideal de \textit{clusters} e,
-em seguida, criam regras baseadas em padrões observados nos \textit{clusters} para construir um conjunto de dados rotulados. 
-Esse conjunto, então, é usado para treinar um classificador que distingue eventos normais e anômalos, alcançando acurácia de 98\% na base de testes.
-
-O artigo de \citeonline{Shah2022} propõe a geração automática de rótulos com base em regras para prever ameaças com a ajuda de ML. 
-Já o presente trabalho busca desenvolver um agente autônomo que crie regras \textit{Sigma} para sistemas SIEM. 
-Os autores do estudo concluem que a detecção automatizada de anomalias enfrenta alguns desafios e um deles é a heterogeneidade dos ambientes de monitoramento e igualmente seus rótulos --- 
-desafio este que se pretende minimizar com a automatização da criação de regras \textit{Sigma}.
-
-Enquanto \citeonline{Shah2022} foca em rotular automaticamente dados de \textit{logs}, o uso das regras \textit{Sigma} permite a unificação dos padrões, amenizando os desafios dos ambientes heterogêneos, mencionado pelos autores. 
 %\adr{os SIEMs vão continuar sendo heterogêneos, pois cada um usa um formato e padronização de dados diferentes, além do que os eventos de devices diferentes também não são padronizados. As regras SIGMA são só uma forma de expressar a regra ou a ameaça e o que deve ser buscado, mas ainda precisa ser convertido para o SIEM de destino, que já possui as suas regras próprias, alías, mais de 90\% das regras usadas são do próprio SIEM, não vem e nem virão do SIGMA. Essa questão precisa estar clara pra você, principalmente, e assim conseguir definir melhor o escopo do trabalho e o objetivo que desejará alcançar no final. Enfim, SIGMA não é uma receita mágica que resolve esses problemas apresentados em outros trabalhos, mas é uma forma generalista de compartilhar novas regras vindas da comunidade e que podem ser convertidas automaticamente ou manualmente para o SIEM que o usuário já utiliza.}
-Dentre outros pontos, este trabalho propõe uma solução mais genérica, com regras prontas para implantação, enquanto o trabalho citado aborda um modelo de classificação focado em \textit{logs}.
-
-
-\section{From Text to MITRE Techniques: Exploring the Malicious Use of Large Language Models for Generating Cyber Attack Payloads}
-
-O artigo de \citeonline{charan2023fromtext} investiga os riscos associados ao uso malicioso de modelos de linguagem generativa para criação de códigos ofensivos baseados nas técnicas do MITRE ATT\&CK.
-O objetivo do estudo foi avaliar a capacidade desses modelos em gerar, via engenharia de \textit{prompt}, códigos executáveis correspondentes às 10 técnicas MITRE mais usadas por atacantes em 2022.
-Também buscam comparar o desempenho do \textit{ChatGPT} e \textit{Bard}(nomenclatura antiga do \textit{Google Gemini})
-em termos de geração, eficácia e sua habilidade de explicar claramente o que o código faz, como funciona e qual seu impacto.
-
-Os autores aplicaram engenharia de \textit{prompt} em ambos modelos já citados, 
-buscando contornar restrições éticas e técnicas impostas por padrão para as inteligências, 
-com o intuito de gerar com sucesso \textit{scripts} maliciosos.
-Dois exemplos são as técnicas T1055, de Injeção de processos \cite{mitreDataImpact},
-e T1486, de Criptografia para Impacto \cite{mitreDataImpact}.
-Esses códigos foram executados em um ambiente controlado (\textit{sandbox}),
-permitindo que a análise dos resultados ocorresse em segurança.
-O estudo de \citeonline{charan2023fromtext} se baseou em dados do \textit{Red Report} de 2023 \cite{picus2023redreport} da \textit{Picus Labs} --- divisão de pesquisa e desenvolvimento da empresa de segurança cibernética \textit{Picus Security} \cite{picusAbout},
-que analisou mais de 500 mil amostras de \textit{malware} reais. 
-A análise demonstrou que o \textit{ChatGPT} foi mais eficaz do que o \textit{Google Bard} na geração de código funcional e correção de erros.
-
-O artigo destaca tanto os riscos quanto os possíveis usos defensivos da tecnologia,
-como a simulação de cenários realistas por profissionais de segurança ofensiva, como os \textit{Pentesters}, profissionais de segurança ou \textit{hackers} éticos que simulam os ataques cibernéticos para encontrar vulnerabilidades no sistema computacional \cite{ibm_penetration_testing}, inclusos no \textit{Red Team} da empresa, que reúne todos os profissionais autorizados a reproduzir investidas no sistema como se fossem um potencial adversário contra a postura de segurança do ambiente \cite{nist_red_team}.
-O estudo de \citeonline{charan2023fromtext} também utiliza a engenharia de \textit{prompt} para extrair melhores informações das LLMs e automatizar tarefas correlacionadas, através da exploração do uso ofensivo das LLMs (para fins de conhecimento).
-Em contrapartida, o presente projeto sugere o uso de forma defensiva, voltado à detecção de ameaças e correlação de eventos. 
-
-%\vspace{1em}
-%\textcolor{white}{\gls{ioc}}
-%\textcolor{white}{\gls{cve}}
-%\textcolor{white}{\gls{llm}}
-%\textcolor{white}{\gls{ioc}}
-%\textcolor{white}{\gls{ips}}
-%\textcolor{white}{\gls{ia}}
-%\textcolor{white}{\gls{ml}}
-%\textcolor{white}{\gls{nlp}}
-%\textcolor{white}{\gls{soc}}
-%\textcolor{white}{\gls{gdpr}}
-%\textcolor{white}{\gls{pci-dss}}
-%\textcolor{white}{\gls{cwe}}
-%\textcolor{white}{\gls{nist}}
-%\textcolor{white}{\gls{cisa}}
-%\textcolor{white}{\gls{nvd}}
-%\textcolor{white}{\gls{cvss}}
-%\textcolor{white}{\gls{pln}}
-%\textcolor{white}{\gls{ri}}
-%\textcolor{white}{\gls{ei}}
-%\textcolor{white}{\gls{ta}}
-%\textcolor{white}{\gls{dvwa}}
-%\textcolor{white}{\gls{cnn}}
-%\textcolor{white}{\gls{svm}}
-%\textcolor{white}{\gls{ip}}
-%\textcolor{white}{\gls{tf-idf}}
-%\vspace{1em}
-
 %\adr{"o projeto proposto", escrito dessa forma, não dá pra saber se está falando do projeto apresentado no trabalho relacionado ou no seu. Sempre que for o seu, coloque "este trabalho, este projeto" ou algo similar, para deixar claro.}
-
 %\jt{<descrever mais um trabalho relacionado. Para o TCC2: criar uma tabela que apresente diversos trabalhos relacionados>}
+
+\section{LLMCloudHunter}
+
+O \textit{LLMCloudHunter} é uma proposta de Schwartz et al (2025), um \textit{framework} que utiliza o modelo \gls{GPT}-4o para automatizar a geração de regras \textit{Sigma} a partir de relatórios de código aberto de inteligência de ameaças, 
+voltados a ambientes em nuvem (\textit{Open-Source Cyber Threat Intelligence} -- OSCTI). 
+Os autores identificaram três limitações em trabalhos anteriores que motivaram a pesquisa: 
+a ausência de saídas acionáveis, prontas para serem aplicadas em sistemas de segurança; 
+o desperdício de informações visuais presentes em relatórios de ameaças, como capturas de tela e diagramas de fluxo de ataque; 
+e o foco em ambientes \textit{on-premises} (infraestrutura local), em detrimento dos ambientes em nuvem. 
+Para superar essas lacunas, o \textit{framework} utiliza uma abordagem multimodal, ou seja, processa texto e imagens de forma conjunta.
+
+A metodologia se organiza em três fases.
+Na fase de pré-processamento, a ferramenta \textit{\gls{BeautifulSoup}} é empregada no \textit{web scraping} do código HTML do relatório, 
+onde se descartam elementos irrelevantes -- como barras laterais e propagandas; 
+o conteúdo restante é convertido em um formato de texto unificado, no qual cabeçalhos, listas e tabelas têm sua estrutura hierárquica preservada. 
+Em seguida, o componente \textit{Image Analyzer} interpreta cada imagem do relatório por meio das capacidades visuais nativas do \gls{GPT}-4o, 
+transcreve seu conteúdo para texto e o reintegra à posição original no documento.
+
+Na segunda fase o processamento é em nível de parágrafo, onde acontece a extração de entidades (pedaço de informação relevante) e a geração inicial dos candidatos à regra final. 
+O componente \textit{API Call Extractor} atua em duas etapas:
+primeiro extrai chamadas de API explicitamente citadas no texto e, em seguida, infere chamadas mencionadas de forma implícita.
+A inferência é necessária porque relatórios de ameaças frequentemente descrevem operações de alto nível que não correspondem diretamente a eventos registrados nos \textit{logs}.
+Conforme ilustram os próprios autores, "descrições operacionais, como a realização de uma ação de sincronização (\textit{sync}) em um \textit{bucket} S3, devem ser mapeadas para as chamadas de API \textit{ListBuckets} e GetObject" (SCHWARTZ et al., 2025, p. 1925, tradução livre). 
+Para mitigar alucinações e omissões do modelo, esse componente incorpora um mecanismo de votação por maioria, 
+executando a extração múltiplas vezes e mantendo apenas as ocorrências que ultrapassam um valor de referência pré-definido.
+Depois, o \textit{TTP Extractor} mapeia cada chamada de API às respectivas táticas, técnicas e subtécnicas do \textit{MITRE ATT&CK}, 
+e o \textit{Rule Generator} sintetiza essas informações na estrutura sintática das regras \textit{Sigma}. 
+Por fim, o \textit{Rule Validator} higieniza os candidatos gerados, remove campos excessivamente específicos e ajusta a sintaxe ao padrão \textit{Sigma}.
+
+Na terceira fase, de processamento em nível de OSCTI, o escopo de refinamento é global -- o \textit{framework} olha todos os candidatos juntos para tomar decisões.
+O \textit{Rule Optimizer} executa duas operações lógicas:
+unificação, que mescla campos de seleção que compartilham os mesmos critérios de detecção; 
+e separação, que divide campos com lógicas divergentes incorretamente agrupados. 
+Em seguida, o \textit{Set Refiner} elimina redundâncias decorrentes do processamento paralelo dos parágrafos,
+selecionando, para cada chamada de API repetida em múltiplos candidatos, a regra mais adequada e descartando ou ajustando as demais. 
+Paralelamente, o \textit{IoC Extractor} identifica endereços IP e \textit{User Agents} citados no relatório, 
+e em seguida o \textit{IoC Enhancer} os integra ao conjunto final como campos de seleção adicionais, 
+conectados à lógica original por meio de operadores condicionais, sem comprometer a estrutura de detecção previamente estabelecida.
+
+Os resultados de Schwartz et al. (2025) demonstram que, na identificação das chamadas de API (sequência de comandos) atribuídas ao agente da ameaça nos relatórios analisados, 
+o \textit{framework} acertou 83\% das extrações e recuperou 99\% das ocorrências presentes nos relatórios. 
+Para os indicadores de comprometimento (IoCs), os índices foram de 99\% e 97\%, respectivamente. 
+A avaliação foi conduzida sobre uma base de vinte relatórios reais de ameaças em nuvem, previamente anotados de forma manual pela equipe de pesquisa. 
+Além disso, 99,18\% das regras \textit{Sigma} geradas pelo \textit{framework} foram compiladas com sucesso e convertidas em consultas para a plataforma \textit{Splunk}, 
+o que indica que a saída produzida atende ao padrão esperado. 
+O estudo dos autores confirmou ainda a importância do processamento das imagens contidas nos relatórios,
+evidenciando que a leitura conjunta de texto e elementos visuais é uma estratégia adequada para lidar com a diversidade de formatos encontrados em relatórios de ameaças em nuvem (SCHWARTZ et al., 2025, seção 4.3).
+
+\cite[p. 1830]{schwartz2025}
+
+\section{RulePilot}
+
+O RulePilot, derivado do estudo de Wang et al. (2026), trata-se de um agente baseado em LLM para geração e conversão automatizada de regras de detecção em sistemas \gls{SIEM}s  proprietários, com foco principal em regras escritas na linguagem do \textit{Splunk} (\textit{Splunk Processing Language} -- SPL), com suporte adicional à linguagem do \textit{Microsoft Sentinel} (a \textit{Kusto Query Language} -- KQL). 
+Nas motivações do trabalho, os autores justificam o foco em regras específicas de cada SIEM sob a argumentação de que formatos genéricos como o \textit{Sigma}, apesar de sua portabilidade entre diferentes plataformas e fornecedores, dependem majoritariamente de correspondência de padrões por expressões regulares e não suportam consultas complexas como agregações estatísticas, junções multi-fonte ou cálculos em janelas temporais, tendo, portanto, limitações na eficácia de detecção de ataques sofisticados que envolvem sequências de eventos. 
+Wang et al. (2026) citam como referência de trabalhos anteriores de geração automática de regras o pŕoprio \textit{LLMCloudHunter} Schwartz et al. (2024) -- citado na seção anterior do presente trabalho
+\footnote{Entretanto, Wang et al. (2026) citam publicação de 2024, enquanto o atual trabalho traz publicação atualizada.}.
+Os autores sustentam que \textit{frameworks} como o citado contém tais limitações por restringirem-se ao formato \textit{Sigma}. 
+Portanto, a motivação central do \textit{RulePilot} é suprir a lacuna entre descrições de alto nível em linguagem natural e as regras complexas, específicas de cada fornecedo, requeridas por SIEMs em produção.
+
+A arquitetura do \textit{framework RulePilot} é organizada em três componentes principais. 
+O primeiro é o módulo de raciocínio em cadeia (\textit{Chain-of-Thought}), no qual a descrição de entrada é decomposta em seis etapas estruturadas: 
+interpretação dos objetivos de segurança, identificação das fontes de \textit{log}, definição de filtros iniciais, extração de campos relevantes, agregação de dados e otimização da regra. 
+O segundo é a representação intermediária (\textit{Intermediate Representation} -- IR), uma abstração estruturada que separa a lógica semântica da sintaxe específica do \gls{SIEM}-alvo: \texttt{<KEYWORD>|PARAMS\{k\_i=v\_i\}|MODULES\{m\_j\}}; 
+\textit{KEYWORD} designa a função da etapa (como \textit{FILTER}, \textit{EXTRACT}, \textit{AGGREGATE} e \textit{JOIN}); 
+\textit{PARAMS} define as configurações obrigatórias e \textit{MODULES} descreve a intenção analítica. 
+Essa separação permite que o LLM se concentre no raciocínio semântico antes de se comprometer com a sintaxe final. 
+O terceiro componente é o mecanismo de reflexão e otimização iterativa, que avalia a regra gerada em três dimensões -- consistência lógica, correção sintática e viabilidade de execução, e dispara dois tipos de refinamento: regeneração de etapas da cadeia de raciocínio e a integração com a API do \textit{Splunk} real para validar com execução de \textit{logs} verdadeiros. 
+Para a funcionalidade de conversão entre linguagens \gls{SIEM}, o \textit{RulePilot} incorpora ainda um mecanismo de \textit{Retrieval-Augmented Generation} (RAG) alimentado pela documentação oficial de migração da \textit{Microsoft}, que mapeia comandos do SPL para seus equivalentes em KQL por meio de busca vetorial combinada à re-ranqueamento lexical.
+O \textit{RulePilot} foi avaliado utilizando três LLMs distintos como motor -- \gls{GPT}-4o, \gls{DeepSeek}-V3 e \gls{LLaMA}-3, sobre 1.699 regras oficiais do repositório \textit{Splunk Security Content} e 229.968 \textit{logs} coletados de 61 testes atômicos do \gls{MITRE} ATT&CK.
+
+Os resultados de Wang et al. (2026) afirmam que o \textit{RulePilot} supera as LLMs autônomas (sem o \textit{framework}) em até 107,4\% na similaridade textual com as regras de referência, medida pelas métricas BLEU, ROUGE-1, ROUGE-L e METEOR
+\footnote{BLEU \cite{papineni2002bleu}, ROUGE \cite{in2004rouge} e METEOR \cite{banerjee2005meteor} são métricas automáticas que medem a similaridade entre um texto gerado e uma referência pela sobreposição de n-gramas. BLEU prioriza precisão e ROUGE prioriza revocação; METEOR acrescenta sinônimos, radicais e ordem das palavras. Valores mais altos indicam maior alinhamento textual.}. 
+Na avaliação de execução real sobre o \textit{Splunk}, o \textit{RulePilot} atingiu precisão de 100\% em diversas táticas do \gls{MITRE} ATT&CK, incluindo reconhecimento, acesso inicial e coleta, com desempenho superior ao \gls{MITRE}-4o autônomo. 
+Tais ganhos, contudo, acompanham certo custo computacional: o \textit{RulePilot} consome cerca de dez vezes mais \textit{tokens} de \textit{prompt} e aproximadamente seis vezes mais tempo de geração que o LLM-\textit{baseline}, em razão de seu raciocínio em múltiplas etapas e dos ciclos de refinamento iterativo. 
+O estudo de ablação serve para entender o papel de cada parte do \textit{RulePilot}. 
+A ideia é simples: tira-se uma parte de cada vez para ver o quanto o resultado piora, assim se descobre para quê serve cada uma.
+O \textit{RulePilot} tem duas partes principai: a primeira é a representação intermediária (IR), que ajuda a montar a regra com a sintaxe certa; quando ela é removida, o produto é uma regra com mais erros de escrita e de difícil leitura -- a nota média cai de 0,55 para 0,44.
+A segunda parte é o raciocínio em cadeia com revisão (CoT-R) -- ela ajuda a regra a ter sentido do começo ao fim. Quando se remove este bloco de raciocínio em cadeia e reflexão, o que mais piora é a consistência lógica e a cobertura de condições.  
+A nota média cai para 0,41.
+Quando as duas partes são removidas juntas, o resultado é o pior de todos: a nota cai para 0,35. 
+Ou seja, as duas se completam -- cada uma cuida de um problema diferente.
+No fim, os autores testaram se o RulePilot consegue traduzir regras de uma plataforma para outra. Em regras simples, ele acertou tudo (nota 1,000). Em regras mais complicadas, que juntam dados de várias fontes, acertou quase tudo (nota 0,919). Isso mostra que dá para migrar regras de um sistema para outro sem grandes perdas.
+Por fim, os autores avaliaram a conversão entre linguagens SIEM, e o \textit{RulePilot} atingiu nota 1,000 em \gls{F1}, nas regras de agregação e de listagem. 
+Já nas regras com junções de várias fontes, que são mais complexas, o \gls{F1} foi de 0,919. Esse resultado mostra que a migração entre plataformas \gls{SIEM} diferentes é tecnicamente viável.
+
+
+\section{GRIDAI}
+
+O estudo de Li et al (2025) (ainda apenas disponível como pré-print) propõe o GRIDAI, um \textit{framework} de ponta a ponta para geração e reparo automatizado de regras de detecção de intrusão em sistemas baseados em assinaturas, como o \gls{Suricata} e \gls{Snort}. 
+A contribuição tem como base três trabalhos anteriores que buscaram automatizar a criação dessas regras: 
+AutoCombo (Du et al, 2021), CMIRGen (Zhang et al, 2020) e Syrius (Alcantara et al, 2021). 
+Li et al (2025) citam que a limitação central dos trabalhos citados é que todos geram uma regra nova para cada amostra de ataque recebida e precisam de tráfego de rede normal como referência, sem nunca verificar se uma regra já existente poderia simplesmente ser atualizada. 
+Com o tempo, isso gera um acúmulo de regras redundantes e um volume crescente de alertas duplicados, dificultando a manutenção do sistema. 
+O GRIDAI propõe uma lógica diferente: antes de agir, ele avalia a natureza de cada amostra. 
+Se o ataque for inédito, cria uma nova regra; se for uma variação de algo já conhecido, atualiza a regra existente para que ela passe a cobrir também esse novo caso. 
+A arquitetura é composta por quatro módulos especializados coordenados por uma lógica central. 
+O primeiro módulo (\textit{Relation-Assess Agent}) funciona em dois passos: primeiro testa a amostra diretamente no motor de detecção e, somente se nenhum alerta for gerado, consulta o modelo de linguagem para decidir o que fazer. 
+O segundo (\textit{New-Rule-Generation Agent}) cria regras novas analisando o conteúdo do ataque em etapas, gerando e testando múltiplos candidatos. 
+Já o terceiro (\textit{Existing-Rule-Repair Agent}), ajusta regras existentes e garante que a versão modificada continue funcionando tanto para o ataque original quanto para a nova variante. 
+E o quarto (\textit{Memory-Update Agent}) registra todas as alterações. 
+Para lidar com erros gerados pelos modelos de linguagem, cada regra produzida é validada em tempo real no motor de detecção; 
+se as falhas ultrapassarem um limite pré-definido, o sistema desfaz a operação e tenta novamente.
+
+Os experimentos foram realizados em dois conjuntos de dados -- um sintético (com sete tipos de ataques) e um real (com quarenta e três tipos), além de usar o GPT-4.1 como modelo principal. 
+O sistema também foi testado com outros quatro modelos de linguagem (\gls{GPT}-4o, \gls{GPT}-3.5-turbo, \gls{GLM}-4-Plus e \gls{GLM}-4-Flash), demonstrando que o GRIDAI tem um bom funcionamento na utilização de modelos distintos.
+Quando na tarefa de identificar corretamente o que fazer com cada amostra, o sistema acertou 100\% das decisões no conjunto sintético e 96,9\% dos casos de reparo no conjunto real; 
+a acurácia para geração de novas regras foi de 60,5\%, em virtude de algumas regras do conjunto de referência compartilharem características muito similares entre si.
+Frente aos três trabalhos tomados como base de comparação por Li et al (2025), o GRIDAI detectou 100\% dos ataques no conjunto sintético e 95,4\% no conjunto real, sem gerar nenhum falso alarme. 
+O experimento de ablação, em que os autores removeram individualmente cada um dos principais mecanismos do sistema para medir o impacto de cada componente no desempenho final, mostrou que sem o mecanismo de reparo, a taxa de alertas duplicados sobe de 12,7\% para 66,8\%, 
+confirmando que reaproveitar e atualizar regras existentes é muito mais eficiente do que criar novas regras a cada variante detectada.
+
+
+\section{Aprendizado de máquina aplicado a SIEMs e análise de \textit{logs}}
+
+A aplicação de aprendizado de máquina para análise automatizada de \textit{logs} e a identificação de ameaças foi explorada de forma convergente por Shah et al. (2022) e Nurusheva et al. (2024).
+Ambos trabalhos partem da constatação de que o volume e a heterogeneidade dos \textit{logs} gerados por sistemas modernos inviabilizam a inspeção manual,
+e as abordagens tradicionais baseadas somente em regras estáticas falham na identificação de ataques novos ou ofuscados\footnote{\gls{ofuscação}}.
+Para superar essa limitação, os dois estudos recorrem a técnicas de \textit{Machine Learning} (ML), embora com metodologias distintas -- empírico-quantitativa com foco em agrupamento no primeiro trabalho e com foco arquitetural e demonstrativo no segundo.
+
+Shah et. al (2022) propõe um modelo que enfrenta o desafio da ausência de dados rotulados, problema recorrente em cenários reais de monitoramento.
+A metodologia inicia com pré-processamento dos registros, mantendo apenas o conteúdo textual das mensagens.
+Em seguida, os autores aplicam a vetorização TF-IDF (\textit{Term Frequency-Inverse Document Frequency)}) e executam o algoritmo de \textit{clustering} não-supervisionado \textit{K-means}.
+A partir dos agrupamentos obtidos, os pesquisadores rotularam os registros e geraram um conjunto de dados para treinar um classificador supervisionado \textit{Naive Bayes}.
+Avaliado sobre o \textit{dataset} BGL (\textit{BlueGene/L}), o modelo obtido alcançou acurácia média de 98\% na predição de eventos anômalos, demonstrando viabilidade para ambientes que exigem triagem rápida.
+
+Já Nurusheva et al (2024), propõem a integração direta de algoritmos com ML supervisionado a um sistema \gls{SIEM}. 
+A validação foi conduzida em uma arquitetura construída sobre a pilha ELK (\textit{Elasticsearch, Logstash, Kibana}),
+com cenários de ciberataques simulados na aplicação propositalmente vulnerável chamada DVWA (\textit{Damn Vulnerable Web Application}).
+Os autores treinaram modelos clássicos -- \textit{Support Vector Machine, Random Forest, Decision Tree} e \textit{AdaBoost}, 
+além de uma Rede Neural Convolucional (CNN) adaptada à classificação de eventos de segurança, 
+utilizando amostras de ataques baseadas no \textit{framework} \gls{MITRE}.
+Como resultado, relataram ganhos operacionais: a correlação de eventos reduziu falsos positivos e a automação da resposta diminuiu a carga sobre os analistas de segurança. 
+Diferentemente do estudo anterior, o trabalho de Nurusheva et al (2024) possui caráter predominantemente descritivo, 
+com foco na arquitetura operacional, em detrimento de uma avaliação baseada em métricas comparativas rigorosas.
+
+Ao analisar conjuntamente as duas pesquisas, vê-se um dilema prático na modernização e evolução da segurança cibernética: 
+o equilíbrio entre o refinamento algorítmico isolado e a aplicabilidade sistêmica. 
+Enquanto a abordagem de Shah et al (2022) comprova que é possível contornar a escassez de dados rotulados por meio de \textit{pipelines} híbridos de aprendizado de máquina, 
+alcançando alta acurácia em ambientes controlados, a proposta de Nurusheva et al (2024) evidencia que o verdadeiro desafio está na orquestração contínua desses modelos dentro de ecossistemas corporativos reais. 
+Portanto, a consolidação do uso de aprendizado de máquina na triagem de eventos de segurança permanece condicionada à superação dessa fronteira: 
+trabalhos como o de Shah et al. (2022) demonstram a viabilidade técnica do componente preditivo, enquanto Nurusheva et al. (2024) ilustram a integração operacional desses componentes em \gls{SIEM}s -- mas raramente os dois aspectos são tratados de forma articulada em um único estudo.
+
+
+\section{Posicionamento do Trabalho Proposto}
+
+O conjunto de trabalhos analisados nas seções anteriores expõe duas vertentes complementares na pesquisa em automação da detecção de ameaças. 
+A primeira vertente se concentra em técnicas de aprendizado de máquina aplicadas à triagem e classificação de \textit{logs} de segurança, sem produzir artefatos sintáticos diretamente acionáveis em sistemas \gls{SIEM}. 
+Nesta vertente encontram-se Shah et al (2022) e Nurusheva et al (2024), que combinam métodos supervisionados e não supervisionados para reduzir a carga de alertas em ambientes corporativos -- estabelecendo, ainda que indiretamente, um terreno metodológico sobre o qual as abordagens mais recentes puderam se apoiar. 
+A segunda vertente se concentra na geração automatizada das próprias regras de detecção, valendo-se das capacidades generativas dos LLMs, e representa uma evolução natural da primeira: 
+uma vez consolidada a aplicabilidade de aprendizado de máquina e inteligência artificial na análise de eventos de segurança, abre-se caminho para que essas mesmas técnicas atuem não apenas na classificação dos eventos, mas também na produção dos próprios mecanismos de detecção. 
+Nesta segunda vertente está o GRIDAI (Li et al (2025)), voltado para regras de sistemas de detecção de intrusão de rede; o \textit{RulePilot} (Wang et al. (2026)), voltado para regras nativas das linguagens SPL e KQL; e o \textit{LLMCloudHunter} (Schwartz et al. (2025)), voltado para regras \textit{Sigma} em ambientes de nuvem. 
+O presente trabalho melhor se insere na segunda vertente, compartilhando com Schwartz et al. (2025) o objetivo de geração de regras \textit{Sigma}.
+
+A análise comparativa dos estudos revela três observações fundamentais para o posicionamento da presente pesquisa. 
+Num primeiro momento, dentre os cinco trabalhos analisados, apenas o \textit{LLMCloudHunter} de Schwartz et al (2025) compartilha exatamente o mesmo formato-alvo de saída (regras \textit{Sigma}). 
+No entanto, mesmo neste caso, há diferenças relevantes de escopo: o \textit{LLMCloudHunter} opera sobre relatórios OSCTI como entrada e produz regras específicas à detecção em ambientes de nuvem AWS, enquanto o presente trabalho opera a partir de registros CVE estruturados e notícias de vulnerabilidade, visando a produção de regras \textit{Sigma} não restritas a um provedor de nuvem específico. 
+Em segundo, os trabalhos voltados a outras linguagens de regra -- Li et al. (2025) e Wang et al. (2026), não competem diretamente no domínio \textit{Sigma}, mas oferecem precedentes arquiteturais relevantes para a estruturação do agente proposto neste trabalho. 
+O uso de validação iterativa em motor de detecção real (Li et al., 2025) e o uso de raciocínio em cadeia com reflexão (Wang et al., 2026) são padrões metodológicos que se aproximam da arquitetura \gls{LangGraph} empregada nesta pesquisa, ainda que a aplicação tenha contextos sintáticos distintos. 
+Em terceiro, os trabalhos da primeira vertente -- Shah et al. (2022) e Nurusheva et al. (2024), embora não produzam regras como saída, são fundamentais para contextualizar a presente pesquisa: comprovam o quão útil é o uso de técnicas de aprendizado de máquina e inteligência artificial na detecção de ameaças em sistemas \gls{SIEM}, fundamentando a premissa de que tais técnicas, hoje já consolidadas, estendem-se para tarefas sofisticadas como a geração automatizada de regras de detecção.
+
+Há ainda uma divergência teórica interessante entre os trabalhos analisados, que merece saliência. 
+Wang et al. (2026) argumentam que o formato \textit{Sigma} é insuficiente para a detecção de ataques sofisticados que envolvem sequências de eventos, por restringir-se sobretudo à correspondência de padrões por expressões regulares, criticando trabalhos que adotam \textit{Sigma} como saída -- citando diretamente o \textit{LLMCloudHunter}. 
+O presente trabalho optou por manter o foco no formato \textit{Sigma} em decorrência de sua portabilidade entre múltiplos desenvolvedores de \gls{SIEM}s, da existência de um repositório público bem consolidade de regras (o \gls{SigmaHQ})  que serve como base para o mecanismo de RAG, e da posição do formato como padrão aberto mantido pela comunidade de \textit{detection engineering}. 
+Essa escolha posiciona o trabalho aqui proposto em alinhamento com Schwartz et al (2025), mas com clara consciência das limitações expressivas do formato apontadas por Wang et al (2026).
+Vale ressaltar igualmente que a própria arquitetura proposta para o agente desenvolvido neste trabalho -- fundamentada no uso de RAG sobre o repositório \gls{SigmaHQ}, pode apresentar limitações na tarefa específica de geração de regras \textit{Sigma}, conforme indícios observados ao longo do desenvolvimento. 
+Portanto, investigação empírica conduzida neste trabalho de conclusão de curso pretende vislumbar o quanto essa estratégia se sustenta frente às alternativas avaliadas, contribuindo para o esclarecimento dessa questão metodológica.
+
+Ante o exposto, dessa análise emerge o recorte ocupado pelo presente trabalho. 
+Enquanto o \textit{LLMCloudHunter} demonstra a viabilidade técnica da geração de regras \textit{Sigma} via LLM em um domínio específico, e enquanto GRIDAI e \textit{RulePilot} exploram arquiteturas agênticas em outras linguagens de regra, permanece em aberto a questão metodológica de quanto a complexidade arquitetural -- desde a invocação direta de uma LLM em formato \textit{\gls{zero-shot}} até a orquestração de um agente autônomo com RAG e validação iterativa, efetivamente contribui para a qualidade das regras \textit{Sigma} geradas a partir de fontes públicas de inteligência sobre ameaças. 
+O estudo aqui exposto investiga essa questão por meio da comparação controlada entre três estratégias incrementais — \textit{\gls{zero-shot}}, engenharia de \textit{prompt} e agente autônomo com RAG -- submetidas a teste estatístico de hipóteses. 
+Diferentemente dos cinco trabalhos analisados, que tipicamente comparam uma única abordagem proposta contra LLMs autônomos ou métodos baseados em mineração de dados, o presente trabalho se propõe a quantificar empiricamente o ganho marginal proporcionado por cada camada de complexidade arquitetural na tarefa de geração de regras \textit{Sigma}, fornecendo subsídios para decisões de \textit{design} em trabalhos futuros na linha de pesquisa.
+
+
 
