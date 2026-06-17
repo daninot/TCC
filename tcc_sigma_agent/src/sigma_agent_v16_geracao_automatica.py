@@ -992,7 +992,7 @@ import time
 import traceback
 
 # >>>>> AJUSTE AQUI o caminho da pasta raiz com os cenários <<<<<
-PASTA_TEST_CASES = "/home/daniela/Documents/TCC/tcc_sigma_agent/data/TESTE_GERACAO/test_cases"
+PASTA_TEST_CASES = "/home/daniela/Documents/TCC/tcc_sigma_agent/data_final/test_cases/test_cases_1"
 
 # Quais prompts rodar em cada cenário. O script só roda os que existirem na pasta.
 PROMPTS_ALVO = ["prompt1", "prompt2", "prompt3"]
