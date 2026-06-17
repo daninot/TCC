@@ -1,0 +1,33 @@
+<thinking>...</thinking>
+
+The LOGSOURCE category that fits best is "webserver" because the indicators of the threat (error messages containing database errors or hints about database structure) would appear in web server logs.
+
+The FIELDS that contain the indicator of the threat are likely to be "cs-uri-query", "cs-method", and possibly others depending on the specific log format. These fields typically contain information about the HTTP request, such as the query string and method used.
+
+For each field, |contains is likely the correct choice because the indicators may appear anywhere in the query string or other fields.
+
+The ATT&CK technique that best describes this threat is t1221 (Server-Side Template Injection).
+
+Here is the YAML rule:
+
+title: SQL Injection Detection
+id: sql-injection-detection
+status: test
+description: Detects SQL injection attempts by monitoring web server logs for error messages containing database errors or hints about database structure.
+references:
+  - http://www.sqlinjection.net/errors
+logsource:
+  category: webserver
+detection:
+  select_method:
+    cs-method: 'GET'
+  keywords:
+    - 'database errors'
+    - 'SQL syntax error'
+    - 'table not found'
+  filter:
+    sc-status: 404
+condition: select_method and keywords and not filter
+falsepositives:
+  - Unknown
+level: high

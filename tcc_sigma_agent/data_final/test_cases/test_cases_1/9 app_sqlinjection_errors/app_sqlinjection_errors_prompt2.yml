@@ -1,0 +1,37 @@
+<thinking>...</thinking>
+
+LOGSOURCE: The indicator would appear in process_creation logs, as SQL injection attacks often involve malicious SQL code being executed by the database server.
+
+FIELDS: The fields that contain the indicator of the threat are Image (to check if sqlcmd.exe is running) and CommandLine (to look for specific SQL commands or syntax errors).
+
+MODIFIERS: For the Image field, |endswith is the correct choice to check if the process is sqlcmd.exe. For the CommandLine field, |contains|all is used to match multiple specific SQL commands or syntax errors.
+
+ATT&CK: The technique that best describes this threat is t1005 (SQL Injection).
+
+---
+
+title: Error-Based SQL Injection Detection
+id: 12345678-1234-5678-9012-345678901234
+status: test
+description: Detects error-based SQL injection attacks by looking for specific SQL commands or syntax errors in process creation logs.
+references:
+    - http://www.sqlinjection.net/errors
+author: [Your Name]
+date: 2023-02-20
+tags:
+    - attack.t1005
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_sqlcmd:
+        Image|endswith: '\sqlcmd.exe'
+    selection_syntax_errors:
+        CommandLine|contains|all:
+            - 'The used SELECT statements have a different number of columns'
+            - 'XPATH syntax error:'
+            - 'You have an error in your SQL syntax;'
+    condition: all of selection_*
+falsepositives:
+    - Unknown
+level: medium

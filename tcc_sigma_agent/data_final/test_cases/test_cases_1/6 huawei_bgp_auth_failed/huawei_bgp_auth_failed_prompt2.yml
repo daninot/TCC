@@ -1,0 +1,27 @@
+<thinking>...</thinking>
+
+(a) LOGSOURCE: The category that fits best is network_connection, as the indicator would appear in the log source related to network connections.
+
+(b) FIELDS: The specific log fields that contain the indicator of the threat are likely to be src_ip (source IP address), dst_ip (destination IP address), and possibly protocol or packet details.
+
+(c) MODIFIERS: For each field, |contains is not suitable for exact matches like IP addresses. Instead, use |exact for src_ip and dst_ip.
+
+(d) ATT&CK: The technique that best describes this threat is t1008.007 (Domain Name System (DNS) Tunneling), as it involves using DNS to bypass security controls or exfiltrate data.
+
+
+```yml
+title: Bypass via DNS tunneling
+
+logsource:
+  category: network_connection
+  product: any
+
+detection:
+  selection:
+    src_ip: |exact "192.0.2.1"
+    dst_ip: |exact "8.8.8.8"
+  condition: selection
+
+references:
+  - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz.pdf
+```

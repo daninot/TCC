@@ -1,0 +1,35 @@
+<thinking>...</thinking>
+
+LOGSOURCE: The category that fits best is "process_creation" because the indicator of the threat appears in the context of application authentication flows, which are likely related to user interactions with applications.
+
+FIELDS: The specific log fields that contain the indicator of the threat are likely "ResultDescription" or similar fields that describe the outcome of an authentication attempt. However, without more information about the exact log format, it's difficult to pinpoint the exact field names.
+
+MODIFIERS: For each field, |contains is likely the correct choice because the indicators (e.g., "signing in", "authorization") are likely to appear anywhere within the log message.
+
+ATT&CK: The technique that best describes this threat is t1566.01 (Phishing: Spearphishing via Email) or t1566 (Phishing), but since the threat is not explicitly stated as phishing, I will choose a more general technique related to authentication and authorization, which is t1552 (Unauthorized Access: Phishing).
+
+YAML rule:
+
+title: Application Authentication Flows
+id: 12345678-1234-5678-9012-345678901234
+status: test
+description: Detects suspicious application authentication flows
+references:
+  - https://learn.microsoft.com/en-us/entra/architecture/security-operations-applications#application-authentication-flows
+author: Your Name
+date: 2023-09-07
+tags:
+  - attack.t1552
+logsource:
+  product: Microsoft Entra security operations logs
+  service: auditlogs
+detection:
+  selection:
+    ResultDescription|contains:
+      - "signing in"
+      - "authorization"
+      - "access to this page requires authorization"
+  condition: selection
+falsepositives:
+  - Unknown
+level: medium

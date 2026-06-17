@@ -1,0 +1,55 @@
+<thinking>...</thinking>
+
+The log source category that fits best is "application" because SQL injection attacks typically occur in web applications.
+
+The fields that contain the indicator of the threat are likely to be related to database errors or exceptions, such as "error_message", "exception_type", or "sql_error".
+
+For each field, |contains would be the correct choice because these fields may contain path fragments or terminal tokens that indicate a SQL injection attack.
+
+The ATT&CK technique that best describes this threat is t1055 (SQL Injection) because it involves injecting malicious SQL code into a database to extract or modify sensitive data.
+
+
+```yml
+title: Detecting SQL Injection Attacks using Database Errors
+
+id: 12345678-1234-5678-9012-345678901234
+
+status: experimental
+
+description: |
+    This rule detects SQL injection attacks by monitoring for suspicious database error messages.
+
+references:
+  - http://www.sqlinjection.net/errors
+  - https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-table-transact-sql?view=sql-server-ver16
+  - https://docs.oracle.com/cd/E19683-01/816-4883/6mb2joatd/index.html
+
+author: [Your Name]
+
+date: 2025-06-04
+
+tags:
+  - attack.t1055
+  - attack.exfiltration
+  - attack.impact
+
+logsource:
+  category: application
+  product: windows
+  service: sql_server
+
+detection:
+  selection:
+    error_message|contains:
+      - "SQL syntax near"
+      - "Invalid column name"
+      - "Table or view does not exist"
+      - "Conversion failed when converting date/time from character string"
+      - "Arithmetic overflow error for data type int, value = [0-9]+"
+  condition: selection
+
+falsepositives:
+  - Legitimate database errors
+
+level: high
+```

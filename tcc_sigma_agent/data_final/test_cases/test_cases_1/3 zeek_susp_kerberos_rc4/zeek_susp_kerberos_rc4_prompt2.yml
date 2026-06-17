@@ -1,0 +1,30 @@
+<thinking>...</thinking>
+
+```yml
+title: Kerberoasting Detection
+description: Detects potential Kerberoasting attacks by identifying Kerberos service ticket requests with RC4 encryption through Event ID 4769.
+status: experimental
+author: Splunk
+date_published: 2023-09-22T00:00:00-07:00
+tags:
+    - attack.kerberoasting
+
+logsource:
+    product: windows
+    category: kerberos
+    name: 'kerberos'
+
+filter:
+    event_id: 4769
+
+sel:
+    Ticket_Options|contains: 0x17
+
+falsepositives:
+    - Legitimate Kerberos service ticket requests from older systems or applications.
+
+level: high
+
+references:
+    - https://attack.mitre.org/techniques/T1558/
+```

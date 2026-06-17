@@ -1,0 +1,13 @@
+title: Huawei BGP Authentication Failures
+id: 6b91015a-4d27-41eb-b66e-6bd65341f9dc
+description: Detects BGP failures which may be indicative of brute force attacks to manipulate routing.
+author: 'Your Name'
+references:
+  - https://www.blackhat.com/presentations/bh-usa-03/bh-us-03-convery-franz-v3.pdf
+logsource:
+  category: network_connection
+  product: huawei
+detection:
+  selection:
+    Error Code = 5 and Error Subcode = 0
+  condition: selection

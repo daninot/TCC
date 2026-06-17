@@ -1,0 +1,34 @@
+<thinking>...</thinking>
+
+LOGSOURCE: The log source that fits best is `signinlogs` because the indicator of the threat (OAuth 2.0 device authorization grant) would appear in application logs for security incidents.
+
+FIELDS: The specific log fields that contain the indicator of the threat are likely to be related to authentication and authorization, such as `properties.message`.
+
+MODIFIERS: For each field, exact match is the correct choice because we're looking for a specific string ("device code") in the log message.
+
+ATT&CK: The technique that best describes this threat is t1092.004 (OAuth Token Theft) or more specifically t1092.005 (OAuth Device Code Phishing), but since there's no direct ATT&CK reference to OAuth Device Code, we'll use t1092.004 as a closest match.
+
+
+```yml
+title: Detecting OAuth 2.0 Device Authorization Grant Abuse
+id: 12345678-1234-5678-9012-345678901234
+status: test
+description: |
+    This rule detects the abuse of OAuth 2.0 device authorization grant, which allows attackers to bypass MFA and gain persistence in Azure.
+references:
+  - https://learn.microsoft.com/en-us/entra/architecture/security-operations-applications#application-authentication-flows
+author: Your Name
+date: 2023-02-20
+tags:
+  - attack.t1092.004
+logsource:
+  product: azure
+  service: signinlogs
+detection:
+  selection:
+    properties.message: exact match "device code"
+condition: selection
+falsepositives:
+  - Unknown
+level: medium
+```

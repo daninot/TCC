@@ -1,0 +1,19 @@
+title: Detect GPO modifications via ScriptBlockLogging
+id: 3ec4a8cb-a1ae-4033-a1f1-8e845100ad33
+
+logsource:
+  product: windows
+  service: security
+  category: registry_event
+
+detection:
+  selection_eventid:
+    EventID:
+      - 5136
+      - 5145
+  selection_attributes_main:
+    AttributeLDAPDisplayName:
+      - 'gPCMachineExtensionNames'
+      - 'gPCUserExtensionNames'
+    AttributeValue|contains: '42B5FAAE-6536-11D2-AE5A-0000F87571E3'
+  condition: all of selection_eventid and (all of selection_attributes_main)

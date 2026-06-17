@@ -1,0 +1,17 @@
+title: New Firewall Rule Added In Windows Firewall Exception List Via WmiPrvSE.EXE
+id: 0193f895-20f9-40c8-a64f-6570dea17068
+status: test
+description: Detects the addition of a new "Allow" firewall rule by the WMI process (WmiPrvSE.EXE)
+references:
+  - https://malwaretrafficanalysis.com/2022/05/25/rhysida-ransomware-activity-analysis-and-ties-to-vice-society/
+  - https://www.malwarebytes.com/blog/2022/05/new-firewall-rule-added-in-windows-firewall-exception-list-via-wmiprvese-exe/
+logsource:
+  category: firewall
+  product: windows
+detection:
+  selection:
+    ModifyingApplication: WmiPrvSE.EXE
+    ApplicationPath: |-
+      *Allow*
+  condition: selection
+level: high

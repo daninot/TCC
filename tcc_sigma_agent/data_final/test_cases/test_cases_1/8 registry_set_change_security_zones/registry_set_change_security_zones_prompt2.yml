@@ -1,0 +1,39 @@
+title: Modification of IE Registry Settings
+id: 119c66d0-cdbb-42d7-95ba-a5c3e3845004
+description: Detects modification of the registry settings used for Internet Explorer and other Windows components that use these settings. An attacker can abuse this registry key to add a domain to the trusted sites Zone or insert JavaScript for persistence.
+status: experimental
+author: Teoderick Contreras, Splunk
+date: 2026-05-13
+
+logsource:
+    product: windows
+    category: registry_event
+
+detection:
+    selection_set_1:
+        TargetObject|endswith:
+            - 'SOFTWARE\Microsoft\Internet Explorer\Main\FeatureControl\FEATURE_ENABLE_SITES_IN_ZONE_LIST'
+            - 'SOFTWARE\Microsoft\Internet Explorer\Main\FeatureControl\FEATURE_RESTRICT_ACTIVEX'
+            - 'SOFTWARE\Microsoft\Internet Explorer\Main\FeatureControl\FEATURE_RESTRICT_FILEDOWNLOAD'
+        Details: 'DWORD (0x00000001)'
+    selection_set_2:
+        TargetObject|endswith:
+            - 'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoLogOff'
+            - 'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoDesktop'
+            - 'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoRun'
+            - 'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoFind'
+            - 'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoControlPanel'
+            - 'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoFileMenu'
+            - 'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoClose'
+            - 'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoSetTaskbar'
+            - 'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoPropertiesMyDocuments'
+            - 'SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\NoTrayContextMenu'
+        Details: 'DWORD (0x00000001)'
+    condition: 1 of selection_set_*
+
+falsepositives:
+    - Legitimate admin script
+
+level: medium
+tags:
+    - attack.t1112

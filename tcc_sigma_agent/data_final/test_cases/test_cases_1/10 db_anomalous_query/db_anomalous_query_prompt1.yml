@@ -1,0 +1,36 @@
+<thinking>...</thinking>
+
+(a) LOGSOURCE: The indicator of the threat would appear in the process_creation category, as it involves the execution of a malicious tool.
+
+(b) FIELDS: The relevant log fields are Image (to detect the execution of sqlmap) and CommandLine (to identify the command-line arguments used by sqlmap).
+
+(c) MODIFIERS: For the Image field, |contains is the correct choice to match any path fragments that may appear anywhere. For the CommandLine field, exact match is the best option to ensure that the specific command-line arguments are detected.
+
+(d) ATT&CK: The technique that best describes this threat is t1059 (Command and Control), as sqlmap is a tool used for reconnaissance and exploitation of vulnerabilities.
+
+
+```yml
+title: SQLMap Execution Process Creation
+id: 12345678-1234-5678-9012-345678901234
+status: test
+description: Detects process creation events that use the SQLMap tool
+references:
+  - https://github.com/sqlmapproject/sqlmap
+author: Your Name
+date: 2023-02-20
+modified: 2023-02-20
+tags:
+  - attack.command_and_control
+  - attack.reconnaissance
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    Image|contains: 'sqlmap'
+    CommandLine|exact_match: '--wizard'
+  condition: selection
+falsepositives:
+  - Unknown
+level: high
+```

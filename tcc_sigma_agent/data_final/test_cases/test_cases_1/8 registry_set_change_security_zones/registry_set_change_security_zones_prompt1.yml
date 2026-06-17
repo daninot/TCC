@@ -1,0 +1,18 @@
+title: Registry modification to add domain to trusted sites zone
+id: ac8b538d-0e92-42e2-804c-6255ddffddc2
+
+logsource:
+  category: registry_event
+  product: windows
+
+detection:
+  selection:
+    TargetObject: ['HKEY_CURRENT_USER\Software\Policies\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap', 'HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap']
+    Details: ['*domain_name*', '*trusted_sites_zone_value*']
+
+  condition: selection
+
+falsepositives:
+  - Legitimate admin script
+
+level: medium

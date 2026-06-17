@@ -1,0 +1,27 @@
+<thinking>...</thinking>
+
+LOGSOURCE: registry_event fits best because Group Policy Objects (GPOs) are stored in the registry.
+
+FIELDS: The indicator of the threat is likely to appear in the `RegistryPath` field, which contains the path where the GPO modification occurred.
+
+MODIFIERS: For the `RegistryPath` field, |contains is the correct choice because it may contain fragments like `\Policies\`.
+
+ATT&CK: T1484.001 - Group Policy Modification best describes this threat.
+
+
+```yml
+title: Tamper Windows Defender - ScriptBlockLogging
+
+references:
+  - https://raw.githubusercontent.com/redcanaryco/atomic-red-team/40b77d63808dd4f4eafb83949805636735a1fd15/atomics/T1484.001/T1484.001.md
+  - https://attack.mitre.org/techniques/T1484/001
+
+logsource:
+  category: registry_event
+  product: windows
+
+detection:
+  selection_gpo_modification:
+    RegistryPath|contains: '\\Policies\\'
+    severity: high
+```

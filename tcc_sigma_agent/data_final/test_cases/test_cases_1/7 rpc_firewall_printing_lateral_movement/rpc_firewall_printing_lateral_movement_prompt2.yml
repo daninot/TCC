@@ -1,0 +1,41 @@
+<thinking>...</thinking>
+
+```yml
+title: PrintNightmare RCE Vulnerability
+id: 4f5c3b1d-9a8e-4c6c-b7b2-f0d0e1234567
+description: Detects attempts to exploit the PrintNightmare RCE vulnerability in Windows Print Spooler service.
+status: experimental
+author: @your-handle
+date_created: 2021/07/06
+references:
+  - https://support.microsoft.com/en-us/topic/july-6-2021-kb5004945-cumulative-update-for-windows-10-version-1903-and-windows-server-version-1903-7a4f2e8c-9d0f-45b9-bd35-1f5f4cddc5e5
+  - https://www.cve.org/CVERecord?id=CVE-2021-34527
+
+logsource:
+  category: file_event
+  product: windows
+
+filter:
+  event_id: '4656'
+
+condition:
+  process_name: |-
+    winprint.exe
+    spoolsv.exe
+
+detection:
+  selection:
+    - path: C:\Windows\System32\spool\drivers\w32x86\
+      operator: OnMatch
+    - path: C:\Windows\System32\spool\drivers\x64\
+      operator: OnMatch
+  condition: selection
+
+falsepositives:
+  - Legitimate printer driver installation
+
+level: high
+
+tags:
+  - attack.rce
+```

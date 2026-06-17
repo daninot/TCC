@@ -1,0 +1,35 @@
+<thinking>...</thinking>
+
+LOGSOURCE: The indicator would appear in Azure/Entra ID logs, which suggests that the category fits best with "webserver" or more specifically, "signinlogs". Justification: This is where application authentication flows are monitored.
+
+FIELDS: The specific log field containing the indicator of the threat is likely to be "properties.message", as it contains information about the authentication flow used by the application. Justification: This field would contain details about the authentication process, including the type of flow used.
+
+MODIFIERS: For this field, |contains is the correct choice because the message may contain a string indicating the use of ROPC (Resource Owner Password Credentials) or another authentication flow. Justification: Since we're looking for the presence of specific strings in the message, contains is the most suitable modifier.
+
+ATT&CK: The technique that best describes this threat is t1078 (Valid Accounts), as it involves using compromised credentials to authenticate with an application. Avoiding defaulting to phishing (t1566) because ROPC is a legitimate authentication flow when used properly.
+
+```yml
+title: Applications That Are Using ROPC Authentication Flow
+id: 55695bc0-c8cf-461f-a379-2535f563c854
+status: test
+description: |
+    Resource owner password credentials (ROPC) should be avoided if at all possible as this requires the user to expose their current password credentials to the application directly.
+    The application then uses those credentials to authenticate the user against the identity provider.
+references:
+  - https://learn.microsoft.com/en-us/entra/architecture/security-operations-applications#application-authentication-flows
+author: Mark Morowczynski '@markmorow', Bailey Bercik '@baileybercik'
+date: 2022-06-01
+tags:
+  - attack.stealth
+  - attack.t1078
+logsource:
+  product: azure
+  service: signinlogs
+detection:
+  selection:
+    properties.message|contains: ROPC
+  condition: selection
+falsepositives:
+  - Applications that are being used as part of automated testing or a legacy application that cannot use any other modern authentication flow
+level: medium
+```

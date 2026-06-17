@@ -1,0 +1,32 @@
+title: Suspicious SQL Queries
+
+id: 474442c3-1c2e-421c-8892-142d9def3c1c
+
+status: test
+
+description: Detects suspicious SQL query keywords often used during recon, exfiltration or destructive activities.
+
+references:
+- https://github.com/sqlmapproject/sqlmap
+- https://www.splunk.com/en_us/blog/data-exfiltration-techniques.html
+- https://detection.fyi/detections/suspicious-sql-query/
+
+logsource:
+  category: process_creation
+
+detection:
+  selection:
+    Image|contains: 'sql'
+    CommandLine|contains|all:
+      - 'DROP TABLE'
+      - 'SELECT * FROM'
+      - 'INSERT INTO'
+      - 'UPDATE '
+      - 'DELETE FROM'
+
+  condition: selection
+
+falsepositives:
+- Unknown
+
+level: high

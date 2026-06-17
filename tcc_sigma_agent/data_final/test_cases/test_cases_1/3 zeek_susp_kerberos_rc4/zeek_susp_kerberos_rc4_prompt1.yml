@@ -1,0 +1,18 @@
+title: Detecting Kerberoasting Activity
+id: 25a82d88-dfad-4596-a321-8cef0aafa9c4
+description: Detects Kerberoasting activity by monitoring for service account credential extraction and SPN modifications.
+references:
+  - https://adsecurity.org/?p=3458
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    CommandLine|contains|all:
+      - 'Kerberoast'
+      - 'service account credentials'
+      - 'SPNs'
+  condition: selection
+falsepositives:
+  - Unknown
+level: high

@@ -1,0 +1,73 @@
+cenario_id,prompt_usado,status,tentativas,tempo_total_s,usou_web_search,tipo_input,contexto_pobre,erro_validacao_final,regra_referencia,arquivo_regra_gerada,arquivo_parecer
+1 bitbucket_audit_unauthorized_full_data_export_triggered,prompt1,APROVADO,4,106.76,True,texto_livre,True,APROVADO,bitbucket_audit_unauthorized_full_data_export_triggered.yml,bitbucket_audit_unauthorized_full_data_export_triggered_prompt1.yml,bitbucket_audit_unauthorized_full_data_export_triggered_prompt1.parecer.txt
+1 bitbucket_audit_unauthorized_full_data_export_triggered,prompt2,APROVADO,3,94.51,True,texto_livre,False,APROVADO,bitbucket_audit_unauthorized_full_data_export_triggered.yml,bitbucket_audit_unauthorized_full_data_export_triggered_prompt2.yml,bitbucket_audit_unauthorized_full_data_export_triggered_prompt2.parecer.txt
+1 bitbucket_audit_unauthorized_full_data_export_triggered,prompt3,REPROVADO,4,114.96,True,texto_livre,False,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: while scanning a simple key
+  in ""<unicode string>"", line 11, column 1:
+    title = Bitbucket Full Data Expo ... 
+    ^
+could not find expected ':'
+  in ""<unicode string>"", line 12, column 1:
+    id = 12345678-1234-5678-9012-345 ... 
+    ^)",bitbucket_audit_unauthorized_full_data_export_triggered.yml,bitbucket_audit_unauthorized_full_data_export_triggered_prompt3.yml,bitbucket_audit_unauthorized_full_data_export_triggered_prompt3.parecer.txt
+10 db_anomalous_query,prompt1,REPROVADO,4,71.77,True,texto_livre,True,"Etapa 2 falhou - as seguintes tags não existem na taxonomia MITRE ATT&CK: attack.command_and_control. Use APENAS tags no formato 'attack.tXXXX' (técnicas reais, ex: attack.t1190) ou 'attack.<tatica>' (ex: attack.initial-access, attack.execution, attack.persistence). Remova ou substitua as tags inválidas por equivalentes reais.",db_anomalous_query.yml,db_anomalous_query_prompt1.yml,db_anomalous_query_prompt1.parecer.txt
+10 db_anomalous_query,prompt2,APROVADO,4,84.49,True,texto_livre,False,APROVADO,db_anomalous_query.yml,db_anomalous_query_prompt2.yml,db_anomalous_query_prompt2.parecer.txt
+10 db_anomalous_query,prompt3,APROVADO,1,72.86,True,texto_livre,False,APROVADO,db_anomalous_query.yml,db_anomalous_query_prompt3.yml,db_anomalous_query_prompt3.parecer.txt
+2 azure_app_device_code_authentication,prompt1,REPROVADO,4,86.21,True,texto_livre,True,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: mapping values are not allowed here
+  in ""<unicode string>"", line 7, column 76:
+     ... his threat is t1566.01 (Phishing: Spearphishing via Email) or t1 ... 
+                                         ^)",azure_app_device_code_authentication.yml,azure_app_device_code_authentication_prompt1.yml,azure_app_device_code_authentication_prompt1.parecer.txt
+2 azure_app_device_code_authentication,prompt2,REPROVADO,4,81.94,True,texto_livre,False,"Etapa 2 falhou - as seguintes tags não existem na taxonomia MITRE ATT&CK: attack.stealth. Use APENAS tags no formato 'attack.tXXXX' (técnicas reais, ex: attack.t1190) ou 'attack.<tatica>' (ex: attack.initial-access, attack.execution, attack.persistence). Remova ou substitua as tags inválidas por equivalentes reais.",azure_app_device_code_authentication.yml,azure_app_device_code_authentication_prompt2.yml,azure_app_device_code_authentication_prompt2.parecer.txt
+2 azure_app_device_code_authentication,prompt3,REPROVADO,4,81.34,True,texto_livre,False,"Etapa 3 falhou - erro de semântica - 
+pySigma relata: Sigma rule must contain at least one condition",azure_app_device_code_authentication.yml,azure_app_device_code_authentication_prompt3.yml,azure_app_device_code_authentication_prompt3.parecer.txt
+3 zeek_susp_kerberos_rc4,prompt1,APROVADO,1,66.6,True,texto_livre,True,APROVADO,zeek_susp_kerberos_rc4.yml,zeek_susp_kerberos_rc4_prompt1.yml,zeek_susp_kerberos_rc4_prompt1.parecer.txt
+3 zeek_susp_kerberos_rc4,prompt2,REPROVADO,4,79.41,True,texto_livre,False,Etapa 2 falhou - faltou campo obrigatório: 'detection',zeek_susp_kerberos_rc4.yml,zeek_susp_kerberos_rc4_prompt2.yml,zeek_susp_kerberos_rc4_prompt2.parecer.txt
+3 zeek_susp_kerberos_rc4,prompt3,APROVADO,1,59.56,True,texto_livre,False,APROVADO,zeek_susp_kerberos_rc4.yml,zeek_susp_kerberos_rc4_prompt3.yml,zeek_susp_kerberos_rc4_prompt3.parecer.txt
+4 posh_ps_modify_group_policy_settings,prompt1,REPROVADO,4,99.5,True,texto_livre,True,"Etapa 3 falhou - erro de semântica - 
+pySigma relata: Unknown modifier 'equals'",posh_ps_modify_group_policy_settings.yml,posh_ps_modify_group_policy_settings_prompt1.yml,posh_ps_modify_group_policy_settings_prompt1.parecer.txt
+4 posh_ps_modify_group_policy_settings,prompt2,APROVADO,2,69.17,True,texto_livre,False,APROVADO,posh_ps_modify_group_policy_settings.yml,posh_ps_modify_group_policy_settings_prompt2.yml,posh_ps_modify_group_policy_settings_prompt2.parecer.txt
+4 posh_ps_modify_group_policy_settings,prompt3,REPROVADO,4,77.73,True,texto_livre,False,"Etapa 3 falhou - erro de semântica - 
+pySigma relata: Sigma rule must contain at least one condition",posh_ps_modify_group_policy_settings.yml,posh_ps_modify_group_policy_settings_prompt3.yml,posh_ps_modify_group_policy_settings_prompt3.parecer.txt
+5 win_firewall_as_add_rule_wmiprvse,prompt1,APROVADO,4,97.81,True,texto_livre,True,APROVADO,win_firewall_as_add_rule_wmiprvse.yml,win_firewall_as_add_rule_wmiprvse_prompt1.yml,win_firewall_as_add_rule_wmiprvse_prompt1.parecer.txt
+5 win_firewall_as_add_rule_wmiprvse,prompt2,APROVADO,3,96.15,True,texto_livre,False,APROVADO,win_firewall_as_add_rule_wmiprvse.yml,win_firewall_as_add_rule_wmiprvse_prompt2.yml,win_firewall_as_add_rule_wmiprvse_prompt2.parecer.txt
+5 win_firewall_as_add_rule_wmiprvse,prompt3,APROVADO,2,73.9,True,texto_livre,False,APROVADO,win_firewall_as_add_rule_wmiprvse.yml,win_firewall_as_add_rule_wmiprvse_prompt3.yml,win_firewall_as_add_rule_wmiprvse_prompt3.parecer.txt
+6 huawei_bgp_auth_failed,prompt1,REPROVADO,4,75.83,True,texto_livre,True,"Etapa 3 falhou - erro de semântica - 
+pySigma relata: 'INFO or WARNING' is not a valid Sigma rule level",huawei_bgp_auth_failed.yml,huawei_bgp_auth_failed_prompt1.yml,huawei_bgp_auth_failed_prompt1.parecer.txt
+6 huawei_bgp_auth_failed,prompt2,REPROVADO,4,81.65,True,texto_livre,False,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: while scanning a block scalar
+  in ""<unicode string>"", line 10, column 13:
+        src_ip: |exact ""192.0.2.1""
+                ^
+expected chomping or indentation indicators, but found 'e'
+  in ""<unicode string>"", line 10, column 14:
+        src_ip: |exact ""192.0.2.1""
+                 ^)",huawei_bgp_auth_failed.yml,huawei_bgp_auth_failed_prompt2.yml,huawei_bgp_auth_failed_prompt2.parecer.txt
+6 huawei_bgp_auth_failed,prompt3,APROVADO,2,73.09,True,texto_livre,False,APROVADO,huawei_bgp_auth_failed.yml,huawei_bgp_auth_failed_prompt3.yml,huawei_bgp_auth_failed_prompt3.parecer.txt
+7 rpc_firewall_printing_lateral_movement,prompt1,REPROVADO,4,94.5,True,texto_livre,True,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: while scanning a block scalar
+  in ""<unicode string>"", line 11, column 16:
+            Image: |endswith 'spoolsv.exe'
+                   ^
+expected chomping or indentation indicators, but found 'e'
+  in ""<unicode string>"", line 11, column 17:
+            Image: |endswith 'spoolsv.exe'
+                    ^)",rpc_firewall_printing_lateral_movement.yml,rpc_firewall_printing_lateral_movement_prompt1.yml,rpc_firewall_printing_lateral_movement_prompt1.parecer.txt
+7 rpc_firewall_printing_lateral_movement,prompt2,REPROVADO,4,92.45,True,cve,False,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: while scanning for the next token
+found character '@' that cannot start any token
+  in ""<unicode string>"", line 5, column 9:
+    author: @your-handle
+            ^)",rpc_firewall_printing_lateral_movement.yml,rpc_firewall_printing_lateral_movement_prompt2.yml,rpc_firewall_printing_lateral_movement_prompt2.parecer.txt
+7 rpc_firewall_printing_lateral_movement,prompt3,APROVADO,2,88.32,True,cve,False,APROVADO,rpc_firewall_printing_lateral_movement.yml,rpc_firewall_printing_lateral_movement_prompt3.yml,rpc_firewall_printing_lateral_movement_prompt3.parecer.txt
+8 registry_set_change_security_zones,prompt1,APROVADO,1,67.82,True,texto_livre,True,APROVADO,registry_set_change_security_zones.yml,registry_set_change_security_zones_prompt1.yml,registry_set_change_security_zones_prompt1.parecer.txt
+8 registry_set_change_security_zones,prompt2,APROVADO,3,89.42,True,texto_livre,False,APROVADO,registry_set_change_security_zones.yml,registry_set_change_security_zones_prompt2.yml,registry_set_change_security_zones_prompt2.parecer.txt
+8 registry_set_change_security_zones,prompt3,REPROVADO,4,94.9,True,texto_livre,False,Etapa 2 falhou - faltou campo obrigatório: 'detection',registry_set_change_security_zones.yml,registry_set_change_security_zones_prompt3.yml,registry_set_change_security_zones_prompt3.parecer.txt
+9 app_sqlinjection_errors,prompt1,REPROVADO,4,84.62,True,texto_livre,True,"[1/3] falhou (erro de sintaxe YAML. 
+Detalhes: mapping values are not allowed here
+  in ""<unicode string>"", line 9, column 22:
+    Here is the YAML rule:
+                         ^)",app_sqlinjection_errors.yml,app_sqlinjection_errors_prompt1.yml,app_sqlinjection_errors_prompt1.parecer.txt
+9 app_sqlinjection_errors,prompt2,REPROVADO,4,83.36,True,texto_livre,False,Etapa 2 falhou - faltou campo obrigatório: 'title',app_sqlinjection_errors.yml,app_sqlinjection_errors_prompt2.yml,app_sqlinjection_errors_prompt2.parecer.txt
+9 app_sqlinjection_errors,prompt3,REPROVADO,4,92.58,True,texto_livre,False,"Etapa 3 falhou - erro de semântica - 
+pySigma relata: Sigma rule author must be a string",app_sqlinjection_errors.yml,app_sqlinjection_errors_prompt3.yml,app_sqlinjection_errors_prompt3.parecer.txt
