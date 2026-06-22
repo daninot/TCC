@@ -10,7 +10,7 @@
 Este capítulo descreve os materiais e os métodos que serão utilizados para conduzir esta pesquisa.
 Apresentar-se-ão, o conjunto de ferramentas e bibliotecas empregadas no desenvolvimento; 
 a base de dados de regras \textit{Sigma} utilizada como referência, juntamente com seu particionamento em base de conhecimento e base de teste; 
-as três estratégias de geração de regras que constituem o objeto de comparação deste trabalho -- geração \textit{\gls{zero-shot}}, engenharia de \textit{prompt} e agente autônomo com \gls{rag}; 
+as três estratégias de geração de regras que constituem o objeto de comparação deste trabalho --- geração \textit{\gls{zero-shot}}, engenharia de \textit{prompt} e agente autônomo com \gls{rag}; 
 as métricas de avaliação adotadas; e, por fim, a formulação das hipóteses e o procedimento de análise estatística. 
 
 \section{Materiais}\label{sec:materiais}
@@ -215,16 +215,724 @@ Graças a este incidente, a fase de prototipação do agente se deu com o modelo
 O \textit{desktop}, equipado com \gls{gpu} NVIDIA RTX 3060 e 12 GB de VRAM dedicada, foi empregado na execução dos experimentos finais e na geração das regras \textit{Sigma} com o modelo \textit{Llama 3.1 8B}. 
 
 Os materiais apresentados no \ref{quad:materiais1}, atendem a duas finalidades distintas. 
-As \gls{llm}s comerciais -- \textit{ChatGPT}, \textit{Gemini}, \textit{Claude}, \textit{Microsoft Copilot} e \textit{DeepSeek} -- foram utilizadas exclusivamente nas duas primeiras fases do experimento (geração \emph{zero-shot} e engenharia de \emph{prompt}), em que cada modelo recebe o mesmo conjunto de entradas e gera regras \emph{Sigma} de forma independente, permitindo a comparação entre diferentes provedores. 
+As \gls{llm}s comerciais \textit{ChatGPT}, \textit{Gemini}, \textit{Claude}, \textit{Microsoft Copilot} e \textit{DeepSeek} foram utilizadas exclusivamente nas duas primeiras fases do experimento (geração \emph{zero-shot} e engenharia de \emph{prompt}), em que cada modelo recebe o mesmo conjunto de entradas e gera regras \emph{Sigma} de forma independente, permitindo a comparação entre diferentes provedores. 
 Já os modelos de código aberto (\textit{Llama 3.1} e \textit{Qwen 2.5}), juntamente com os \emph{frameworks} \textit{LangChain}, \textit{LangGraph} e \textit{ChromaDB}, constituem a infraestrutura do agente autônomo desenvolvido na terceira fase, sendo responsáveis pela geração, recuperação de contexto via \gls{rag}, e validação iterativa das regras. 
 Os modelos de \emph{embeddings} e \emph{re-ranking} (\textit{bge-small-en-v1.5} e \textit{ms-marco-MiniLM-L-12-v2}) são componentes internos do agente, utilizados na etapa de recuperação e não participam diretamente da geração de texto.
 
 \subsection{Base de Dados}
 
+\begin{table}[!htb]
+	\centering
+	\caption{Composição das bases de dados utilizadas no trabalho.\label{tab:bases}}
+	\footnotesize
+	\begin{tabular}{|>{\raggedright\arraybackslash}p{4.8cm}|c|c|>{\raggedright\arraybackslash}p{5.5cm}|}
+		\hline
+		\textbf{Conjunto} & \textbf{Quantidade} & \textbf{\% do \textit{SigmaHQ}} & \textbf{Origem} \\
+		\hline
+		
+		\multicolumn{4}{|l|}{\textbf{Subconjuntos derivados do repositório \textit{SigmaHQ} (3.748 regras)}} \\
+		\hline
+		
+		Base de conhecimento RAG (\texttt{rag\_knowledge}) & 3.134 & 85\% & Selecionada por amostragem estratificada \emph{round-robin} a partir do repositório \textit{SigmaHQ}. \\
+		\hline
+		
+		Base de teste (\texttt{test\_cases}) & 50 & \% & Selecionada por amostragem estratificada \emph{round-robin} a partir do repositório \textit{SigmaHQ}. \\
+		\hline
+		
+		Base de teste estendida (\texttt{extra\_test\_cases}) & 10 &   \% & Selecionada por amostragem estratificada \emph{round-robin} a partir do repositório \textit{SigmaHQ}. \\
+		\hline
+		
+		\textbf{Subtotal selecionado} & \textbf{3.194} & \textbf{ \%} & --- \\
+		\hline
+		
+		Regras não utilizadas & 554 &  \% & Restante do repositório, não incluído nos subconjuntos. \\
+		\hline
+		
+		\multicolumn{4}{|l|}{\textbf{Regras geradas pelas LLMs comerciais (a partir de \texttt{test\_cases})}} \\
+		\hline
+		
+		\textbf{Subconjunto} & \textbf{Quantidade total} & \textbf{Quantidade pós seleção} & \text{---} \\
+		\hline
+		
+		Regras geradas com prompt \emph{zero-shot} & 250 & 50 & 50 regras da \texttt{test\_cases} replicadas por 5 LLMs comerciais. \\
+		\hline
+		
+		Regras geradas com engenharia de \emph{prompt} & 250 & 50 & 50 regras da \texttt{test\_cases} replicadas por 5 LLMs comerciais. \\
+		\hline
+		
+		Regras geradas pelo agente autônomo & 50 & 50 & 50 regras da \texttt{test\_cases} processadas pelo agente \emph{LangGraph}. \\
+		\hline
+		
+		\textbf{Subtotal de regras geradas} & \textbf{550} & \textbf{150} & --- \\
+		\hline
+		
+	\end{tabular}
+	\fonte{}
+\end{table}
+
+%descrever a base de dados
+A fundação da base de dados do trabalho é o repositório oficial \textit{SigmaHQ}.
+No entanto, apenas cinco subdiretórios interessam, pois são elas que contém as regras-alvo: 
+\begin{itemize}
+	\item \textit{rules};
+	\item \textit{rules-compliance};
+	\item \textit{rules-emerging-threats};
+	\item \textit{rules-placeholder}; e
+	\item \textit{rules-threat-hunting}.
+\end{itemize}
+Esta distinção é feita no código e poderá ser conferida no repositório X --- mais explicações na \textbf{seção Y}.
+
+O desenvolvimento do agente com \gls{rag} requer uma base de conhecimento (\textit{rag\_knowledge}), a qual convencionou-se por abrigar 75\% da base total das regras \textit{Sigma}.
+Para a elaboração das avaliações a partir das gerações das regras, optou-se por uma base de teste (\textit{test\_cases}) composta por 50 regras oficiais.
+E um conjunto de teste extra com outras 10 regras oficiais foi selecionado para testes repetitivos de aferição durante o desenvolvimento do agente.
+
+Como já citado anteriormente, para confrontar a qualidade das regras geradas pelo agente desenvolvido, empregou-se a avaliação de cada regra do conjunto \textit{test\_cases} por cinco \gls{llm}s comerciais.
+Este arranjo de regras é segmentado em quatro grupos, sendo o primeiro composto pelas 50 regras originais do repositório oficial \textit{SigmaHQ}, que funcionam como referência para todas as comparações subsequentes. 
+O segundo grupo é composto pelas 250 regras-produto da replicação das cinco \gls{llm}s comerciais, utilizando \textit{prompts} \textit{zero-shot}.
+No grupo três, o procedimento foi repetido nas mesmas cinco \gls{llm}s, porém com \textit{prompts} elaborados via \textit{prompt engineering}, resultando em mais 250 regras. 
+Por fim, o quarto grupo é composto pelas 50 regras geradas pelo agente autônomo.
+
+Para as avaliações será realizada uma filtragem das melhores regras do grupo 2 e do grupo 3, utilizando a técnica de \textit{\gls{llm}-as-a-judge}, o que resultará em 150 regras geradas no total, como pode ser visto na Tabela \ref{tab:bases}. Os métodos serão explicados na \textbf{seção X}.
+
+\subsubsection{Organização dos dados em disco}
+
 \section{Métodos}\label{sec:metodo}
+
+A seguir serão apresentadas as etapas que compõem o método utilizado nesta pesquisa, detalhando cada fase do processo, desde a seleção e divisão do acervo de regras \textit{Sigma}, o desenvolvimento do agente proposto, a composição comparativa entre as estratégias de geração investigadas e o protocolo de avaliação que será aplicado às regras geradas.
+
+\subsection{Seleção dos dados}
+%Divisão treino/teste e justificativa metodológica (falar sobre o risco de data leakage e explicar que as regras usadas no rag do estágio 4 são separadas das regras usadas como gabarito de teste
+%critérios de seleção das 50 regras de teste;
+
+A separação dos dados em conjuntos de treino e teste é um requisito metodológico fundamental para garantir a validade científica da comparação entre os quatro estágios desta pesquisa, em particular do Estágio 4. 
+Em sistemas baseados em \gls{rag}, o risco de \textit{data leakage} --- definido como ``a introdução não intencional de informação preditiva sobre o alvo proveniente do processo de coleta, agregação ou preparação dos dados'' por \citeonline{kaufman2012}, pode se manifestar de forma particularmente traiçoeira:
+caso a mesma regra figure simultaneamente na base recuperável pelo agente e no gabarito contra o qual sua saída será comparada (regras originais), o agente poderia, durante a etapa de \textit{retrieval}, recuperar a própria regra de referência como contexto, invalidando as métricas de similaridade e produzindo uma superestimação artificial em seu desempenho. 
+Esse problema é amplamente reconhecido na literatura como uma das causas mais frequentes de resultados inflados em \textit{pipelines} de \gls{ml} \cite{kaufman2012}. 
+
+Para evitar o \textit{data leakage}, adotou-se a estratégia de bases disjuntas por construção: 
+as regras utilizadas como gabarito de teste (conjuntos \texttt{test\_cases} e \texttt{extra\_test\_cases}) foram fisicamente removidas do conjunto de regras disponibilizado ao \gls{rag} do agente antes da seleção deste último (\texttt{rag\_knowledge}), de modo que nenhuma regra do teste pode ser recuperada como exemplo durante a geração, na execução do agente.
+A divisão foi implementada por meio do \textit{script} \texttt{gerador\_datasets\_unificado.py}
+\footnote{Disponível em: \url{}.}, 
+desenvolvido especificamente para este trabalho.
+O \textit{script} funciona assim:
+%pseudo código
+
+O algoritmo opera de forma determinística, com a semente do gerador pseudoaleatório fixada em 42 (\texttt{random.seed(42)}), garantindo a reprodutibilidade dos experimentos: 
+qualquer execução posterior do \textit{script} produz exatamente a mesma partição dos dados. 
+A varredura se restringe aos cinco subdiretórios do repositório oficial \textit{SigmaHQ} que concentram as regras de produção (\textbf{seção base de dados}), excluindo-se de forma deliberada o diretório \textit{deprecated} (já que contém regras descontinuadas), bem como pastas de exemplos, documentação e ferramentas auxiliares contidas no repositório.
+
+A seleção das regras foi feita por amostragem estratificada balanceada com base no \textit{logsource}, e não por amostragem aleatória simples: 
+a partir de cada regra do repositório, o algoritmo deriva uma assinatura que consiste na tripla \texttt{categoria\_produto\_serviço}, oriunda do campo \texttt{logsource} (por exemplo, \texttt{process\_creation\_windows} ou \texttt{network\_connection\_linux}), e então agrupa as regras conforme estas categorias. 
+Em seguida, a seleção acontece via \textit{round-robin}, onde a ordem das categorias é inicialmente embaralhada, para eliminar algum viés de ordenação do dicionário; 
+o algoritmo, então, percorre ciclicamente as categorias embaralhadas e, a cada passo, sorteia-se uma regra aleatória pertencente à categoria vigente, até se atingir-se a quantidade desejada (50 para o \texttt{test\_cases}, por exemplo). 
+Esse procedimento garante que os conjuntos resultantes contemplem uma maior diversidade possível de fontes de \textit{log} dentro do conjunto amostral, com o objetivo de evitar a sobre-representação de categorias numerosas (como \textit{Windows process creation}) que ocorreria sob amostragem aleatória simples --- vale ressaltar que a aparição de mais regras \textit{Windows} é justificável sob a lógica de que existem mais regras deste tipo no repositório original \textit{Sigma}.
+
+O processo produz três conjuntos disjuntos, descritos na Tabela~\ref{tab:bases} (Seção~\ref{sec:materiais}). 
+O conjunto \texttt{test\_cases}, composto por 50 regras, funciona como \textit{baseline} de referência (gabarito, padrão-ouro) para os quatro estágios. 
+O conjunto \textit{extra\_test\_cases}, com 10 regras adicionais, serviu para o empreendimento de testes e tomadas de decisões durante a construção do agente. 
+Por fim, o conjunto \textit{rag\_knowledge}, correspondente a 80\% das regras restantes no \textit{pool} disponível (calculado após a exclusão das regras de teste), é selecionado também via \textit{round-robin} e constitui a base de conhecimento consultada pelo agente do Estágio 4 (\textbf{seção x}) durante a etapa de \textit{retrieval}. 
+As regras remanescentes não são utilizadas em nenhum dos estágios, ficando reservadas como margem para experimentos posteriores.
+
+\subsection{Estratégias de geração das regras}
+
+A avaliação proposta neste trabalho compara quatro estratégias distintas de obtenção de regras \textit{Sigma} e se delineiam em ordem crescente de complexidade arquitetural: 
+(i) a coleta direta de regras escritas por especialistas humanos (Estágio 1, regras de referência);
+(ii) geração automática por \gls{llm}s comerciais sob instrução mínima (\textit{zero-shot}, Estágio 2);
+(iii) a geração pelas mesmas \gls{llm}s sob \textit{prompts} elaborados via \textit{prompt engineering} (Estágio 3);
+e (iv) a geração por um agente autônomo composto de \gls{rag} e ferramentas externas (Estágio 4). 
+Cada estágio é descrito a seguir conforme a estrutura: objetivo, \textit{input} ou entrada, processo e saída, de modo a facilitar a comparação direta entre eles. 
+As regras produzidas pelos Estágios 2 e 3 são posteriormente submetidas a uma filtragem por \textit{\gls{llm}-as-a-judge}, conforme detalhado na \textbf{Seção~\ref{}}, restando ao final 150 regras geradas para confronto com as 50 regras de referência.
+
+\subsubsection{Regras originais do \textit{SigmaHQ} (Estágio 1)}
+
+O Estágio 1 não constitui propriamente uma estratégia de geração, mas a referência (\textit{baseline}) contra a qual as demais serão comparadas. 
+Seu objetivo é fornecer um conjunto de 50 regras \textit{Sigma} convencionadas como corretas por construção --- escritas, revisadas e mantidas pela comunidade especializada do projeto \textit{SigmaHQ}, que servirão como gabarito para todas as métricas de avaliação descritas na \textbf{Seção~\ref{}}.
+Como entrada, este estágio utiliza diretamente o repositório oficial \textit{SigmaHQ}, conforme descrito na \textbf{Seção~\ref{}}. 
+Não há etapa de geração: o processo consiste exclusivamente na seleção determinística das 50 regras que compõem o conjunto \textit{test\_cases}, conduzida pelo \textit{script} \texttt{gerador\_datasets\_unificado.py} segundo o procedimento de amostragem estratificada balanceada por \textit{logsource} apresentado na \textbf{Seção~\ref{}}.
+A saída deste estágio são as 50 regras armazenadas no diretório \texttt{data/test\_cases/}, cada qual em um arquivo \texttt{.yml} nomeado segundo a convenção do repositório de origem. Essas regras cumprem dupla função no protocolo experimental: (i) servem de gabarito para o cálculo das métricas de similaridade e correspondência estrutural; e (ii) fornecem as referências externas (campos \texttt{references}, \texttt{description} e \texttt{tags}) que são extraídas e utilizadas como base para os \textit{prompts} dos Estágios 2, 3 e 4.
+
+\subsubsection{Geração zero-shot com \gls{llm}s comerciais (Estágio 2)}
+
+O Estágio 2 tem como objetivo produzir regras \textit{Sigma} a partir de \gls{llm}s comerciais sob instrução mínima, replicando o cenário no qual um analista de segurança pode recorrer a uma \gls{llm} de uso geral sem investir em elaboração de \textit{prompts}. 
+O paradigma adotado é o de \textit{zero-shot prompting}, definido por \citeonline{brown2020language} como a ocasião em que ``o modelo recebe apenas uma descrição em linguagem natural da tarefa, sem qualquer demonstração ou exemplo''. 
+Trata-se da forma mais simples e direta de interação com uma \gls{llm}: o \textit{prompt} contém apenas a instrução do que deve ser feito, cabendo ao modelo inferir, a partir de seu treinamento prévio, como executar a tarefa.
+
+Como entrada deste estágio utiliza-se, para cada uma das 50 regras-alvo do conjunto \textit{test\_cases}, um \textit{prompt} \textit{zero-shot} (nomeado \texttt{prompt1.txt} curto e padronizado, contendo apenas o texto “Generate ONE SIGMA rule (https://sigmahq.io/docs/basics/rules.html) for this event:’’ seguido do(s) \textit{link}(s) presentes no campo \texttt{references} da regra original --- a \acrshort{url} entre parêntesis é uma referência crua para a \gls{llm} posicionar-se a respeito de qual regra está se falando.
+Não são fornecidos exemplos de regras \textit{Sigma} previamente escritas, instruções sobre a estrutura \textit{\gls{yaml}} esperada, nem orientações específicas sobre o uso de \textit{tags MITRE ATT\&CK} ou definição de \texttt{logsource}.
+
+O processo consiste em submeter cada um dos 50 \texttt{prompt1} para cinco \gls{llm}s comerciais distintas --- \textit{ChatGPT}, \textit{Claude}, \textit{DeepSeek}, \textit{Gemini} e \textit{Microsoft Copilot}, totalizando 250 interações independentes. 
+Cada \gls{llm} é instruída a gerar uma única regra \textit{Sigma} válida em formato \textit{YAML}. 
+A diversidade de modelos comerciais foi adotada para evitar que os resultados reflitam particularidades de uma única arquitetura ou política de treinamento.
+Logo, a saída deste estágio são 250 regras \textit{Sigma}, organizadas em arquivos \texttt{\gls{yaml}} dentro do diretório de cada caso de teste, junto à respectiva regra original e ao \textit{prompt} utilizado (\textbf{ver Seção organização dados}). 
+Essas regras compõem, juntamente com as do Estágio 3, o conjunto candidato à filtragem por \textit{\gls{llm}-as-a-judge} descrita na \textbf{Seção}~\ref{}.
+%metricas
+
+\subsubsection{Geração com \textit{prompt engineering} (Estágio 3)}
+
+O propósito do Estágio 3 é investigar em que medida a aplicação sistemática de \textit{prompt engineering}, conforme conceituada na \textbf{Seção de engenharia de prompt}, eleva a qualidade das regras geradas pelas mesmas \gls{llm}s comerciais do Estágio 2. 
+Ao contrário do paradigma \textit{zero-shot} adotado no Estágio 2, em que a instrução é mínima e o modelo opera apenas com seu conhecimento prévio, no Estágio 3 a instrução é enriquecida com elementos que orientam o modelo quanto ao papel a ser assumido, ao formato esperado da saída e ao contexto técnico da ameaça.
+Como entrada deste estágio utiliza-se, para cada uma das 50 regras-alvo, um \textit{prompt} construído a partir de um \textit{template} padronizado no qual variam apenas as informações específicas da ameaça. 
+Tal \textit{template} foi elaborado com o auxílio do modelo \textit{Claude} em processo iterativo, enviando a regra original \textit{Sigma} e solicitando o retorno do \textit{prompt2}
+\footnote{Ver \texttt{prompt2 em apêndice.}}
+correspondente --- que incorpora cinco técnicas reconhecidas na literatura \cite{liu2023pretrain}:
+\begin{itemize}
+	\item Atribuição de papel: o \textit{prompt} inicia instruindo o modelo a operar como se fosse um ``\textit{Senior Threat Detection Engineer}'', engenheiro sênior de detecção de ameaças, em português;
+	\item Restrição de formato de saída: a instrução determina que o modelo produza \textit{exatamente} uma regra \textit{Sigma} válida em YAML;
+	\item Ancoragem por referência: inclui-se a \textit{\gls{url}s} da especificação oficial \textit{Sigma};
+	\item Injeção de contexto estruturado: o conteúdo da requisição é organizado em seções nomeadas --- \texttt{Threat to detect}, \texttt{Target environment} e \texttt{References};
+	\item Enriquecimento de domínio: além das referências externas, o \textit{prompt} fornece descrição textual da ameaça, identificação do produto/serviço alvo e categorização de fonte de \textit{log} esperada.
+\end{itemize}
+
+O processo de replicação se repete como no Estágio 2: 
+cada um dos 50 \textit{prompts} elaborados é submetido manualmente, via interface \textit{web}, às cinco \gls{llm}s comerciais escolhidas, totalizando 250 interações independentes. 
+Os Estágios 2 e 3 compartilham deliberadamente os mesmos modelos, regras-alvo e canal de submissão. 
+A única variável que muda entre eles é a estratégia de \textit{prompting}, de modo que as diferenças observadas nos resultados podem ser atribuídas exclusivamente a esse fator.
+Por fim, a saída deste estágio são 250 regras \textit{Sigma}, armazenadas no mesmo diretório de cada caso de teste paralelo às regras do Estágio 2. 
+Em conjunto com as regras do capítulo anterior, essas regras compõem o universo de 500 candidatos que serão submetidos a um processo de filtragem por \textit{\gls{llm}-as-a-judge} descrito na \textbf{Seção de metricas}.
+
+\subsubsection{Geração via agente com RAG (Estágio 4)}
+
+O quarto e último estágio tem como finalidade gerar regras \textit{Sigma} por meio do agente autônomo desenvolvido neste trabalho, configurando a estratégia de maior complexidade arquitetural dentre as quatro. 
+Diferentemente dos Estágios 2 e 3, que recorrem a \gls{llm}s comerciais de grande porte acessadas via interface \textit{web}, no Estágio 4 há o emprego de um modelo de linguagem aberto e de menor porte, executado localmente, cuja saída é apoiada por recuperação de contexto (\gls{rag}), consulta a fontes externas de inteligência de ameaças e validação iterativa. 
+A descrição detalhada da arquitetura do agente, de seus componentes e funcionamento interno é apresentada na \textbf{Seção desenvolvimento do agente}; nesta seção, descreve-se apenas o papel do agente como uma das estratégias de geração avaliadas.
+
+Neste estágio, se utilizam, como entrada, três variantes de \textit{prompt} para cada uma das 50 regras-alvo, identificadas como \textit{prompt1}, \textit{prompt2} e \textit{prompt3}. 
+As duas primeiras correspondem, respectivamente, ao \textit{prompt} \textit{zero-shot} do Estágio 2 e ao \textit{prompt} com \textit{prompt engineering} do Estágio 3; 
+a terceira, \textit{prompt3}, é uma versão refinada do \textit{prompt2} em texto corrido, sem divisão em seções nomeadas. 
+A supressão dos cabeçalhos estruturais (\texttt{Threat to detect}, \texttt{Target environment} e \texttt{References}) já é implantada no código: o agente realiza internamente, por meio de seus nós de classificação e enriquecimento, a função de identificar o tipo de entrada, consultar fontes externas e recuperar exemplos relevantes, tornando redundante a estruturação manual exigida das \gls{llm}s comerciais nos estágios anteriores. 
+O \textit{prompt3} é, portanto, a configuração principal do agente --- desenhado especificamente para suas características arquiteturais, e é a variante adotada na comparação entre os quatro estágios. 
+As variantes \textit{prompt1} e \textit{prompt2} são executadas em paralelo para subsidiar a análise complementar de sensibilidade descrita ao final desta seção.
+O processo de geração é totalmente automatizado e conduzido pelo \textit{script} \texttt{sigma\_agent\_v17\_geracao\_automatica.py}
+\footnote{Disponível em ...}, 
+que submete cada uma das 50 regras-alvo às três variantes de \textit{prompt}, totalizando 150 execuções independentes do agente. 
+Cada execução produz três(ii) o parecer do juiz semântico (nó 6) sobre essa regra, em formato JSON; (iii) e uma linha em um arquivo CSV centralizado de metadados, contendo informação sobre a configuração da execução, seus resultados quantitativos e ponteiros para os arquivos (i) e (ii). 
+A estrutura completa desse CSV e o uso de cada um de seus campos para as análises subsequentes são descritos na \textbf{Seção de resultados}.
+
+O conjunto de saída deste estágio possui 150 regras \textit{Sigma}, das quais 50 (geradas a partir do \textit{prompt3}) compõem o conjunto oficial do Estágio 4 a ser confrontado com o gabarito de referência. 
+As 100 regras restantes, geradas a partir de \textit{prompt1} e \textit{prompt2}, não participam da comparação entre os quatro estágios, mas são preservadas para a análise de sensibilidade entre os três tipos de \textit{prompts}. 
+Diferentemente dos Estágios 2 e 3, as regras do Estágio 4 não passam pela filtragem \textit{\gls{llm}-as-a-judge} entre modelos comerciais, uma vez que o agente produz uma única regra por regra-alvo/\textit{prompt}. 
+Mas vale salientar que em seu fluxo interno, após a etapa de validação sintática, no Nó 6, é incorporado julgamento semântico com \textit{\gls{llm}-as-a-judge}, descrito na \textbf{Seção desenvolvimento do agente}.
+
+Dois eixos de análise são, portanto, articulados a partir do Estágio 4: 
+\textit{(i)} a comparação entre os quatro estágios, que confronta as 50 regras geradas pelo agente com \textit{prompt3} contra as 100 regras dos demais estágios; e \textit{(ii)} a análise de sensibilidade do agente ao \textit{prompt}, que examina, mantidos constantes o modelo e a arquitetura, em que medida a variação da formulação da entrada (do \textit{prompt1} ao \textit{prompt3}) afeta a qualidade e a taxa de aprovação das regras geradas. 
+O detalhamento das métricas aplicadas em cada eixo é apresentado na \textbf{Seção metricas}.
+
+
+\subsection{Desenvolvimento do agente}
+
+\subsubsection{Visão geral da arquitetura}
+
+O agente desenvolvido neste trabalho é implementado conforme o paradigma de \textit{graph-based agent}, no qual o fluxo de execução é representado por um grafo dirigido cujos nós correspondem a etapas funcionais distintas e as arestas correspondentes determinam a ordem e as condições de transição no fluxo. 
+A implementação utiliza a biblioteca \textit{LangGraph} \cite{langgraph2024}, parte do ecossistema \textit{LangChain}, que oferece componentes fundamentais para a definição de máquinas de estados executadas sobre um estado compartilhado mutável (\textit{GraphState}). 
+Cada nó recebe o estado, executa sua tarefa, atualiza os campos pertinentes e o devolve ao grafo, que decide o próximo nó a ser executado com base em arestas fixas ou condicionais.
+
+A arquitetura adotada está articulada em torno de seis nós, organizados em um \textit{pipeline} de enriquecimento progressivo da informação. 
+O nó 1, denominado “classificador de entrada”, é determinístico (baseado em expressões regulares e heurísticas, sem invocação de \gls{llm}) e interpreta o \textit{prompt} recebido, identifica seu tipo (\gls{cve}, \textit{hash} ou texto\_livre), extrai \gls{url}s de referência e isola a descrição textual da ameaça. 
+O nó 2, denominado “consulta a fontes externas”, enriquece o estado com dados técnicos obtidos junto a \acrshort{api}s de inteligência de ameaças (\gls{nvd}, MITRE ATT\&CK) e, quando necessário, recorre a \textit{web scraping} complementado por uma sub-rotina de destilação por \gls{llm}. 
+O nó 3, denominado “\gls{rag}”, consulta um banco vetorial contendo exemplos de regras \textit{Sigma} previamente embarcadas, aplicando recuperação semântica por similaridade seguida de \textit{re-ranking} por \textit{cross-encoder}. 
+O nó 4, denominado “geração”, invoca uma \gls{llm} local (\textit{Llama} 3.1) que sintetiza a regra \textit{Sigma} em YAML a partir do estado acumulado. 
+O nó 5, denominado “validação sintática”, submete a regra gerada à ferramenta \textit{pySigma} e emite veredito de aprovação ou reprovação. 
+Por fim, o nó 6, denominado “juiz semântico”, opera em modo anotação --- registra um parecer qualitativo sobre a regra aprovada, sem capacidade de bloqueá-la ou desencadear nova geração.
+
+A ordem das ações adotadas pelos nós não é arbitrária. 
+A consulta às \acrshort{api}s externas (nó 2) precede deliberadamente a recuperação por \gls{rag} (nó 3) para que o material técnico retornado pelas \acrshort{api}s (por exemplo, a descrição oficial de um \gls{cve} no \gls{nvd}) sirva de consulta semântica enriquecida ao banco vetorial, aumentando a relevância dos exemplos recuperados.
+A geração (nó 4) ocorre apenas após o estado conter as três camadas de contexto (entrada classificada, dados de inteligência e exemplos recuperados) e é seguida imediatamente pela validação sintática (nó 5), de modo que regras malformadas sejam corrigidas antes de qualquer avaliação semântica.
+O grafo ainda incorpora uma aresta condicional após o nó 5: caso a regra reprove na validação sintática, o controle retorna ao nó 4 para nova tentativa de geração, configurando um laço de auto-correção limitado por um número máximo de tentativas;
+caso aprove, a regra segue para o nó 6. 
+Trata-se da única ramificação não-linear do grafo.
+
+A Figura \ref{fig:arquitetura_agente} apresenta a topologia completa da máquina de estados, com a identificação dos seis nós, suas conexões e a aresta condicional. Os seis nós são executados sequencialmente; a única ramificação não-linear é a aresta condicional após o nó 5, que retorna ao nó 4 em caso de reprovação na validação sintática. O nó 6, com borda tracejada, opera em modo anotação --- registra parecer sem bloquear o fluxo.
+
+\begin{figure}[H]\label{maquina_estados}
+	\centering
+	\caption{Arquitetura do agente \textit{Sigma}}
+	\begin{tikzpicture}[
+		node distance=0.9cm,
+		font=\sffamily\small,
+		box/.style={
+			rectangle, rounded corners=4pt, draw, line width=0.5pt,
+			minimum width=7cm, minimum height=1.3cm,
+			align=center, inner sep=4pt
+		},
+		determ/.style={box, fill=detFill, draw=detStroke, text=detText},
+		contxt/.style={box, fill=ctxFill, draw=ctxStroke, text=ctxText},
+		llm/.style={box, fill=llmFill, draw=llmStroke, text=llmText},
+		annot/.style={llm, dashed},
+		smalllabel/.style={font=\sffamily\footnotesize},
+		arr/.style={->, >={Stealth[length=2mm, width=2mm]}, line width=0.6pt}
+		]
+		\node[smalllabel] (prompt) {Prompt do usuário};
+		
+		\node[determ, below=0.5cm of prompt] (n1)
+		{\textbf{Nó 1 --- Classificador}\\\footnotesize Regex e heurísticas};
+		\node[contxt, below=of n1] (n2)
+		{\textbf{Nó 2 --- Fontes externas}\\\footnotesize NVD, MITRE, \textit{web scraping}};
+		\node[contxt, below=of n2] (n3)
+		{\textbf{Nó 3 --- RAG}\\\footnotesize \textit{Embeddings} e \textit{re-ranking}};
+		\node[llm, below=of n3] (n4)
+		{\textbf{Nó 4 --- Gerador}\\\footnotesize LLM local \texttt{llama3.1}};
+		\node[determ, below=of n4] (n5)
+		{\textbf{Nó 5 --- Validador sintático}\\\footnotesize \texttt{pySigma}};
+		\node[annot, below=1.3cm of n5] (n6)
+		{\textbf{Nó 6 --- Juiz semântico}\\\footnotesize \texttt{qwen2.5:14b} --- modo anotação};
+		
+		\node[smalllabel, below=0.5cm of n6] (output) {Regra Sigma + parecer};
+		
+		\draw[arr] (prompt) -- (n1);
+		\draw[arr] (n1) -- (n2);
+		\draw[arr] (n2) -- (n3);
+		\draw[arr] (n3) -- (n4);
+		\draw[arr] (n4) -- (n5);
+		\draw[arr] (n5) -- node[smalllabel, right] {aprovado} (n6);
+		\draw[arr] (n6) -- (output);
+		
+		\path (n5.east) ++(1cm,0) coordinate (loopBot);
+		\path (n4.east) ++(1cm,0) coordinate (loopTop);
+		\draw[arr] (n5.east) -- (loopBot) -- (loopTop) -- (n4.east);
+		\node[smalllabel, anchor=west]
+		at ($(loopBot)!0.5!(loopTop) + (0.15cm,0)$) {reprovado};
+		
+		\node[below=1cm of output] (legend) {};
+		\node[circle, fill=detFill, draw=detStroke, line width=0.4pt,
+		minimum size=8pt, inner sep=0, left=2.7cm of legend] (s1) {};
+		\node[smalllabel, right=0.15cm of s1] (l1) {Determinístico};
+		\node[circle, fill=ctxFill, draw=ctxStroke, line width=0.4pt,
+		minimum size=8pt, inner sep=0, right=0.6cm of l1] (s2) {};
+		\node[smalllabel, right=0.15cm of s2] (l2) {Contexto};
+		\node[circle, fill=llmFill, draw=llmStroke, line width=0.4pt,
+		minimum size=8pt, inner sep=0, right=0.6cm of l2] (s3) {};
+		\node[smalllabel, right=0.15cm of s3] {LLM};
+	\end{tikzpicture}
+	\fonte{}
+	\label{fig:arquitetura_agente}
+\end{figure}
+
+As subseções seguintes detalham cada componente: a máquina de estados propriamente dita e o estado compartilhado (), o \gls{rag} (), as ferramentas externas (), o laço de validação sintática () e a avaliação semântica complementar ().
+
+\subsubsection{Máquina de estados (\textit{LangGraph}), nó 1}
+
+\begin{table}[H]
+	\centering
+	\caption{Campos do \texttt{GraphState} agrupados por etapa do \textit{pipeline}}
+	\label{tab:graphstate}
+	\small
+	\begin{tabular}{@{} p{2.8cm} p{4cm} p{6.5cm} @{}}
+		\toprule
+		\textbf{Etapa} & \textbf{Campo} & \textbf{Descrição} \\
+		\midrule
+		Entrada bruta
+		& \texttt{input\_usuario}
+		& \textit{Prompt input}\\
+		\addlinespace
+		Classificação \\
+		(nó 1)
+		& \texttt{tipo\_input}
+		& CVE, \textit{hash} ou texto livre \\
+		& \texttt{termo\_busca}
+		& CVE ou \textit{hash} extraído \\
+		& \texttt{url\_fornecida}
+		& URLs identificadas no \textit{prompt} \\
+		& \texttt{texto\_para\_rag}
+		& Descrição da ameaça pré-processada \\
+		& \texttt{contexto\_pobre}
+		& Indicador de contexto textual insuficiente \\
+		\addlinespace
+		Enriquecimento (nós 2 e 3)
+		& \texttt{contexto\_api}
+		& Dados técnicos de NVD/MITRE \\
+		& \texttt{contexto\_rag}
+		& Exemplos recuperados do banco vetorial \\
+		\addlinespace
+		Geração e validação (nós 4 e 5)
+		& \texttt{regra\_gerada}
+		& Regra \textit{Sigma} em YAML \\
+		& \texttt{erro\_validacao}
+		& Mensagem do \textit{pySigma} ou \texttt{APROVADO} \\
+		& \texttt{tentativas}
+		& Contador do laço de correção \\
+		\addlinespace
+		Avaliação semântica (nó 6)
+		& \texttt{parecer\_juiz}
+		& Parecer do juiz em bloco JSON com cabeçalho identificador \\
+		\bottomrule
+	\end{tabular}
+	
+	\fonte{}
+\end{table}
+
+A máquina de estados do agente é construída como um grafo dirigido sobre uma estrutura de dados única e compartilhada, chamada \textit{GraphState}. 
+Trata-se de um dicionário tipado em \textit{Python} (\textit{TypedDict}) que funciona como um ``caderno de anotações'' visível a todos os nós: cada nó lê os campos de que precisa, executa sua tarefa e devolve apenas os campos que atualizou \cite{langgraph2024graph}. 
+Essa organização evita passar informações entre nós por meio de parâmetros explícitos, facilita a manutenção do agente e permite inspecionar todo o seu estado em qualquer momento da execução.
+
+O \textit{GraphState} possui 12 campos, que podem ser agrupados em cinco categorias de acordo com a etapa do \textit{pipeline} em que são preenchidos, conforme a Tabela \ref{tab:graphstate}.
+
+As arestas (conexões entre os nós) definem o caminho percorrido pelo estado durante a execução. 
+Como ilustrado na Figura \ref{fig:arquitetura_agente}, o agente utiliza dois tipos de conexão: conexões fixas, que sempre levam ao próximo nó previamente definido, e uma única conexão condicional, onde o destino depende do conteúdo do estado naquele momento \cite{langgraph2024graph}. 
+Cinco conexões fixas ligam, em sequência, o ponto de partida do grafo ao nó 1, e cada nó subsequente ao seguinte, até o nó 5. 
+Após o nó 5, encontra-se a conexão condicional, cuja decisão é tomada por uma função auxiliar chamada \texttt{roteador\_de\_validacao}, descrita a seguir. 
+Por fim, uma última conexão fixa leva o nó 6 ao ponto final do grafo: o produto do agente, a regra \textit{Sigma} (Figura \ref{fig:arquitetura_agente}).
+
+A função \texttt{roteador\_de\_validacao} segue três regras, verificadas em ordem. 
+Primeira: se o campo \texttt{erro\_validacao} contém o valor \texttt{APROVADO}, o controle segue para o nó 6 e o laço termina com sucesso. 
+Segunda: se o erro persiste, mas o contador \texttt{tentativas} já contabiliza 4, o controle também segue para o nó 6, encerrando o laço por esgotamento das tentativas.
+Entretanto, a regra considerada sintaticamente inválida ainda é gravada em disco (o \textit{script} não a descarta nem ignora) e avaliada pelo juiz semântico, cujo parecer também é salvo para análise posterior.
+Terceiro: em qualquer outra situação, quando o \textit{pySigma} é executado sobre a regra e detecta um erro, o controle volta ao nó 4 para uma nova tentativa de geração, agora orientada pela mensagem de erro guardada em \texttt{erro\_validacao}. 
+O limite de quatro tentativas é uma escolha de projeto: alto o suficiente para permitir a convergência em casos recuperáveis, mas baixo o suficiente para impedir laços infinitos diante de \textit{prompts} que não podem ser corrigidos.
+
+Vale destacar que essa conexão condicional é a única ramificação do grafo. 
+Todas as outras decisões internas do agente --- qual \gls{api} consultar no nó 2, quantos exemplos recuperar no nó 3 e qual modelo invocar no nó 4, ocorrem dentro dos próprios nós, sem afetar a estrutura do grafo. 
+Essa separação entre a lógica de fluxo (representada pelo grafo) e a lógica interna (escondida dentro de cada nó) é uma decisão deliberada: ela permite que cada nó seja modificado, substituído ou melhorado de forma independente, sem alterar a arquitetura geral do agente.
+
+
+\subsubsection{Ferramentas externas (nó 2)}
+
+O nó 2 é responsável por enriquecer o estado do agente com informação técnica obtida de fontes externas. 
+Sua existência atende a duas necessidades complementares. 
+A primeira diz respeito ao conteúdo: identificadores como \gls{cve}s e \textit{hashes} são, por si só, apenas códigos; não trazem nenhuma descrição da ameaça que representam. 
+Para que o gerador (nó 4) tenha informação suficiente para escrever uma regra adequada, é preciso traduzir esses identificadores em descrições técnicas, como vetor de ataque, plataformas afetadas, técnicas MITRE ATT\&CK associadas e nível de gravidade. 
+A segunda necessidade aparece quando o \textit{prompt} do usuário é pobre em descrição textual, contendo apenas um \textit{link} para um boletim de segurança, por exemplo. 
+Neste caso, o agente precisa de algum mecanismo para reconstruir, a partir do material bruto coletado, uma descrição utilizável da ameaça. 
+E o nó 2 atende às duas necessidades em uma única passagem, organizada em quatro etapas executadas em sequência, conforme o Algoritmo \ref{alg:no2}.
+
+\begin{algorithm}[H]
+	\raggedright % <--- Garante o alinhamento à esquerda de todo o texto
+	\SetAlgoLined
+	\DontPrintSemicolon
+	\KwIn{Agent state $s$ with fields \texttt{url\_fornecida}, \\
+		\texttt{tipo\_input}, \texttt{termo\_busca}, \texttt{contexto\_pobre}}
+	\KwOut{Updated field $s.\texttt{contexto\_api}$}
+	\BlankLine
+	
+	$\textit{snippets} \leftarrow [\,]$\;
+	$\textit{cves}, \textit{cwes} \leftarrow \text{ExtractReferences}(s.\texttt{input\_usuario})$\;
+	\BlankLine
+	
+	\tcp{Step 1: URL scraping}
+	\ForEach{$\textit{url} \in s.\texttt{url\_fornecida}$}{
+		$\textit{html} \leftarrow \text{HttpGet}(\textit{url})$\;
+		\eIf{request succeeded}{
+			$\textit{text} \leftarrow \text{ExtractSemanticElements}(\textit{html})$\;
+			append $\textit{text}$ to $\textit{snippets}$\;
+		}{
+			$\textit{keywords} \leftarrow \text{ExtractFromSlug}(\textit{url})$\;
+			append $\textit{keywords}$ to $\textit{snippets}$\;
+		}
+		update $\textit{cves}, \textit{cwes}$ with references found in $\textit{url}$\;
+	}
+	\BlankLine
+	
+	\tcp{Step 2: Structured intelligence APIs}
+	\ForEach{$\textit{cve} \in \textit{cves}$}{
+		append $\text{QueryMitre}(\textit{cve})$ to $\textit{snippets}$\;
+		append $\text{QueryNvd}(\textit{cve})$ to $\textit{snippets}$\;
+	}
+	\If{$s.\texttt{tipo\_input} = \texttt{hash}$}{
+		append $\text{QueryVirusTotal}(s.\texttt{termo\_busca})$ to $\textit{snippets}$
+		\tcp*{simulated in this version}
+	}
+	\BlankLine
+	
+	\tcp{Step 3: Complementary web search}
+	$\textit{query} \leftarrow s.\texttt{termo\_busca}$ if non-empty, else $s.\texttt{texto\_para\_rag}$\;
+	append $\text{SearchDuckDuckGo}(\textit{query})$ to $\textit{snippets}$\;
+	\BlankLine
+	
+	$s.\texttt{contexto\_api} \leftarrow \text{Concatenate}(\textit{snippets})$\;
+	\BlankLine
+	
+	\tcp{Step 4: Conditional LLM distillation}
+	\If{$s.\texttt{contexto\_pobre}$ \textbf{and} $\text{Length}(s.\texttt{contexto\_api}) \geq \texttt{LIMIAR}$}{
+		$\textit{description} \leftarrow \text{DistillWithLLM}(s.\texttt{contexto\_api})$ \tcp*{qwen2.5:7b}
+		$s.\texttt{contexto\_api} \leftarrow \textit{description} \,\|\, s.\texttt{contexto\_api}$ \tcp*{prepend distilled summary}
+	}
+	
+	\KwRet{$s.\texttt{contexto\_api}$}\;
+	\caption{Technical context collection (Node 2)}
+	\label{alg:no2}
+\end{algorithm}
+
+A primeira etapa é a extração de conteúdo das \gls{url}s fornecidas pelo usuário. 
+Para cada \gls{url}s listada em \texttt{url\_fornecida}, o agente envia uma requisição HTTP com um cabeçalho \textit{User-Agent} de navegador comum. 
+\textit{Links} do GitHub no formato \texttt{\/blob\/} são convertidos automaticamente para \texttt{raw.githubusercontent.com}, de modo a obter o conteúdo bruto do arquivo em vez da página renderizada do repositório. 
+O HTML retornado é processado pela biblioteca \textit{BeautifulSoup}, que extrai prioritariamente os elementos mais informativos da página: parágrafos, artigos, cabeçalhos (h1, h3), células de tabela e itens de lista. 
+A escolha por esses elementos considera que documentações de auditoria de \textit{logs} costumam expor os nomes reais dos campos de auditoria em cabeçalhos e tabelas, e esses nomes são exatamente o que o nó 4 precisará para escrever um campo \texttt{detection} compatível com a fonte de \textit{log} real. 
+Caso a requisição falhe, há um \textit{fallback} simples: o agente extrai palavras-chave do próprio caminho da \gls{url}s (\textit{slug}), preservando algumas pistas sobre a ameaça.
+
+A segunda etapa consulta bases estruturadas de inteligência de ameaças. 
+Para cada CVE detectado no \textit{prompt} ou nas \gls{url}ss, o agente consulta duas fontes oficiais. 
+A primeira é o repositório \textit{MITRE ATT\&CK}, que retorna o vetor de ataque e as técnicas associadas à vulnerabilidade. 
+A segunda é o \gls{nvd}, que retorna a descrição oficial, as \gls{cwe}s associadas e a pontuação \gls{cvss}. 
+As \gls{cwe}s identificadas são acumuladas em um conjunto e adicionadas como contexto extra.
+Quando o \textit{prompt} se refere a um \textit{hash} de arquivo malicioso (\texttt{tipo\_input = hash}), o fluxo previsto seria a consulta à plataforma \textit{VirusTotal}
+\footnote{Disponível em: \url{www.virustotal.com}.}
+, mas nesta versão do agente este caminho é simulado com dados fictícios. 
+A plataforma possui \gls{api} pública e gratuita até certo ponto; ela exige cadastro e geração de uma chave de acesso pessoal, além de impor limites de uso. 
+A decisão de não implementar essa integração se deve à observação empírica de que a grande maioria dos casos das regras Sigma não são classificadas como \textit{hash}, predominando entradas do tipo \texttt{cve} e \texttt{texto\_livre}. 
+Essa limitação está registrada como possibilidade de extensão futura na Seção de trabalhos futuros.
+A opção de identificação, no entanto, foi mantida para representar uma situação real em que um analista faz o uso do agente e solicita uma regra que contém descrição de \textit{hash}.
+
+A terceira etapa é uma busca complementar na \textit{web} aberta, executada por meio do mecanismo \textit{DuckDuckGo}
+\footnote{Disponível em: \url{www.duckduckgo.com}.}, 
+com até cinco resultados por consulta. 
+Essa busca não substitui as fontes estruturadas; ela funciona como uma rede de segurança para captar discussões em blogs técnicos, relatórios de empresas de segurança e boletins de segurança de fornecedores, que costumam publicar informações antes das bases oficiais. 
+O termo enviado à busca é o termo isolado (\gls{cve} ou \textit{hash}), quando disponível, ou o texto pré-processado pelo nó 1, truncado em 200 caracteres para preservar a qualidade da consulta.
+A escolha pelo \textit{DuckDuckGo} se deu por dois motivos: não exige chave de \gls{api} e é compatível com a biblioteca de cliente utilizada no projeto.
+
+A quarta etapa é executada apenas em determinadas condições, atendendo ao caso de \textit{prompts} pobres em descrição textual. 
+Quando o nó 1 sinaliza \texttt{contexto\_pobre = True} e o material acumulado pelas três etapas anteriores atinge um tamanho mínimo definido pela constante \texttt{LIMIAR\_MATERIA\_PRIMA}, o agente aciona uma sub-rotina de destilação por \gls{llm}.
+Nessa etapa, o material bruto coletado (texto extraído das \gls{url}ss, descrições do MITRE e do \gls{nvd}, resultados da busca na \textit{web}) é enviado ao modelo \texttt{qwen2.5:7b}, que produz uma descrição resumida da ameaça em linguagem natural. 
+Essa descrição destilada é colocada no topo do campo \texttt{contexto\_api}, e abaixo o material bruto. 
+Assim, quando o nó 3 ler esse campo, encontrará primeiro a descrição resumida e, em seguida, o material bruto que a originou.
+Convém assinalar, neste momento, que a decisão de escolher o modelo texttt{qwen2.5:7b} para essa destilação se dá pelo fato de pertencer a uma família distinta da do gerador \texttt{Llama3.1}.
+Essa escolha se deu porque em \textit{pipelines} sequenciais como o aplicado (a saída do destilador alimenta diretamente o gerador), pode acontecer de erros e vieses característicos das etapas iniciais propagarem-se e a acumularem-se nas etapas posteriores \cite{caselli2015piling}. 
+O uso do mesmo modelo nas duas etapas poderia amplificar esse risco, uma vez que ambos compartilhariam os mesmos pontos-cegos de treinamento. 
+A escolha por famílias arquiteturalmente distintas (\textit{qwen} e \textit{llama}, treinadas por equipes e em \textit{corpora} diferentes) busca minimizar essa correlação de erros.
+
+Ao final dessas quatro etapas, o campo \texttt{contexto\_api} contém todo o conteúdo técnico coletado sobre a ameaça, com as descrições estruturadas (MITRE, \gls{nvd}, destilação) priorizadas sobre o material bruto. 
+Essa priorização permite o nó 3 (\gls{rag}), descrito na próxima subseção, utilizar \texttt{contexto\_api} como base para construir a consulta ao banco vetorial, e blocos estruturados geram \textit{embeddings} de maior qualidade do que texto extraído diretamente de páginas HTML.
+
+\subsubsection{RAG (nó 3)}
+
+O nó 3 implementa a etapa de \gls{rag} do agente. 
+Seu propósito específico aqui é entregar ao gerador (nó 4) um pequeno conjunto de regras \textit{Sigma} já existentes, semanticamente próximas da ameaça em questão. 
+Vale salientar que as regras recuperadas (contidas em rag\_knowledge) não são entregues ao nó 4 como ``a resposta correta'' para a ameaça em questão; até porque, em geral, não o são. 
+Trata-se de regras de outras ameaças, apenas semanticamente próximas. 
+Elas servem como referência de formatação, contexto semântico e como pista das estruturas YAML que costumam funcionar bem em ameaças similares.
+
+A construção da consulta enviada ao banco vetorial segue uma ordem de prioridade definida por quatro estratégias, escolhidas em função do que está disponível no estado naquele momento. 
+A estratégia preferencial combina o sinal mais informativo do usuário --- o termo isolado, como um \gls{cve}, ou as seções técnicas extraídas pelo nó 1, com a descrição técnica recuperada das \gls{api}s no nó 2. 
+Caso a \gls{api} não tenha retornado descrição rica, recorre-se apenas às seções técnicas extraídas pelo nó 1. 
+Caso estas também não estejam presentes, se utiliza apenas o termo isolado (\gls{cve} ou \textit{hash}).
+Em último caso, o \textit{prompt} original do usuário é usado como consulta. 
+Esta ordem reflete uma ordem de qualidade: quanto mais rica a consulta enviada ao banco, maior a chance de recuperar exemplos alinhados com a ameaça real.
+
+A recuperação propriamente dita é organizada em um funil de duas etapas, técnica conhecida na literatura como \textit{retrieve-and-rerank} \cite{nogueira2019passage}. 
+Na primeira etapa, a consulta é convertida em um vetor numérico (\textit{embedding}) pelo modelo \texttt{BAAI\/bge-small-en-v1.5}, da família BGE \cite{xiao2023bge}, e comparada por similaridade de cosseno contra todos os vetores armazenados em um banco vetorial
+\footnote{O banco vetorial utilizado é o \textit{ChromaDB} (www.trychroma.com), uma das implementações \textit{open-source} disponíveis para essa finalidade.}. 
+O banco contém as regras do conjunto \textit{rag\_knowledge} (\textbf{Seção selecaodad}os), também convertidas previamente em \textit{embeddings}. 
+Dessa busca ampla resultam vinte candidatos. 
+Na segunda etapa, os vinte candidatos passam por um modelo de \textit{re-ranking} do tipo \textit{cross-encoder} (\texttt{BAAI/bge-reranker-base}), que analisa cada par consulta-candidato de forma conjunta e produz uma pontuação de relevância refinada. 
+Os cinco candidatos com a maior pontuação são selecionados como contexto final e gravados no campo \texttt{contexto\_rag} do estado.
+
+A escolha pelo funil de duas etapas, ao invés de uma única busca, se dá porque modelos de \textit{embeddings} codificam cada texto de forma independente, produzindo vetores que podem ser pré-calculados e armazenados --- isso os torna extremamente rápidos, mas também os faz perder algumas nuances da interação entre a consulta e o documento. 
+Já os modelos \textit{cross-encoder} processam consulta e candidato lado a lado, capturando essas nuances, porém com um custo computacional maior \cite{nogueira2019passage}. 
+A combinação dos dois aproveita o melhor de cada paradigma: a busca por \textit{embedding} filtra o banco inteiro até vinte candidatos plausíveis em milissegundos, e o \textit{re-ranker} aplica seu poder discriminativo apenas sobre esse pequeno subconjunto. 
+
+O nó 3 também executa um diagnóstico de coerência sobre os cinco exemplos selecionados --- etapa que não interfere no fluxo do agente, mas registra informação útil para análise posterior. 
+Para cada exemplo, o \textit{script} extrai o campo \texttt{logsource} e contabiliza quantas categorias e produtos distintos aparecem entre os cinco. 
+Quando três ou mais categorias diferentes coexistem nos exemplos recuperados, o \textit{script} registra um aviso: nessa situação, há risco de a \gls{llm} ``misturar'' campos de fontes de \textit{log} incompatíveis ao redigir a regra final. 
+Esse diagnóstico não bloqueia a geração, mas serve como sinal de alerta para a análise dos resultados e como evidência empírica da qualidade do \textit{retrieval} em diferentes tipos de entrada.
+
+
+\subsubsection{Geração da regra (nó 4)}
+
+O nó 4 é o componente que produz a regra \textit{Sigma} propriamente dita. 
+Sua entrada é o estado já enriquecido pelos nós anteriores. 
+O classificador (nó 1) determinou o tipo da entrada e isolou o termo de busca; as ferramentas externas (nó 2) acumularam contexto técnico em \texttt{contexto\_api}, e o \gls{rag} (nó 3) recuperou cinco exemplos de regras reais em \texttt{contexto\_rag}. 
+Cabe ao nó 4 sintetizar essas informações em um único arquivo YAML que atenda às especificações da plataforma \textit{Sigma}. 
+Para essa tarefa é empregado o modelo \texttt{Llama3.1}, executado localmente via \textit{Ollama}, com temperatura ajustada em 0,1 --- valor escolhido propositalmente baixo para favorecer respostas determinísticas e reduzir a variabilidade entre execuções.
+
+A invocação da \gls{llm} segue a estrutura dual de \textit{prompt}, contendo uma mensagem de sistema (\textit{system prompt}) e uma mensagem de usuário (\textit{user prompt}). 
+A mensagem de sistema é carregada de um arquivo externo (\texttt{sigma\_system\_prompt.md} \footnote{\textbf{Apêndice}}) 
+e contém instruções permanentes que regem o comportamento do modelo, independentemente da ameaça específica.
+São elas: estrutura obrigatória do YAML, lista de \textit{tags} válidas para o campo \texttt{tags}, regras de uso dos \textit{logsources}, modificadores YAML aceitos pela especificação \textit{Sigma}, padrões proibidos (como o bloco \texttt{related:} ou a inserção de \textit{filtros} no campo \texttt{condition:}) e diretrizes para nunca inventar campos ou \gls{url}s. 
+O conteúdo desse arquivo foi desenvolvido de forma iterativa a partir da análise de erros observados em execuções preliminares sobre o conjunto \textit{extra\_test\_cases} (\textbf{Seção selecaodados}) e foi ``congelado'' antes do início dos experimentos sobre o conjunto \textit{test\_cases}, de modo a evitar qualquer contaminação metodológica entre o ajuste do agente e a sua avaliação.
+A mensagem de usuário, por sua vez, é construída dinamicamente a cada chamada e reúne seis blocos sequenciais:
+\begin{enumerate}
+	\item \textit{USER REQUEST}, contendo o \textit{prompt} original do
+	usuário;
+	
+	\item \textit{USER-PROVIDED REFERENCES}, com a lista exata de \gls{url}s autorizadas para o campo \texttt{references:} da regra, ou uma instrução explícita para omitir o campo quando nenhuma \gls{url} foi fornecida;
+	
+	\item \textit{FORMATTING TEMPLATE}, com os cinco exemplos recuperados pelo \gls{rag}, usados como referência estrutural de formatação;
+	
+	\item \textit{ADDITIONAL TECHNICAL CONTEXT}, com a informação técnica acumulada pelo nó 2 --- MITRE, \gls{nvd}, busca \textit{web} e, quando aplicável, a descrição destilada da ameaça;
+	
+	\item \textit{REASONING STEP}, que solicita à \gls{llm} a produção de um bloco \texttt{\<thinking\>...\<\/thinking\>} com raciocínio explícito sobre quatro aspectos críticos da regra a ser gerada --- escolha do \textit{logsource}, identificação dos campos de \textit{log}, escolha dos modificadores YAML adequados e mapeamento à técnica MITRE ATT\&CK correspondente;
+	
+	\item \textit{OUTPUT REQUIREMENTS}, com as instruções formais sobre o formato esperado da saída.
+\end{enumerate}
+
+A solicitação de um bloco de raciocínio explícito antes da geração do YAML implementa uma forma de \acrlong{cot} \textit{Prompting} \cite{wei2022chain}, técnica conhecida por melhorar a qualidade de saídas que envolvem decisões em múltiplas etapas. 
+No caso de regras \textit{Sigma}, essas decisões são interdependentes --- a escolha do \textit{logsource} restringe os campos disponíveis, que por sua vez determinam quais modificadores fazem sentido, e o raciocínio explícito força a \gls{llm} a deliberar sobre cada etapa antes de se comprometer com o resultado final, em vez de produzir a regra como saída direta.
+
+Por fim, o nó 4 incorpora um mecanismo de auto-correção orientada por erro. 
+Quando o estado do grafo contém uma mensagem de erro armazenada no campo \texttt{erro\_validacao} (que ocorre a partir da segunda tentativa de geração, após o validador sintático (nó 5) ter rejeitado a tentativa anterior), o \textit{prompt} de usuário recebe um bloco adicional chamado \textit{ATTENTION}, contendo a mensagem de erro específica e a instrução para corrigi-la. 
+Este acréscimo permite que cada nova geração não seja cega: a \gls{llm} recebe \textit{feedback} estruturado sobre o erro anterior e pode focar sua correção naquele problema específico, em vez de regerar a regra do zero. 
+A descrição completa do laço entre os nós 4 e 5 será apresentada na próxima subseção (Seção \ref{subsec:no5}).
+
+
+\subsubsection{Validação sintática iterativa e laço de correção (nó 5)}\label{subsec:no5}
+
+O nó 5 é o ponto em que a regra produzida pelo nó 4 é submetida a um conjunto de verificações. 
+Seu propósito é aprovar regras que cumprem a especificação oficial \textit{Sigma} ou, quando há erros, devolver ao gerador uma mensagem técnica precisa que oriente uma nova tentativa de geração. 
+É a partir deste nó que se forma o laço de auto-correção entre os nós 4 e 5, descrito ao final desta subsubseção.
+
+Antes das verificações propriamente ditas, o nó 5 executa uma etapa de pré-processamento sobre a saída bruta da \gls{llm}, projetada a partir de padrões de erro recorrentes observados durante a calibração do agente sobre o conjunto \textit{extra\_test\_cases} (\textbf{Seçãoselecaodados}).
+Quatro normalizações são aplicadas em sequência: 
+\begin{enumerate}
+	\item Remoção de eventuais cercas de \textit{markdown} (\texttt{```}) que a \gls{llm} possa ter adicionado em torno do YAML;
+	
+	\item Extração e descarte do bloco \texttt{\<thinking\>...\<\/thinking\>}, no qual o nó 4 instruiu a \gls{llm} a registrar seu raciocínio passo a passo (\textbf{Seção no4});
+	
+	\item Tratamento do caso em que a \gls{llm} produz mais de um documento YAML separados por \texttt{---}, mantendo-se apenas o primeiro;
+	
+	\item substituição do identificador \texttt{id:} da regra por um número único gerado pelo \textit{Python} (\gls{uuid}). Este passo é necessário porque o \textit{system prompt} instrui a \gls{llm} que preencha o campo \texttt{id:} com um valor temporário qualquer, deixando a geração do identificador real para esta etapa. 
+\end{enumerate}
+Só depois das normalizações o YAML é considerado pronto para validação.
+
+A validação em si é organizada em três etapas progressivas, do mais barato ao mais caro. 
+A primeira etapa utiliza a biblioteca \textit{PyYAML}
+\footnote{Disponível em: \url{pyyaml.org}.} 
+para verificar se o texto é um YAML sintaticamente válido. 
+A segunda etapa avalia a estrutura mínima da regra. 
+Confirma que o resultado é um dicionário, que os três campos obrigatórios da especificação \textit{Sigma} estão presentes (\texttt{title}, \texttt{logsource} e \texttt{detection}) e que todas as \textit{tags} declaradas no campo \texttt{tags:} pertencem à taxonomia oficial do MITRE ATT\&CK \cite{strom2018mitre}, verificação feita por uma função local que compara cada \textit{tag} contra uma lista de táticas e técnicas conhecidas. 
+A terceira e mais rigorosa etapa utiliza a biblioteca textit{pySigma}
+\footnote{Disponível em www.github.com/SigmaHQ/pySigma}, mantida pelo \textit{SigmaHQ}, que executa a validação semântica da regra contra a especificação completa da plataforma. 
+A regra é considerada aprovada apenas se passar nas três etapas. 
+Em qualquer falha, uma mensagem de erro específica da etapa em que ocorreu o problema é gravada no campo \texttt{erro\_validacao} do estado.
+
+O fluxo subsequente é decidido pela função de roteamento que lê o resultado da validação. 
+São três caminhos possíveis: (i) se a regra foi aprovada (\texttt{erro\_validacao = APROVADO}), o controle segue para o juiz semântico (nó 6), encerrando o laço; 
+(ii) se a regra foi reprovada e o contador \texttt{tentativas} já atingiu o limite máximo de 4, o controle também segue para o nó 6, encerrando o laço por exaustão de tentativas; (iii) nas situações restantes (de reprovação), o controle volta para o nó 4 para uma nova tentativa de geração. 
+E esse retorno não é uma simples repetição; como descrito na \textbf{Seção (subsec:no4)}, o nó 4 lê o campo \texttt{erro\_validacao} e anexa a mensagem de erro ao \textit{prompt}, de modo que a \gls{llm} receba \textit{feedback} estruturado sobre o problema específico da tentativa anterior e tente corrigi-lo.
+
+O ciclo formado entre os nós 4 e 5 constitui um mecanismo de auto-correção iterativa orientada por \textit{feedback} externo, padrão amplamente estudado na literatura sob o nome \textit{self-refinement} \cite{madaan2023selfrefine}. 
+O caso aqui apresentado difere do mecanismo original em um aspecto importante. 
+No \textit{Self-Refine} clássico, o próprio modelo gera tanto a saída quanto a crítica que a refina; no laço deste agente, o \textit{feedback} vem de um validador externo, determinístico e auditável (o \textit{pySigma}), o que torna o sinal de correção independente das eventuais inseguranças ou vieses da própria \gls{llm}. 
+Vale registrar, porém, que esse laço só protege contra erros sintáticos e estruturais. 
+Erros de natureza semântica, como uma regra bem formada mas inadequada à ameaça exigem uma camada adicional de avaliação, papel desempenhado pelo nó 6 (\textbf{Seção no6}).
+
+Por conseguinte, vale uma observação sobre a decisão de encaminhar ao nó 6 as regras que falharam na validação por exaustão de tentativas, em vez de simplesmente descartá-las. 
+Essa escolha permite que toda regra gerada, aprovada ou não, seja salva em disco e analisada pelo juiz semântico, o que viabiliza análise dos modos de falha do agente.
+Sem esse tratamento, regras reprovadas seriam invisíveis à análise posterior, e a oportunidade de caracterizar empiricamente por que e em que circunstâncias o agente falha seria perdida. 
+O limite de quatro tentativas, por sua vez, é um \textit{trade-off} prático entre tempo de execução e probabilidade de convergência: tentativas adicionais raramente resolvem erros que não foram corrigidos nas primeiras iterações, segundo observações preliminares com \texttt{extra\_test\_cases}.
+
+
+\subsubsection{Avaliação semântica por LLL-as-a-judge}
+
+O nó 6 implementa uma camada de avaliação complementar à validação sintática do nó 5.
+Sua razão de existir parte do fato de que o \textit{pySigma} aprova regras que estão \textit{formalmente} corretas, isto é, regras que respeitam a especificação \textit{Sigma} em estrutura, campos obrigatórios, modificadores e operadores. 
+Contudo, ele não tem como avaliar se a regra é adequada à ameaça do cenário: uma regra pode ser sintaticamente impecável e, ainda assim, não fazer sentido contextual. 
+Pode monitorar uma fonte de \textit{logs} errada, usar campos irrelevantes para o ataque descrito, inventar filtros que não têm respaldo na descrição original do usuário, entre outras situações. 
+Captar esse tipo de inadequação, que escapa à validação puramente sintática, é o papel do nó 6.
+
+A solução adotada é a técnica conhecida como LLM-como-juiz (\textit{LLM-as-a-Judge}) \cite{zheng2023judging}, em que uma \gls{llm} dedicada a essa função recebe a regra, a descrição original da ameaça e a especificação oficial do \textit{Sigma}, e emite um parecer crítico sobre a correção semântica da regra. 
+O modelo escolhido para essa tarefa é o \texttt{Qwen2.5:14b}, executado localmente com temperatura zero --- valor que garante o máximo de determinismo possível e elimina variabilidade aleatória entre execuções. 
+Duas decisões convergem para escolha do modelo e a primeira é o uso de uma família arquiteturalmente distinta à do gerador (\texttt{Llama3.1}), pelos motivos já discutidos na \textbf{Seção no2} --- famílias diferentes reduzem o risco de erros sistemáticos comuns ao gerador e ao auditor. 
+E a segunda decisão é optar por um modelo maior (14 bilhões de parâmetros contra 8 bilhões do gerador), justificada pelo fato de que uma avaliação crítica exige mais capacidade de raciocínio do que geração condicionada.
+
+O \textit{design} do nó 6 opera em modo anotação, vale ressaltar. 
+Isso implica que seu parecer não bloqueia o fluxo do agente nem dispara uma nova rodada de geração, mesmo quando a regra é considerada problemática. 
+Poderiam ser enumeradas mais de uma razão para essa escolha, mas as decisões principais são metodológica e falta de tempo hábil --- optou-se que o objetivo do nó 6 seria \textit{medir} a qualidade semântica das regras geradas pelo agente em comparação com o gabarito do \textit{SigmaHQ}, ao invés de corrigi-las em tempo real, pois demandaria mais tempo para testar a qualidade do impacto do julgamento. 
+
+Quanto ao parecer
+\footnote{Exemplos disponíveis em Apêndice x}, 
+produto do modo anotação, é estruturado em seis dimensões avaliadas, cada uma classificada como \textit{PASS}, \textit{WARN} ou \textit{FAIL}, com uma justificativa em uma ou duas frases. 
+As dimensões são: 
+\begin{enumerate}
+	\item \textit{logsource}, que avalia se a fonte de \textit{log} declarada usa corretamente os campos \textit{category}, \textit{product} e \textit{service}, e se os valores escolhidos são válidos;
+	
+	\item \textit{modifiers}, que avalia se os operadores \texttt{|contains}, \texttt{|endswith} e \texttt{|startswith} foram usados de forma adequada;
+	
+	\item \textit{condition}, que avalia se a lógica \textit{booleana} é sintaticamente válida e faz sentido;
+	
+	\item \textit{structure}, que avalia a presença dos campos obrigatórios da especificação;
+	
+	\item \textit{semantic\_alignment}, que avalia se a lógica de detecção efetivamente captura a ameaça descrita;
+	
+	\item \textit{invented\_filters}, que avalia se a regra adicionou filtros (caminhos ou \textit{hosts} específicos) que não têm respaldo na descrição original da ameaça.
+\end{enumerate}
+A combinação dessas seis dimensões produz um \textbf{veredito final} com três valores possíveis: \textit{APPROVED} (todas as dimensões PASS), \textit{APPROVED\_WITH\_WARNINGS} (pelo menos uma WARN, nenhuma FAIL) e \textit{REJECTED} (pelo menos uma FAIL). Um campo adicional de \textit{observações gerais} captura um comentário breve do juiz sobre a qualidade global da regra.
+
+O parecer é solicitado à \gls{llm} em formato JSON estruturado e gravado em disco em um arquivo cuja nomenclatura segue o padrão \texttt{\<nome\_do\_cenário\>\_prompt\<N\>.parecer.txt}. A extensão \texttt{.txt} (em vez de \texttt{.json}) é usada para caso o modelo eventualmente produzir um JSON mal-formado, o conteúdo bruto da resposta é preservado em vez de ser descartado, possibilitando inspeção manual posterior. 
+Cada arquivo contém um cabeçalho identificador (cenário, \textit{prompt}, modelo e temperatura usados) seguido do bloco JSON com o parecer. 
+Esses arquivos são a fonte primária de evidência empírica usada na \textbf{Seção de Resultados} para caracterizar os modos de falha do agente.
+
+
+\subsection{Métricas de Avaliação}
+%\subsubsection{Validação Sintática}
+%\subsubsection{Correspondência estrutural}
+%\subsubsection{Similaridade Semântica}
+
+A avaliação do desempenho do agente e a comparação entre os quatro estágios de geração descritos na \textbf{Seção estrategias} se apoiam em métricas determinísticas, métricas semânticas, métricas de similaridade com o gabarito e testes estatísticos para comparação entre estágios.
+Todas elas têm como fonte primária de dados o registro de metadados produzido automaticamente pelo ambiente de execução do agente, descrito a seguir.
+
+\subsubsection{Metadados}
+
+Durante a execução do agente com os 50 cenários (regras) do conjunto \textit{test\_cases}, cada combinação \texttt{(cenário, \textit{promptN})} produz $9$ (sem considerar a regra original) objetos salvos no mesmo diretório, conforme descrito na \textbf{Seção x?}.
+Novamente: considerando os três \textit{prompts}, para cada um, há uma regra \textit{Sigma} gerada (um arquivo \texttt{.yml}), um parecer do juiz semântico (arquivo \texttt{.parecer.txt}) e uma linha em um arquivo \texttt{.csv}, denominado \texttt{metadados\_geracao.csv}, que centraliza os dados das 150 execuções. 
+Esta estrutura de dados viabiliza todas as análises subsequentes, visto que cada uma de suas linhas corresponde a uma execução completa do agente, e suas colunas registram os atributos relevantes da execução.
+
+As colunas do registro de metadados podem ser agrupadas em cinco categorias funcionais. 
+%\begin{alineas}
+%    \item primeira alínea;
+%    \item segunda alínea;
+%    \item terceira alínea.
+%\end{alineas}
+A primeira é a identificação, com as colunas \texttt{cenario\_id} e \texttt{prompt\_usado}, que identificam a execução de forma única. 
+A segunda é a configuração, com as colunas \texttt{tipo\_input}, \texttt{contexto\_pobre} e \texttt{usou\_web\_search}, que registram as decisões tomadas pelos nós 1 e 2 sobre o tratamento da entrada. 
+A terceira é o resultado quantitativo da execução, com as colunas \texttt{status} (\texttt{APROVADO}, \texttt{REPROVADO} ou \texttt{ERRO\_EXECUCAO}), \texttt{tentativas} (número de iterações no laço nó 4 -- nó 5), \texttt{tempo\_total\_s} e \texttt{erro\_validacao\_final}. 
+A quarta é a avaliação semântica do nó 6, com a coluna \texttt{veredito\_juiz} e seis colunas \texttt{juiz\_\<dimensão\>}, uma para cada dimensão avaliada (\textbf{Seção no6}), além da coluna \texttt{motivo\_reprovacao}. 
+A quinta é o rastreio dos arquivos gerados, com as colunas \texttt{regra\_referencia}, \texttt{arquivo\_regra\_gerada} e \texttt{arquivo\_parecer}. 
+Essa estrutura permite que cada métrica seja calculada a partir de operações simples de filtragem, contagem ou agregação sobre as 150 linhas do CSV correspondentes aos 50 cenários executados com três configurações de \textit{prompt} cada.
+
+
+\subsubsection{Métricas determinísticas (nó 5)}
+
+O primeiro grupo de métricas avalia o desempenho sintático e estrutural do agente, com base nas decisões determinísticas do nó 5 (validador). 
+A partir do \texttt{.csv} serão calculados quatro indicadores: 
+\begin{enumerate}
+	\item a ``taxa de aprovação sintática'', definida como a proporção entre execuções em que \texttt{status = APROVADO} e o total de execuções; 
+	
+	\item o ``número médio de tentativas'' até a aprovação (ou até o esgotamento do limite), calculado sobre a coluna \texttt{tentativas}; 
+	
+	\item a ``distribuição dos modos de falha'', obtida a partir do agrupamento das execuções com \texttt{status = REPROVADO} pela mensagem registrada em \texttt{erro\_validacao\_final} --- classificando-as nas três etapas internas do nó 5: erro de \textit{parsing} YAML, ausência de campo obrigatório ou erro semântico do \textit{pySigma}; 
+	
+	\item ``tempo médio por execução'', calculado sobre a coluna \texttt{tempo\_total\_s}.
+\end{enumerate} 
+Estes quatro indicadores cobrem o desempenho do agente quanto à aprovação sintática das regras geradas. 
+Aspectos como qualidade semântica, similaridade com o gabarito e comparação entre estágios são tratados nas subseções seguintes.
+
+*****Como o Estágio 1 é composto pelas regras originais do \textit{SigmaHQ}, seria, por construção, sempre aprovado em todas as etapas. 
+Sendo assim, as métricas listadas têm utilidade comparativa principalmente entre os Estágios 2, 3 e 4 (\textbf{Seção estrategias}), nos quais a aprovação sintática não é garantida.*****
+
+
+\subsubsection{Métricas semânticas (nó 6)}
+
+O segundo grupo de métricas provém do parecer do juiz semântico, do nó 6, e cobre aspectos distintos da conformidade sintática. 
+Três indicadores serão calculados: (i) a ``distribuição de vereditos'', ou seja, as proporções de regras classificadas como \texttt{APPROVED}, \texttt{APPROVED\_WITH\_WARNINGS} e \texttt{REJECTED}, obtidas diretamente da coluna \texttt{veredito\_juiz}; (ii) a ``taxa de \textit{PASS} por dimensão'', calculada separadamente para cada uma das seis colunas \texttt{juiz\_\<dimensão\>}, permitindo identificar em quais aspectos o agente apresenta maior ou menor solidez (por exemplo, se a dimensão \texttt{semantic\_alignment} apresenta taxas sistematicamente menores que \texttt{structure}, isso indica que as regras tendem a ser bem formadas mas semanticamente desalinhadas com a ameaça); 
+e (iii) a ``taxa de qualidade entre nó 5 e 6'', definida como a proporção de regras que foram aprovadas pelo validador sintático (\texttt{status = APROVADO}) mas que receberam veredito \texttt{REJECTED} ou \texttt{APPROVED\_WITH\_WARNINGS} pelo juiz semântico --- em outras palavras, esta última métrica permite quantificar a divergência entre validação sintática e avaliação semântica.
+
+
+\subsubsection{Métricas de similaridade com o gabarito}\label{subsec:similaridade}
+
+O terceiro grupo de métricas avalia a proximidade entre as regras geradas e as regras de referência correspondentes do gabarito do \textit{SigmaHQ}, em uma comparação direta um-a-um. 
+Diferentemente das métricas anteriores, que avaliam atributos absolutos de cada regra gerada, estas métricas exigem o cálculo conjunto sobre a regra gerada (\texttt{arquivo\_regra\_gerada} no CSV) e a regra original correspondente (\texttt{regra\_referencia}). 
+São adotadas duas perspectivas complementares, similaridade semântica geral e acerto estrutural sobre campos específicos. 
+Os fundamentos teóricos de ambas as métricas estão apresentados na \textbf{Seção metricas similaridade referencial}; esta subseção apenas descreve sua aplicação neste trabalho.
+A similaridade semântica geral é medida pela similaridade do cosseno entre vetores de \textit{embeddings} das duas regras. 
+Os vetores são calculados com o modelo \texttt{BAAI/bge-small-en-v1.5} usado pelo nó 3 (\textbf{Seção no3}), garantindo que o mesmo modelo que o agente utiliza para recuperar exemplos similares no banco vetorial é o que se mede a proximidade entre regra gerada e gabarito. 
+O resultado é um valor entre -1 e 1, no qual valores próximos de 1 indicam regras semanticamente próximas e valores próximos de 0 indicam regras semanticamente distantes. 
+Essa métrica captura proximidade global --- se duas regr as descrevem ameaças relacionadas, terão \textit{embeddings} próximos, mesmo que escrevam campos individuais de formas diferentes.
+
+Quanto ao acerto estrutural, é medido pelo índice de \textit{Jaccard} sobre conjuntos derivados de campos-chave da regra, comparados par a par entre regra gerada e regra-alvo. 
+Diferentemente do cosseno, que opera sobre vetores contínuos e dá uma visão geral, o índice de \textit{Jaccard} opera sobre conjuntos discretos e responde a perguntas pontuais sobre quais elementos estão presentes em comum. 
+Três comparações são reportadas separadamente: (i) \textit{Jaccard} sobre o conjunto de \textit{tags} declaradas, que responde se o agente identificou as técnicas MITRE ATT\&CK corretas; (ii) \textit{Jaccard} sobre o conjunto de campos do bloco \texttt{detection}, que responde se o agente escolheu os campos de \textit{log} corretos para a detecção; e (iii) \textit{Jaccard} sobre o par \texttt{(category, product)} do \texttt{logsource}, que responde se o agente identificou corretamente a fonte de \textit{log} adequada à ameaça. 
+Reportar as três comparações separadamente permite distinguir, por exemplo, regras que erram a fonte de \textit{log} mas acertam as \textit{tags} de regras que fazem o oposto.
+
+A escolha pelas duas métricas em conjunto, em vez de uma só, se dá pela complementaridade conceitual. 
+Enquanto o cosseno fornece uma medida que captura proximidade mesmo quando as duas regras não compartilham campos exatos, \textit{Jaccard}, em contraste, responde se um campo específico foi acertado ou não. 
+Usar somente o cosseno deixaria perguntas estruturais sem resposta direta; usar somente \textit{Jaccard} ignoraria a proximidade semântica entre regras que se referem a ameaças correlatas mas com vocabulários distintos. 
+
+
+\subsubsection{Comparação estatística entre estágios}
+
+
+
+
 
 %\adr{O desenvolvimento do agente autônomo "é a terceira etapa", as duas primeiras são atividades diferentes! estava banstante confuso. Tentei reescrever. Verifique.\\
 	%O desenvolvimento e avaliação do presente trabalho envolverá três etapas distintas, que serão detalhadas a seguir. A primeira fase envolverá a geração de regras utilizando as LLMs já mencionadas, visando um cenário simplificado e que remete a um usuário inexperiente. A segunda fase incluirá um prompt customizado e que fornecerá dados e instruções relevantes para extrair um melhor desempenho e acucária das LLMs na geração das regras. Na terceira fase será desenvolvido um agente especializado, treinado para a geração de regras de forma autônoma, com base nas referências/dados da vulnerabilidade da qual se pretende proteger. Inicialmente serão obtidas todas as regras \textit{Sigma} através de seu repositório no \textit{GitHub} \cite{SigmaReadMe}, sendo organizadas da seguinte forma: 3000 regras para a base de treinamento e 400 regras para testes. A avaliação dos resultados será realizada através de análise manual por amostragem e análise automatizada (Distância do Cosseno, \textit{Term Frequency-Inverse Document Frequency} (TF-IDF), ou Jaccard, ainda a definir) para verificar a acurácia perante as regras originais ou uma eventual melhoria em sua estrutura, por se tratar de uma busca mais recente, utilizando informações adicionais às referências usadas durante a criação da regra original. Por fim, uma análise de qual fase alcançou o melhor desempenho ou custo-benefício será apresentada.}
-
 
 

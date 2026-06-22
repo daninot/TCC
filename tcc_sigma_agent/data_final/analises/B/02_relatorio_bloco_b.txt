@@ -1,0 +1,51 @@
+========================================================================
+BLOCO B — MÉTRICAS DETERMINÍSTICAS DO AGENTE
+Gerado em: 2026-06-20 18:05:57
+========================================================================
+
+5.2.1  TAXA DE APROVAÇÃO SINTÁTICA
+------------------------------------------------------------------------
+  Grupo   N  APROVADO  REPROVADO  ERRO_EXECUCAO  Taxa de aprovação (%)
+ global 150        75         75              0                   50.0
+prompt1  50        29         21              0                   58.0
+prompt2  50        25         25              0                   50.0
+prompt3  50        21         29              0                   42.0
+
+  Resumo: 75/150 execuções aprovadas — taxa global de 50.0%.
+  ERRO_EXECUCAO: 0 ocorrência(s).
+
+
+5.2.2  TENTATIVAS E TEMPO
+------------------------------------------------------------------------
+  Grupo   N  Tentativas (média)  Tentativas (mediana)  Tempo médio (s)  Tempo mediano (s)  Tempo máximo (s)
+ global 150                3.15                     4            88.05              89.03            133.07
+prompt1  50                2.92                     3            87.73              88.08            133.07
+prompt2  50                3.20                     4            87.88              90.06            115.57
+prompt3  50                3.32                     4            88.54              89.22            108.53
+
+  Distribuição de tentativas: 1=20, 2=24, 3=20, 4=86
+
+
+5.2.3  MODOS DE FALHA
+------------------------------------------------------------------------
+        Categoria do erro  Quantidade  Percentual
+             Parsing YAML          34        45.3
+        Semântica pySigma          21        28.0
+Campo obrigatório ausente          14        18.7
+       Tag MITRE inválida           6         8.0
+
+
+5.2.4  INFLUÊNCIA DAS DECISÕES INICIAIS
+------------------------------------------------------------------------
+AVISOS:
+  ! A variável 'usou_web_search' assumiu valor constante 'True' em todas as 150 execuções. Não pode ser usada como fator explicativo do desempenho.
+
+   Decisão  tipo_input  APROVADO  REPROVADO  Total  Taxa aprov. (%)
+tipo_input         cve         4          8     12             33.3
+tipo_input texto_livre        71         67    138             51.4
+tipo_input       Total        75         75    150             50.0
+
+       Decisão contexto_pobre  APROVADO  REPROVADO  Total  Taxa aprov. (%)
+contexto_pobre          False        47         54    101             46.5
+contexto_pobre           True        28         21     49             57.1
+contexto_pobre          Total        75         75    150             50.0

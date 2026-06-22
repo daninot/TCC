@@ -1,0 +1,5 @@
+Categoria do erro,Quantidade,Percentual
+Parsing YAML,34,45.333333333333336
+Semântica pySigma,21,28.0
+Campo obrigatório ausente,14,18.666666666666668
+Tag MITRE inválida,6,8.0

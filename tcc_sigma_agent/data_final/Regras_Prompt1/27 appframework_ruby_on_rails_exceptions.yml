@@ -1,0 +1,35 @@
+title: Ruby on Rails Web Application Attack Indicators
+id: ad84b391-7294-4d8e-be89-1fc3e59074bf
+status: experimental
+description: Detects specific security-relevant and malformed request exceptions thrown by the Ruby on Rails Action Dispatch middleware framework. These exceptions (such as CSRF token failures, unknown HTTP methods, parse errors, and missing parameters) often surface during web application scanning, fuzzing, or direct exploitation attempts against Rails endpoints.
+references:
+    - http://edgeguides.rubyonrails.org/security.html
+    - http://guides.rubyonrails.org/action_controller_overview.html
+    - https://stackoverflow.com/questions/25892194/does-rails-come-with-a-not-authorized-exception
+    - https://github.com/rails/rails/blob/cd08e6bcc4cd8948fe01e0be1ea0c7ca60373a25/actionpack/lib/action_dispatch/middleware/exception_wrapper.rb
+author: Security Operations Center
+date: 2026/06/05
+tags:
+    - attack.initial_access
+    - attack.t1190 # Exploit Public-Facing Application
+logsource:
+    category: application
+    product: rails
+detection:
+    selection:
+        Message|contains:
+            # CSRF and Cross-Origin Protections
+            - 'ActionController::InvalidAuthenticityToken'
+            - 'ActionController::InvalidCrossOriginRequest'
+            # Request and Protocol Anomalies (Fuzzing)
+            - 'ActionController::UnknownHttpMethod'
+            - 'ActionController::MethodNotAllowed'
+            # Malformed payloads / Parameter Tampering
+            - 'ActionDispatch::Http::Parameters::ParseError'
+            - 'ActionController::BadRequest'
+            - 'ActionController::ParameterMissing'
+    condition: selection
+falsepositives:
+    - End-users with expired or stale sessions submitting forms, resulting in genuine `InvalidAuthenticityToken` errors.
+    - Legacy API clients or integration tools sending outdated web hooks or improperly formatted parameters following an application update.
+level: medium

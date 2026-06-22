@@ -1,0 +1,162 @@
+title: Malicious Python .pth File Created in site-packages for Persistent Code Execution
+id: f47a9c31-2e18-4b07-ad85-8c6d0b3e52f9
+status: experimental
+description: |
+    Detects creation or modification of a Python .pth file inside a site-packages
+    directory whose content contains an executable "import " line, indicating abuse
+    of the Python site module's .pth auto-execution feature for persistent backdoor
+    installation.
+
+    MECHANISM (Python docs/library/site.html):
+    The Python site module, loaded automatically at interpreter startup, processes
+    every .pth file found in site-packages directories. Per the official Python
+    documentation, any line in a .pth file that begins with "import " followed by
+    a space or tab character is EXECUTED AS PYTHON CODE rather than appended to
+    sys.path. This means any .pth file dropped into site-packages that starts with
+    "import " will execute its payload every time ANY Python process starts on the
+    host — including cron jobs, monitoring agents, and system tools.
+
+    UPSTYLE BACKDOOR (CVE-2024-3400 / UTA0218):
+    The UPSTYLE backdoor, deployed by Chinese state-backed threat actor UTA0218
+    against Palo Alto Networks GlobalProtect firewalls (exploited as a zero-day,
+    March–April 2024), uses exactly this mechanism. The installer script (update.py,
+    SHA256: 3de2a4392b8715bad070b2ae12243f166ead37830f7c6d24e778985927f9caac)
+    writes the backdoor to:
+        /usr/lib/python3.6/site-packages/system.pth
+    The file begins with an "import " line followed by a base64-encoded payload
+    blob. Once in place, the backdoor:
+      1. Polls the nginx SSL VPN error log (/var/log/pan/sslvpn_ngx_error.log)
+         for attacker-crafted HTTP requests to non-existent pages containing
+         an encoded command pattern.
+      2. Decodes and executes the embedded command.
+      3. Writes command output to the legitimate CSS file:
+         /var/appweb/sslvpndocs/global-protect/portal/css/bootstrap.min.css
+      4. Removes the triggering log entry from sslvpn_ngx_error.log.
+      5. Restores bootstrap.min.css to its original content 15 seconds later.
+      6. Restores access and modification timestamps on both files (anti-forensic).
+
+    The .pth persistence mechanism is entirely Python-documented and appliance-
+    agnostic. Any attacker who reads the Python site module documentation can
+    reuse it on any Linux appliance, container, or server running Python —
+    making this detection relevant beyond the PAN-OS context.
+
+    DETECTION STRATEGY:
+    This rule targets the filesystem write event — the moment system.pth (or any
+    anomalously named .pth file) is created or modified in a site-packages directory.
+    This is earlier in the kill chain than the backdoor's polling behaviour and
+    survives payload recompilation, C2 rotation, and hash-based IOC expiry.
+
+    Legitimate .pth files:
+      - Are created exclusively by pip, conda, setuptools, or distutils during
+        package installation.
+      - Contain only sys.path extension lines (plain directory paths) or well-known
+        package "import" lines consistent with installed package names
+        (e.g. "import pkg_resources" from setuptools).
+      - Are named after the package they belong to (e.g. "requests.pth",
+        "numpy.pth"), not generic system-sounding names like "system.pth".
+
+    Any .pth file created by a process other than a package manager, or containing
+    a non-standard "import" line with an encoded payload, is anomalous.
+
+references:
+    - https://www.volexity.com/blog/2024/04/12/zero-day-exploitation-of-unauthenticated-remote-code-execution-vulnerability-in-globalprotect-cve-2024-3400/
+    - https://www.virustotal.com/gui/file/3de2a4392b8715bad070b2ae12243f166ead37830f7c6d24e778985927f9caac
+    - https://docs.python.org/3/library/site.html
+    - https://security.paloaltonetworks.com/CVE-2024-3400
+    - https://unit42.paloaltonetworks.com/cve-2024-3400/
+author: Generated from Volexity CVE-2024-3400 research, UPSTYLE VirusTotal sample, and Python site module documentation
+date: 2024-04-12
+tags:
+    - attack.persistence
+    - attack.t1546.016   # Event Triggered Execution: Installer Packages (.pth abuse)
+    - attack.defense_evasion
+    - attack.t1027.013   # Obfuscated Files or Information: Encrypted/Encoded File (base64 blob in .pth)
+    - attack.t1070.006   # Indicator Removal: Timestomp (timestamp restoration post-execution)
+    - attack.initial_access
+    - attack.t1190       # Exploit Public-Facing Application (CVE-2024-3400 delivery vector)
+    - tlp:white
+logsource:
+    product: linux
+    category: file_event
+    # Requires Sysmon for Linux (sysinternalsuite) with FileCreate/FileModify events
+    # enabled, OR auditd with -w rules on site-packages directories, OR an EDR agent
+    # with filesystem telemetry on Linux.
+    #
+    # Recommended auditd rule to generate this telemetry:
+    #   -w /usr/lib/python3/ -p wa -k python_sitepackages_write
+    #   -w /usr/lib/python3.6/site-packages/ -p wa -k python_sitepackages_write
+    #   -w /usr/local/lib/ -p wa -k python_sitepackages_write
+    #   -w /opt/ -p wa -k python_sitepackages_write
+    #
+    # The TargetFilename field below corresponds to the file path written.
+detection:
+    # ── Arm 1: Exact UPSTYLE IOC path (highest specificity) ──────────────────
+    # The specific path documented by Volexity and confirmed in the VirusTotal
+    # sample. Any write to this exact path is malicious — "system.pth" is not
+    # a filename produced by any legitimate Python package.
+    selection_upstyle_exact:
+        TargetFilename: '/usr/lib/python3.6/site-packages/system.pth'
+
+    # ── Arm 2: Any .pth file written to a site-packages directory ────────────
+    # Catches UPSTYLE variants using different filenames, and any other attacker
+    # reusing this Python-documented persistence primitive on other appliances
+    # or servers. site-packages under /usr/lib, /usr/local/lib, and /opt are
+    # the standard installation roots across major Linux distributions.
+    selection_pth_in_sitepackages:
+        TargetFilename|contains:
+            - '/site-packages/'
+            - '/dist-packages/'
+        TargetFilename|endswith: '.pth'
+
+    # ── Arm 3: .pth file written anywhere by a non-package-manager process ───
+    # Pip, conda, and setuptools are the only legitimate writers of .pth files.
+    # Any other process creating a .pth file outside a controlled install context
+    # is suspicious regardless of path — covers edge cases where an attacker
+    # stages the file in a non-standard Python prefix path.
+    filter_legitimate_package_managers:
+        Image|contains:
+            - '/pip'
+            - '/pip3'
+            - '/conda'
+            - '/setuptools'
+            - '/easy_install'
+            - 'python setup.py'
+
+    # ── Arm 4: .pth file written outside of an interactive package install ────
+    # On network appliances (PAN-OS, FortiOS, etc.), pip and conda should never
+    # run during normal operations. Any .pth write on an appliance-class host is
+    # unconditionally anomalous.
+    # On general-purpose servers, correlate with Arm 3 to identify non-pip writers.
+
+    # ── Exclude known benign .pth files created at OS/package install time ────
+    # These are stable after initial provisioning; any write post-baseline is
+    # suspicious. If your SIEM supports it, alert only on writes that occur
+    # outside of a defined maintenance/provisioning window.
+    filter_known_benign_pth_names:
+        TargetFilename|endswith:
+            - '/easy-install.pth'
+            - '/pkg_resources.pth'
+            - '/site.pth'
+
+    condition: >
+        (selection_upstyle_exact)
+        or
+        (selection_pth_in_sitepackages and not filter_legitimate_package_managers
+         and not filter_known_benign_pth_names)
+
+falsepositives:
+    - A developer or sysadmin manually running "python setup.py develop" or
+      "pip install -e ." (editable installs), which creates a .pth file pointing
+      to the source directory. These are almost never performed on network security
+      appliances and are rare on production servers. Filter by Image containing pip.
+    - A configuration management tool (Ansible, Puppet, Chef) that installs a
+      Python package by writing files directly rather than invoking pip — exclude
+      by ParentImage (e.g. containing 'ansible', 'puppet', 'chef').
+    - A container build step that runs during image construction (acceptable at
+      build time, anomalous at runtime) — scope the rule to exclude build
+      infrastructure hostnames if operating in a container environment.
+    # Recommended: on network security appliances (PAN-OS, FortiOS, Junos, etc.),
+    # treat ANY write to a site-packages .pth file as critical with zero
+    # false-positive tolerance — package managers do not run on appliances
+    # during normal operations under any circumstances.
+level: critical

@@ -1,0 +1,43 @@
+title: Kerberoasting via RC4 TGS Request Detected in Zeek Kerberos Logs
+id: a7b3e1f4-2c8d-4a9e-b5f1-3d7c2e4b8a96
+status: experimental
+description: >
+  Detects a Kerberos Ticket-Granting Service (TGS) request that negotiates the
+  weak RC4-HMAC cipher, as observed in Zeek kerberos.log. Modern Active Directory
+  environments default to AES-256 or AES-128 for Kerberos service tickets; an
+  explicit RC4 request by a user principal is a strong behavioral indicator of a
+  Kerberoasting attack, where the adversary deliberately downgrades encryption to
+  obtain an offline-crackable service ticket. The detection excludes requests
+  originating from machine (computer) accounts — identified by a trailing dollar
+  sign in the client principal — which routinely generate RC4 TGS traffic and
+  represent benign baseline noise. Successful ticket issuance is required to
+  confirm that the downgrade was accepted by the KDC.
+references:
+  - https://adsecurity.org/?p=3458
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.credential_access
+  - attack.t1558.003
+logsource:
+  product: zeek
+  service: kerberos
+detection:
+  selection:
+    request_type: 'TGS'
+    cipher: 'rc4-hmac'
+    success: 'true'
+  filter_machine_accounts:
+    client|endswith: '$'
+  condition: selection and not filter_machine_accounts
+falsepositives:
+  - Legacy applications and services that are explicitly configured to require
+    RC4 Kerberos encryption and have not been migrated to AES, resulting in
+    normal enterprise SPN activity appearing as suspicious.
+  - Network appliances (e.g., NetApp, older NAS devices) or third-party services
+    that do not support AES Kerberos and therefore always negotiate RC4.
+  - Cross-forest Kerberos authentication where inter-forest trusts have not been
+    configured for AES, causing all cross-realm TGS requests to use RC4.
+  - Automated testing or vulnerability scanning tools that probe Kerberos
+    encryption support as part of an authorized assessment.
+level: medium

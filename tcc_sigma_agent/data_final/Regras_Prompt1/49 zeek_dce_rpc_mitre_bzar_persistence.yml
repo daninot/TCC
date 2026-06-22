@@ -1,0 +1,65 @@
+title: BZAR - ATT&CK Persistence via Remote DCE-RPC Winlogon Helper or Port Monitor Registration
+id: a4f3c9e1-7d2b-4e6a-b8f0-1c5d9a2e4b7f
+status: experimental
+description: >
+    Detects ATT&CK-like persistence techniques (T1547.004 and T1547.010) by
+    identifying DCE-RPC calls to functions used to remotely register Winlogon
+    Helper DLLs or Port Monitors on a target Windows host. These calls are
+    observed in network traffic logs (Zeek/Bro dce_rpc.log) and indicate an
+    adversary attempting to establish persistence by loading a malicious DLL
+    through the Windows Logon subsystem or the Print Spooler service.
+    Based on MITRE BZAR analytics (section 4.6 - Indicators for ATT&CK Persistence).
+references:
+    - https://github.com/mitre-attack/bzar#indicators-for-attck-persistence
+    - https://attack.mitre.org/techniques/T1547/004/
+    - https://attack.mitre.org/techniques/T1547/010/
+author: Generated for educational purposes
+date: 2026-06-08
+tags:
+    - attack.persistence
+    - attack.t1547.004    # Boot or Logon Autostart Execution: Winlogon Helper DLL
+    - attack.t1547.010    # Boot or Logon Autostart Execution: Port Monitors
+logsource:
+    product: zeek
+    service: dce_rpc
+    definition: >
+        Requires Zeek (Bro) network security monitor with DCE-RPC protocol
+        analysis enabled, generating dce_rpc.log entries. Fields used are
+        'endpoint' and 'operation' from the Zeek DCE-RPC log. These logs
+        must be forwarded to a SIEM and parsed accordingly. The Zeek log
+        fields map as: endpoint -> dce_rpc.endpoint, operation -> dce_rpc.operation.
+detection:
+    selection_winlogon_helper:
+        # T1547.004 - Winlogon Helper DLL
+        # The ISecLogon interface is used to create processes under alternate
+        # credentials. Remotely calling these operations is a strong signal
+        # of an adversary abusing Winlogon for persistence or lateral movement.
+        endpoint: 'ISecLogon'
+        operation:
+            - 'SeclCreateProcessWithLogonW'
+            - 'SeclCreateProcessWithLogonExW'
+
+    selection_port_monitor:
+        # T1547.010 - Port Monitors / Print Processors
+        # Legitimate remote printer management rarely calls AddMonitor or
+        # AddPrintProcessor from outside the organization's print management
+        # infrastructure. These calls from unexpected sources are highly
+        # suspicious and indicate DLL registration for persistence.
+        endpoint:
+            - 'IRemoteWinspool'
+            - 'spoolss'
+        operation:
+            - 'RpcAsyncAddMonitor'
+            - 'RpcAsyncAddPrintProcessor'
+            - 'RpcAddMonitor'
+            - 'RpcAddPrintProcessor'
+
+    condition: selection_winlogon_helper or selection_port_monitor
+falsepositives:
+    - Legitimate remote printer infrastructure management by authorized
+      print server administrators using RpcAddMonitor or RpcAddPrintProcessor
+    - Enterprise print management software that programmatically registers
+      port monitors across a fleet of workstations
+    - Authorized IT automation scripts that configure Winlogon helpers
+      during system provisioning or domain join operations
+level: high

@@ -1,0 +1,80 @@
+========================================================================
+BLOCO D — SIMILARIDADE E CORRESPONDÊNCIA ESTRUTURAL
+Gerado em: 2026-06-21 04:08:14
+========================================================================
+
+Cenários processados: 50
+Modelo de embedding:  BAAI/bge-small-en-v1.5
+
+AVISOS DE PAREAMENTO (1):
+  - Subpasta 'metadados' não bate com o padrão 'N nome' — ignorada.
+
+
+5.4.1  ESTATÍSTICAS DE SIMILARIDADE (todas as 50 regras)
+------------------------------------------------------------------------
+Grupo  Sim. global (média)  Sim. global (mediana)  Sim. global (DP)  Sim. detection (média)  Sim. detection (mediana)  Sim. detection (DP)
+   E2                0.887                  0.879             0.064                   0.829                     0.827                0.154
+   E3                0.927                  0.931             0.030                   0.948                     0.961                0.048
+E4-p1                0.805                  0.812             0.063                   0.462                     0.704                0.398
+E4-p2                0.853                  0.842             0.046                   0.421                     0.336                0.425
+E4-p3                0.866                  0.856             0.055                   0.347                     0.000                0.413
+
+
+5.4.1 (complementar)  SIMILARIDADE DA DETECTION — APENAS YAML VÁLIDOS
+------------------------------------------------------------------------
+Filtra cenários onde gabarito e regra do grupo têm bloco
+'detection' extraível. Isola o efeito da invalidade do YAML.
+
+Grupo  N (válidos)  Média  Mediana    DP
+   E2           49  0.846    0.830 0.100
+   E3           50  0.948    0.961 0.048
+E4-p1           29  0.796    0.807 0.081
+E4-p2           25  0.843    0.827 0.077
+E4-p3           21  0.827    0.819 0.094
+
+
+5.4.1 (complementar)  BIMODALIDADE DA SIMILARIDADE DA DETECTION
+------------------------------------------------------------------------
+Quantos cenários caem em três faixas de similaridade:
+  - Alta:  > 0,5   (detection bem alinhada ao gabarito)
+  - Média: 0,1 – 0,5 (detection parcialmente alinhada)
+  - Baixa: ≤ 0,1   (detection muito divergente ou ausente)
+
+Grupo  N  Alta (>0,5)  Alta (%)  Média (0,1–0,5]  Média (%)  Baixa (≤0,1)  Baixa (%)
+   E2 50           49      98.0                0        0.0             1        2.0
+   E3 50           50     100.0                0        0.0             0        0.0
+E4-p1 50           29      58.0                0        0.0            21       42.0
+E4-p2 50           25      50.0                0        0.0            25       50.0
+E4-p3 50           21      42.0                0        0.0            29       58.0
+
+
+5.4.2  CORRESPONDÊNCIA ESTRUTURAL (todas as 50 regras)
+------------------------------------------------------------------------
+Grupo  N considerado  logsource.category (%)  logsource.product (%)  logsource.service (%)  tags (Jaccard médio)  level (%)
+   E2             50                   58.33                  70.45                  53.33                  0.31      58.00
+   E3             50                  100.00                 100.00                 100.00                  0.33      54.00
+E4-p1             50                    5.56                  27.27                  20.00                  0.07      12.00
+E4-p2             50                   19.44                  40.91                  26.67                  0.11      28.00
+E4-p3             50                   16.67                  25.00                  13.33                  0.06      16.00
+
+
+5.4.2 (complementar)  CORRESPONDÊNCIA ESTRUTURAL — APENAS YAML VÁLIDOS
+------------------------------------------------------------------------
+Mesma análise, mas com denominador restrito às regras que
+efetivamente parsearam. Mostra a capacidade do grupo quando
+a barreira sintática é vencida.
+
+Grupo  N considerado  logsource.category (%)  logsource.product (%)  logsource.service (%)  tags (Jaccard médio)  level (%)
+   E2             49                   60.00                  72.09                  53.33                  0.32      59.18
+   E3             50                  100.00                 100.00                 100.00                  0.33      54.00
+E4-p1             29                   10.53                  50.00                  27.27                  0.11      20.69
+E4-p2             25                   41.18                  81.82                  50.00                  0.22      56.00
+E4-p3             21                   50.00                  61.11                  22.22                  0.15      38.10
+
+Validade YAML por grupo:
+Grupo  N  YAML válidos  Taxa (%)
+   E2 50            49      98.0
+   E3 50            50     100.0
+E4-p1 50            29      58.0
+E4-p2 50            25      50.0
+E4-p3 50            21      42.0

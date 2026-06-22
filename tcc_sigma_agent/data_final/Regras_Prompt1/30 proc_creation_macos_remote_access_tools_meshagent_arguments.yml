@@ -1,0 +1,110 @@
+title: MeshAgent Installation from Anomalous Path via -fullinstall Flag
+id: d47f8b23-9e1a-4c02-af83-6b5e0d3f19c8
+status: experimental
+description: |
+    Detects MeshAgent being installed via the -fullinstall command-line argument
+    from a non-canonical path, indicating abuse of the legitimate remote management
+    tool as a backdoor by a threat actor.
+
+    Canonical MeshAgent self-installs to:
+        C:\Program Files\Mesh Agent\MeshAgent.exe
+
+    Three distinct threat actor campaigns install MeshAgent from anomalous locations:
+
+    1. Huntress (Nov 2024) - Threat actor deployed a renamed MeshAgent binary as
+       "C:\Program Files\Windows NT\nvspbind\nvspbind.exe" with the argument
+       "--meshServiceName=nvspbind", masquerading as a Windows network virtualization
+       component. Delivered via PsExec batch file (mimon.bat) across multiple hosts.
+
+    2. UAC-0198 / ANONVNC (Aug 2024, CERT-UA) - MeshAgent delivered as a trojanized
+       MSI (e.g. Scan_docs#40562153.msi) phishing lure targeting Ukrainian government
+       agencies, staging the binary as "%USERPROFILE%\documents\mesh.exe -fullinstall".
+       Compromised over 100 government computers.
+
+    3. Medusa ransomware / Spearwing (Jan 2025, Symantec) - MeshAgent installed in the
+       pre-ransomware persistence phase as "%USERPROFILE%\documents\mesh.exe -fullinstall"
+       alongside SimpleHelp, AnyDesk, KillAV, and PDQ Deploy for lateral movement and
+       defense impairment before deploying gaze.exe (Medusa ransomware).
+
+    The common thread across all three campaigns is the -fullinstall flag being present
+    in the command line of an executable that does NOT reside in the canonical
+    "C:\Program Files\Mesh Agent\" directory, making path-agnostic command-line
+    matching the most resilient detection strategy.
+
+    Note: File hash-based detection is unreliable for MeshAgent because MeshCentral
+    generates a uniquely compiled agent binary per deployment, as documented by Wazuh
+    and confirmed across all three campaigns above.
+
+references:
+    - https://www.huntress.com/blog/know-thy-enemy-a-novel-november-case-on-persistent-remote-access
+    - https://thecyberexpress.com/ukraine-hit-by-meshagent-malware-campaign/
+    - https://wazuh.com/blog/how-to-detect-meshagent-with-wazuh/
+    - https://www.security.com/threat-intelligence/medusa-ransomware-attacks
+    - https://cert.gov.ua/article/6280345
+author: Generated from Huntress, CERT-UA/UAC-0198, Wazuh, and Symantec Medusa research
+date: 2025-03-06
+tags:
+    - attack.persistence
+    - attack.t1219        # Remote Access Software
+    - attack.defense_evasion
+    - attack.t1036.005    # Masquerading: Match Legitimate Name or Location
+    - attack.lateral_movement
+    - attack.t1570        # Lateral Tool Transfer
+    - attack.command_and_control
+    - attack.t1219        # Remote Access Software (C2 channel)
+    - tlp:white
+logsource:
+    product: windows
+    category: process_creation
+    # Requires Sysmon Event ID 1 or equivalent EDR process telemetry with full
+    # command-line capture enabled.
+detection:
+    # The -fullinstall flag is the universal installation trigger across all observed
+    # MeshAgent deployments regardless of binary name or path.
+    selection_fullinstall_flag:
+        CommandLine|contains: '-fullinstall'
+
+    # Exclude the single canonical install path that a legitimate managed MeshAgent
+    # deployment would execute from after initial setup. The installer drops itself
+    # to Program Files then re-executes — only the re-execution from Program Files
+    # is benign. Any other path with -fullinstall is anomalous.
+    filter_canonical_install_path:
+        Image|startswith:
+            - 'C:\Program Files\Mesh Agent\'
+            - 'C:\Program Files (x86)\Mesh Agent\'
+
+    # Named-service flag used by the Huntress/nvspbind actor to register the
+    # renamed binary as a service under a cover name. Match regardless of path.
+    selection_meshServiceName_flag:
+        CommandLine|contains: '--meshServiceName='
+
+    # Also catch installations staged from high-risk user-writable locations
+    # documented in the UAC-0198 and Medusa campaigns.
+    selection_suspicious_staging_path:
+        CommandLine|contains: '-fullinstall'
+        Image|contains:
+            - '\documents\mesh'
+            - '\documents\Mesh'
+            - '\Temp\mesh'
+            - '\temp\mesh'
+            - '\AppData\Local\Temp\'
+            - '\Users\Public\'
+            - '\ProgramData\Temp\'
+
+    condition: >
+        (selection_fullinstall_flag and not filter_canonical_install_path)
+        or selection_meshServiceName_flag
+        or selection_suspicious_staging_path
+
+falsepositives:
+    - An administrator manually re-running MeshAgent installation outside the Program
+      Files path during troubleshooting or re-deployment (rare; most legitimate
+      managed deployments execute from the canonical path after the initial installer
+      drops the binary).
+    - An RMM platform that bundles MeshAgent and extracts it to a temp directory
+      before installation — review ParentImage and verify against your asset inventory
+      of approved remote access tools.
+    # Recommended: maintain an allowlist of approved RMM tools via your EDR/application
+    # control policy. MeshAgent appearing on any host not in that allowlist should be
+    # treated as a high-confidence indicator regardless of path.
+level: high

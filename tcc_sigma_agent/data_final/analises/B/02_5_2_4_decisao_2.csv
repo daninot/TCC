@@ -1,0 +1,4 @@
+Decisão,contexto_pobre,APROVADO,REPROVADO,Total,Taxa aprov. (%)
+contexto_pobre,False,47,54,101,46.53465346534654
+contexto_pobre,True,28,21,49,57.142857142857146
+contexto_pobre,Total,75,75,150,50.0

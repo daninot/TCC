@@ -1,0 +1,4 @@
+Decisão,tipo_input,APROVADO,REPROVADO,Total,Taxa aprov. (%)
+tipo_input,cve,4,8,12,33.333333333333336
+tipo_input,texto_livre,71,67,138,51.44927536231884
+tipo_input,Total,75,75,150,50.0

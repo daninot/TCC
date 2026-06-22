@@ -1,0 +1,55 @@
+title: Suspicious SQL Injection Error Messages In Application Logs
+id: 8a670c6d-7189-4b1c-8017-a417ca84a086
+status: test
+description: >
+  Detects database error messages commonly generated during SQL injection
+  probing and exploitation attempts. Attackers frequently trigger syntax,
+  UNION, quotation, or database parsing errors to identify vulnerable
+  parameters, fingerprint the backend DBMS, and refine injection payloads.
+references:
+  - http://www.sqlinjection.net/errors
+  - http://www.sqlinjection.net/detection
+author: OpenAI
+date: 2026-05-29
+tags:
+  - attack.initial_access
+  - attack.t1190
+  - attack.reconnaissance
+logsource:
+  category: application
+  definition: >
+    Application, web server, WAF, API gateway, or database error logs
+    containing backend SQL exception messages.
+detection:
+  keywords:
+    # MySQL / MariaDB
+    - 'You have an error in your SQL syntax'
+    - 'check the manual that corresponds to your MySQL server version'
+    # Microsoft SQL Server
+    - 'Unclosed quotation mark after the character string'
+    - 'Incorrect syntax near'
+    - 'Msg 105, Level'
+    # Oracle
+    - 'ORA-01756'
+    - 'quoted string not properly terminated'
+    - 'ORA-00933'
+    - 'SQL command not properly ended'
+    # PostgreSQL
+    - 'ERROR: syntax error at or near'
+    - 'unterminated quoted string'
+    # SQLite
+    - 'near "*": syntax error'
+    - 'SELECTs to the left and right of UNION do not have the same number of result columns'
+  condition: keywords
+fields:
+  - message
+  - url
+  - uri
+  - src_ip
+  - user_agent
+  - username
+falsepositives:
+  - Application coding errors causing malformed SQL queries
+  - Database migration or deployment failures
+  - Software testing activities
+level: high

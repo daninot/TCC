@@ -1,0 +1,44 @@
+title: Windows Firewall Allow Rule Added by WmiPrvSE.EXE
+id: d5f8b2c4-1e3a-4d7f-b9c1-6e4a2d8f3b57
+status: experimental
+description: >
+  Detects the addition of a new inbound Allow rule to the Windows Firewall
+  exception list where the modifying process is the WMI Provider Host
+  (WmiPrvSE.EXE) running from its canonical system path. Adversaries,
+  including the Rhysida ransomware group, abuse WMI-based firewall modification
+  (e.g., New-NetFirewallRule, MSFT_NetFirewallRule CIM class) to open inbound
+  ports for C2 communication, lateral movement, or data exfiltration. Because
+  the change is executed inside the WMI provider host rather than a user-facing
+  shell, it bypasses common process-lineage detections and appears as a
+  legitimate system process in the firewall audit log. The detection requires
+  all three signals to fire simultaneously: an addition event (EventID 2004),
+  an Allow action (Action = 2), and WmiPrvSE.EXE as the modifying application.
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.004/T1562.004.md#atomic-test-24---set-a-firewall-rule-using-new-netfirewallrule
+  - https://malware.news/t/the-rhysida-ransomware-activity-analysis-and-ties-to-vice-society/72170
+  - https://cybersecuritynews.com/rhysida-ransomware-attacking-windows/
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.defense_evasion
+  - attack.t1562.004
+logsource:
+  product: windows
+  service: firewall-as
+detection:
+  selection_event:
+    EventID: 2004
+  selection_action:
+    Action: '2'
+  selection_process:
+    ModifyingApplication|endswith: '\WmiPrvSE.exe'
+  condition: selection_event and selection_action and selection_process
+falsepositives:
+  - Legitimate administrator automation scripts and configuration management
+    tooling (e.g., Ansible WinRM modules, SCCM compliance baselines, DSC
+    resources) that manage firewall rules via WMI or PowerShell CIM cmdlets
+    as part of a documented, approved change-management workflow.
+  - Enterprise monitoring agents or endpoint security products that use WMI
+    internally to register self-exception firewall rules during installation
+    or update cycles.
+level: medium

@@ -1,0 +1,52 @@
+========================================================================
+BLOCO C — MÉTRICAS SEMÂNTICAS (NÓ 6 / JUIZ)
+Gerado em: 2026-06-21 01:08:56
+========================================================================
+
+5.3.1  DISTRIBUIÇÃO DE VEREDITOS DO JUIZ
+------------------------------------------------------------------------
+  Grupo   N  APPROVED  APPROVED (%)  APPROVED_WITH_WARNINGS  APPROVED_WITH_WARNINGS (%)  REJECTED  REJECTED (%)  (não avaliado)  (não avaliado) (%)
+ global 150        12           8.0                      95                        63.3        40          26.7               3                 2.0
+prompt1  50         2           4.0                      46                        92.0         1           2.0               1                 2.0
+prompt2  50         4           8.0                      26                        52.0        18          36.0               2                 4.0
+prompt3  50         6          12.0                      23                        46.0        21          42.0               0                 0.0
+
+
+5.3.2  TAXA DE PASS/WARN/FAIL POR DIMENSÃO
+------------------------------------------------------------------------
+          Dimensão  N avaliado  PASS  WARN  FAIL  PASS (%)  WARN (%)  FAIL (%)
+  invented filters         147   119     8    20      81.0       5.4      13.6
+         condition         147   116    15    16      78.9      10.2      10.9
+         structure         147    88    56     3      59.9      38.1       2.0
+         logsource         147    74    33    40      50.3      22.4      27.2
+         modifiers         147    64    78     5      43.5      53.1       3.4
+semantic alignment         147    43    62    42      29.3      42.2      28.6
+
+
+5.3.3  DELTA NÓ 5 ↔ NÓ 6
+------------------------------------------------------------------------
+   status  APPROVED  APPROVED_WITH_WARNINGS  REJECTED  (não avaliado)  Total
+ APROVADO         7                      45        21               2     75
+REPROVADO         5                      50        19               1     75
+    Total        12                      95        40               3    150
+
+  Achados-chave (sobre as 75 regras aprovadas pelo nó 5):
+   - 7 (9.3%) receberam APPROVED do juiz
+   - 45 foram APPROVED_WITH_WARNINGS
+   - 21 (28.0%) foram REJEITADAS pelo juiz
+   
+  Leitura: validação sintática é condição necessária mas não suficiente
+  para qualidade semântica.
+
+
+5.3.4  MOTIVOS DE REPROVAÇÃO POR DIMENSÃO (tabela-resumo)
+------------------------------------------------------------------------
+          Dimensão  PASS  WARN  FAIL  Total comentários
+semantic_alignment     0    28    21                 49
+         logsource     0    23    19                 42
+         modifiers     0    38     3                 41
+         structure     0    29     1                 30
+  invented_filters     0     7    13                 20
+         condition     0    10     9                 19
+
+  (Amostras detalhadas em 03_5_3_4_amostras_comentarios.csv)

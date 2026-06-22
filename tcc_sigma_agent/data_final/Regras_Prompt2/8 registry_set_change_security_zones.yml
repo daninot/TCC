@@ -1,0 +1,50 @@
+title: Internet Explorer ZoneMap Trusted Site Domain Added via Registry
+id: c6d2f4a1-8b7e-4c3f-a9d5-2e1b6f4c8d71
+status: experimental
+description: >
+  Detects registry write operations that insert a new domain entry under the
+  Internet Explorer ZoneMap Domains hive with a zone value that is neither
+  My Computer (DWORD 0x00000000) nor Local Intranet (DWORD 0x00000001) and
+  is not empty. Adding a domain to the Trusted Sites zone (DWORD 0x00000002)
+  via this path silently lowers IE security restrictions for the target
+  domain, disabling Protected Mode, enabling automatic NTLM authentication,
+  and permitting elevated-privilege ActiveX and scripted content execution.
+  Adversaries use this technique to pre-stage attacker-controlled domains as
+  trusted before delivering browser-based payloads, credential-harvesting
+  pages, or malicious ActiveX components, achieving both defense evasion and
+  a persistence-supporting trust relationship that survives user logon.
+  The exclusion of zone values 0x00000000, 0x00000001, and empty suppresses
+  the large baseline of legitimate enterprise policy deployments that assign
+  internal domains to the Local Intranet zone via GPO or management tooling.
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-4---add-domain-to-trusted-sites-zone
+  - https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries
+author: Senior Threat Detection Engineer
+date: 2026-05-25
+tags:
+  - attack.defense_evasion
+  - attack.persistence
+  - attack.t1112
+  - attack.t1553
+logsource:
+  category: registry_set
+  product: windows
+detection:
+  selection:
+    TargetObject|contains: '\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains\'
+  filter_legitimate_zones:
+    Details:
+      - 'DWORD (0x00000000)'
+      - 'DWORD (0x00000001)'
+      - '(Empty)'
+  condition: selection and not filter_legitimate_zones
+falsepositives:
+  - Group Policy or endpoint-management tooling (e.g., SCCM, Intune,
+    Ansible) that programmatically populates ZoneMap\Domains with internal
+    hostnames assigned to zone values other than 0 or 1, such as assigning
+    internal web applications to the Trusted Sites zone (0x00000002) as an
+    approved browser compatibility measure.
+  - Browser-helper, SSO, or Kerberos integrated-authentication software that
+    adds internal service hostnames to the Trusted Sites zone during
+    installation to enable silent authentication.
+level: high
